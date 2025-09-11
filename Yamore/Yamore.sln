@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36429.23 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Yamore.API", "Yamore.API\Yamore.API.csproj", "{77019C2D-EA42-4E26-9218-4EBFBD932ADF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{77019C2D-EA42-4E26-9218-4EBFBD932ADF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{77019C2D-EA42-4E26-9218-4EBFBD932ADF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{77019C2D-EA42-4E26-9218-4EBFBD932ADF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{77019C2D-EA42-4E26-9218-4EBFBD932ADF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C02AEF92-D065-4A08-A4B0-505379E6FB36}
+	EndGlobalSection
+EndGlobal

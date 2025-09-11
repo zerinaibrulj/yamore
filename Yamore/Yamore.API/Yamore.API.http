@@ -1,0 +1,6 @@
+@Yamore.API_HostAddress = http://localhost:5096
+
+GET {{Yamore.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
