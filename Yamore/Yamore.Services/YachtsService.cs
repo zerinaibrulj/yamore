@@ -39,7 +39,7 @@ namespace Yamore.Services
                 PricePerDay=1200
             }
         };
-        public List<Yachts> GetList()
+        public virtual List<Yachts> GetList()
         {
             return List;
         }

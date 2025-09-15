@@ -10,7 +10,7 @@ namespace Yamore.API.Controllers
     {
         protected IYachtsService _service;
 
-        public YachtsController(IYachtsService service)
+        public YachtsController(YachtsService service) 
         {
             _service = service;
         }

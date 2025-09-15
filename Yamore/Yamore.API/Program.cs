@@ -5,6 +5,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.Services.AddTransient<IYachtsService, YachtsService>();  //dodamo servis
+//builder.Services.AddTransient<YachtsService, YachtsService>(); 
+builder.Services.AddTransient<IYachtsService, DummyYachtsService>();
+
+
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
