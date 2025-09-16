@@ -1,4 +1,6 @@
+using Microsoft.EntityFrameworkCore;
 using Yamore.Services;
+using Yamore.Services.Database;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,7 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddTransient<IYachtsService, YachtsService>();  //dodamo servis
 //builder.Services.AddTransient<YachtsService, YachtsService>(); 
 //builder.Services.AddTransient<YachtsService, DummyYachtsService>();
-builder.Services.AddTransient<IYachtsService, DummyYachtsService>();
+//builder.Services.AddTransient<IYachtsService, DummyYachtsService>();
 
 
 
@@ -15,6 +17,13 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+
+// For Appsetting.json
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddDbContext<_220245Context>(options => options.UseSqlServer(connectionString));
+
+
 
 var app = builder.Build();
 

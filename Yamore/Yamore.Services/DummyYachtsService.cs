@@ -7,7 +7,7 @@ using Yamore.Model;
 
 namespace Yamore.Services
 {
-    public class DummyYachtsService : YachtsService
+    public class DummyYachtsService : IYachtsService
     {
         public List<Yachts> List = new List<Yachts>()
         {
@@ -21,7 +21,7 @@ namespace Yamore.Services
                 PricePerDay=1500
             }
         };
-        public override List<Yachts> GetList()
+        public List<Yachts> GetList()
         {
             return List;
         }

@@ -4,44 +4,37 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Yamore.Model;
+using Yamore.Services.Database;
 
 namespace Yamore.Services
 {
     public class YachtsService : IYachtsService
     {
-        public List<Yachts> List = new List<Yachts>()
+        public _220245Context Context { get; set; }
+
+        public YachtsService(_220245Context context)
         {
-            new Yachts()
-            {
-                YachtId=1,
-                Name ="Sea Breeze",
-                YearBuilt=2015,
-                Length=30.5m,
-                Capacity=8,
-                PricePerDay=1500
-            },
-            new Yachts()
-            {
-                YachtId=2,
-                Name="Ocean Explorer",
-                YearBuilt=2018,
-                Length=45.0m,
-                Capacity=12,
-                PricePerDay=3000
-            },
-            new Yachts()
-            {
-                YachtId=3,
-                Name="Sunset Cruiser",
-                YearBuilt=2020,
-                Length=25.0m,
-                Capacity=6,
-                PricePerDay=1200
-            }
-        };
-        public virtual List<Yachts> GetList()
+            Context = context;
+        }
+
+
+        public virtual List<Model.Yachts> GetList()
         {
-            return List;
+            var list = Context.Yachts.ToList();
+            var result = new List<Model.Yachts>();
+            list.ForEach(item =>
+            {
+                result.Add(new Model.Yachts()
+                {
+                    YachtId = item.YachtId,
+                    Name = item.Name,
+                    Capacity = item.Capacity,
+                    Length = item.Length.Value,
+                    PricePerDay = item.PricePerDay,
+                    YearBuilt = item.YearBuilt.Value
+                });
+            });
+            return result;
         }
     }
 }
