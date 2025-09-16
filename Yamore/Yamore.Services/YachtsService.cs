@@ -18,7 +18,7 @@ namespace Yamore.Services
         }
 
 
-        public virtual List<Model.Yachts> GetList()
+        public virtual List<Model.Yachts> GetList()   //klasa koja premapira iz baze i vraca 6 polja
         {
             var list = Context.Yachts.ToList();
             var result = new List<Model.Yachts>();
