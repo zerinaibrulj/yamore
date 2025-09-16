@@ -1,0 +1,45 @@
+﻿using System;
+using System.Collections.Generic;
+
+namespace Yamore.Services.Database;
+
+public partial class Yacht
+{
+    public int YachtId { get; set; }
+
+    public int OwnerId { get; set; }
+
+    public string Name { get; set; } = null!;
+
+    public string? Description { get; set; }
+
+    public int? YearBuilt { get; set; }
+
+    public decimal? Length { get; set; }
+
+    public int Capacity { get; set; }
+
+    public int? Cabins { get; set; }
+
+    public int? Bathrooms { get; set; }
+
+    public decimal PricePerDay { get; set; }
+
+    public int LocationId { get; set; }
+
+    public int CategoryId { get; set; }
+
+    public bool? IsActive { get; set; }
+
+    public virtual YachtCategory Category { get; set; } = null!;
+
+    public virtual City Location { get; set; } = null!;
+
+    public virtual User Owner { get; set; } = null!;
+
+    public virtual ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
+
+    public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
+
+    public virtual ICollection<Route> Routes { get; set; } = new List<Route>();
+}
