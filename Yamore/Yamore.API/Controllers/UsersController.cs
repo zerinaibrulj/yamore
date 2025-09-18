@@ -20,5 +20,12 @@ namespace Yamore.API.Controllers
         {
             return _service.GetList();
         }
+
+
+        [HttpPost]
+        public User Insert(User request)
+        {
+            return _service.Insert(request);
+        }
     }
 }

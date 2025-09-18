@@ -24,21 +24,16 @@ namespace Yamore.Services
         public virtual List<Model.User> GetList()
         {
             List<Model.User> result = new List<Model.User>();
-
             var list = Context.Users.ToList();    // Linq query to get all users from the database
-            //list.ForEach(x => result.Add(new Model.User
-            //{
-            //    UserId=x.UserId,
-            //    FirstName=x.FirstName,
-            //    LastName=x.LastName,
-            //    Email=x.Email,
-            //    Phone=x.Phone,
-            //}));
-
+           
 
             result = Mapper.Map<List<Model.User>>(list);      // ili result=Mapper.Map(list, result);
-
             return result;
+        }
+
+        public Model.User Insert(Model.User request)
+        {
+            throw new NotImplementedException();
         }
     }
 }
