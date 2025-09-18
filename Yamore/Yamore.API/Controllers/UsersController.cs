@@ -16,7 +16,7 @@ namespace Yamore.API.Controllers
         }
 
         [HttpGet]
-        public List<object> GetList()
+        public List<Model.User> GetList()
         {
             return _service.GetList();
         }

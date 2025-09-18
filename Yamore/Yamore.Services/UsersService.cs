@@ -18,12 +18,19 @@ namespace Yamore.Services
         }
 
 
-        public virtual List<object> GetList()
+        public virtual List<Model.User> GetList()
         {
-            List<object> result = new List<object>();
+            List<Model.User> result = new List<Model.User>();
 
-            var list = Context.Users.ToList();
-            list.ForEach(x => result.Add(x));
+            var list = Context.Users.ToList();    // Linq query to get all users from the database
+            list.ForEach(x => result.Add(new Model.User
+            {
+                UserId=x.UserId,
+                FirstName=x.FirstName,
+                LastName=x.LastName,
+                Email=x.Email,
+                Phone=x.Phone,   
+            }));
 
             return result;
         }
