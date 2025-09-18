@@ -4,6 +4,6 @@ namespace Yamore.Services
 {
     public interface IUsersService
     {
-        List<User> GetList();
+        List<Model.User> GetList();
     }
 }
