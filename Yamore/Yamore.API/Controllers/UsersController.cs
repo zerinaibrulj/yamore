@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Yamore.Model;
+using Yamore.Model.Requests;
 using Yamore.Services;
 
 namespace Yamore.API.Controllers
@@ -23,7 +24,7 @@ namespace Yamore.API.Controllers
 
 
         [HttpPost]
-        public User Insert(User request)
+        public User Insert(UserInsertRequest request)
         {
             return _service.Insert(request);
         }

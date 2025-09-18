@@ -1,10 +1,11 @@
 ﻿using Yamore.Model;
+using Yamore.Model.Requests;
 
 namespace Yamore.Services
 {
     public interface IUsersService
     {
         List<Model.User> GetList();
-        User Insert(User request);
+        User Insert(UserInsertRequest request);
     }
 }

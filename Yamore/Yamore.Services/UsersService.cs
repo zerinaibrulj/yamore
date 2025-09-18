@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Yamore.Model;
+using Yamore.Model.Requests;
 using Yamore.Services.Database;
 
 namespace Yamore.Services
@@ -25,15 +26,22 @@ namespace Yamore.Services
         {
             List<Model.User> result = new List<Model.User>();
             var list = Context.Users.ToList();    // Linq query to get all users from the database
-           
+
 
             result = Mapper.Map<List<Model.User>>(list);      // ili result=Mapper.Map(list, result);
             return result;
         }
 
-        public Model.User Insert(Model.User request)
+        public Model.User Insert(UserInsertRequest request)
         {
-            throw new NotImplementedException();
+            if(request.Password != request.PasswordConfirmation)
+            {
+                throw new Exception("Password and password confirmation must match!");
+            }
+
+            Database.User entity = new Database.User();
+            Mapper.Map(request, entity);
+
         }
     }
 }
