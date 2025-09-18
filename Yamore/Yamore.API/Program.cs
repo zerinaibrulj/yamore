@@ -1,3 +1,4 @@
+using Mapster;
 using Microsoft.EntityFrameworkCore;
 using Yamore.Services;
 using Yamore.Services.Database;
@@ -23,7 +24,7 @@ builder.Services.AddSwaggerGen();
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<_220245Context>(options => options.UseSqlServer(connectionString));
 
-
+builder.Services.AddMapster();      //dodamo Mapster za automatsko mapiranje entiteta u modele
 
 var app = builder.Build();
 
