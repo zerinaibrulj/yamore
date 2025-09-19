@@ -76,5 +76,24 @@ namespace Yamore.Services
             byte[] inArray = algorithm.ComputeHash(dst);
             return Convert.ToBase64String(inArray);
         }
+
+        public Model.User Update(int id, UserUpdateRequest request)
+        {
+            var entity = Context.Users.Find(id);
+
+            Mapper.Map(request, entity);
+
+            if(request.Password != null)
+            {
+                if (request.Password != request.PasswordConfirmation)
+                {
+                    throw new Exception("Password and password confirmation must match!");
+                }
+                entity.PasswordSalt = GenerateSalt();
+                entity.PasswordHash = GenerateHash(entity.PasswordSalt, request.Password);
+            }
+            Context.SaveChanges();
+            return Mapper.Map<Model.User>(entity);
+        }
     }
 }

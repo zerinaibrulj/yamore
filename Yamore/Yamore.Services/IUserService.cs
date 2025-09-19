@@ -7,5 +7,6 @@ namespace Yamore.Services
     {
         List<Model.User> GetList();
         User Insert(UserInsertRequest request);
+        User Update(int id, UserUpdateRequest request);
     }
 }
