@@ -44,8 +44,8 @@ namespace Yamore.Services
             Mapper.Map(request, entity);
 
 
-            //entity.PasswordSalt = GenerateSalt();
-            entity.PasswordHash = GenerateHash(entity.PasswordHash, request.Password);
+            entity.PasswordSalt = GenerateSalt();
+            entity.PasswordHash = GenerateHash(entity.PasswordSalt, request.Password);
 
             Context.Users.Add(entity);
             Context.SaveChanges();
