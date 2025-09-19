@@ -13,9 +13,9 @@ namespace Yamore.Model.Requests
         public string? Email { get; set; }
 
         public string? Phone { get; set; }
+        public string Username { get; set; } = null!;
         public string Password { get; set; } 
-        public string PasswordConfirmation { get; set; }
-        //public string Username { get; set; } = null!;   //dodat cemo ova 2 propertija kasnije
-        //public bool? Status { get; set; }
+        public string PasswordConfirmation { get; set; }  
+        public bool? Status { get; set; }
     }
 }
