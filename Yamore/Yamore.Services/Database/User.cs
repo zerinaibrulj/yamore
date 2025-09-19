@@ -21,10 +21,6 @@ public partial class User
     public bool? Status { get; set; }
 
 
-    public DateTime? DateCreated { get; set; }             //kasnije cemo ova 2 propertija izbrisati
-    public string? Role { get; set; }
-
-
     public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 
     public virtual ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();

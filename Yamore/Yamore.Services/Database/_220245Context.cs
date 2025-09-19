@@ -212,15 +212,13 @@ public partial class _220245Context : DbContext
 
             entity.HasIndex(e => e.Email, "UQ__Users__A9D10534AFDA8DC1").IsUnique();
 
-            entity.Property(e => e.DateCreated)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime");
+           
             entity.Property(e => e.Email).HasMaxLength(100);
             entity.Property(e => e.FirstName).HasMaxLength(50);
             entity.Property(e => e.LastName).HasMaxLength(50);
             entity.Property(e => e.PasswordHash).HasMaxLength(255);
             entity.Property(e => e.Phone).HasMaxLength(30);
-            entity.Property(e => e.Role).HasMaxLength(20);
+            
         });
 
         modelBuilder.Entity<WeatherForecast>(entity =>
