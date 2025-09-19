@@ -13,7 +13,7 @@ namespace Yamore.Model
         public string? Email { get; set; }
 
         public string? Phone { get; set; }
-        //public string Username { get; set; } = null!;   //dodat cemo ova 2 propertija kasnije
-        //public bool? Status { get; set; }
+        public string Username { get; set; } = null!;   
+        public bool? Status { get; set; }
     }
 }

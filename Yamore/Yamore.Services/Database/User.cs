@@ -11,17 +11,19 @@ public partial class User
 
     public string LastName { get; set; } = null!;
 
-    public string Email { get; set; } = null!;
+    public string? Email { get; set; }
+    public string? Phone { get; set; }
+    public string Username { get; set; } = null!;
 
     public string PasswordHash { get; set; } = null!;
 
-    public string? Phone { get; set; }
+    public string PasswordSalt { get; set; } = null!;
+    public bool? Status { get; set; }
 
-    public DateOnly? DateOfBirth { get; set; }
 
+    public DateTime? DateCreated { get; set; }             //kasnije cemo ova 2 propertija izbrisati
     public string? Role { get; set; }
 
-    public DateTime? DateCreated { get; set; }
 
     public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 
