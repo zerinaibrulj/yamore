@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Yamore.Model;
 using Yamore.Model.Requests;
+using Yamore.Model.SearchObjects;
 using Yamore.Services.Database;
 
 namespace Yamore.Services
@@ -23,13 +24,38 @@ namespace Yamore.Services
         }
 
 
-        public virtual List<Model.User> GetList()
+        public virtual List<Model.User> GetList(UsersSearchObject searchObject)
         {
             List<Model.User> result = new List<Model.User>();
-            var list = Context.Users.ToList();    // Linq query to get all users from the database
+
+            var query = Context.Users.AsQueryable();   // Linq query to get all users from the database
+
+            if (!string.IsNullOrWhiteSpace(searchObject?.FirstNameGTE))
+            {
+                query = query.Where(x => x.FirstName.StartsWith(searchObject.FirstNameGTE));
+            }
+
+            if (!string.IsNullOrWhiteSpace(searchObject?.LastNameGTE))
+            {
+                query = query.Where(x => x.LastName.StartsWith(searchObject.LastNameGTE));
+            }
+
+            if (!string.IsNullOrWhiteSpace(searchObject?.Email))
+            {
+                query = query.Where(x => x.Email == searchObject.Email);
+            }
+
+            if (!string.IsNullOrWhiteSpace(searchObject?.Username))
+            {
+                query = query.Where(x => x.Username == searchObject.Username);
+            }
 
 
-            result = Mapper.Map<List<Model.User>>(list);      // ili result=Mapper.Map(list, result);
+
+            var list = query.ToList();
+
+
+            result = Mapper.Map(list, result);     
             return result;
         }
 
