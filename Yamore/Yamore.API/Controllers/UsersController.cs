@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Yamore.Model;
 using Yamore.Model.Requests;
+using Yamore.Model.SearchObjects;
 using Yamore.Services;
 
 namespace Yamore.API.Controllers
@@ -17,9 +18,9 @@ namespace Yamore.API.Controllers
         }
 
         [HttpGet]
-        public List<Model.User> GetList()
+        public List<Model.User> GetList(UsersSearchObject searchObject)
         {
-            return _service.GetList();
+            return _service.GetList(searchObject);
         }
 
 
