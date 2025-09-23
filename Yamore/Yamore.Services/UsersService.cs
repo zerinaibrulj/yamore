@@ -1,10 +1,12 @@
 ﻿using MapsterMapper;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml;
 using Yamore.Model;
 using Yamore.Model.Requests;
 using Yamore.Model.SearchObjects;
@@ -50,8 +52,13 @@ namespace Yamore.Services
                 query = query.Where(x => x.Username == searchObject.Username);
             }
 
-
-
+            if (searchObject?.IsUserRoleIncluded == true)
+            {
+                query = query.Include(x => x.UserRoles).ThenInclude(x => x.Role);
+            }
+            
+        
+            
             var list = query.ToList();
 
 

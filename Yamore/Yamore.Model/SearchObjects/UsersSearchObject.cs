@@ -10,5 +10,6 @@ namespace Yamore.Model.SearchObjects
         public string? LastNameGTE { get; set; }
         public string? Email { get; set; }
         public string? Username { get; set; }
+        public bool? IsUserRoleIncluded { get; set; }
     }
 }
