@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 
 namespace Yamore.Model
 {
@@ -15,5 +17,7 @@ namespace Yamore.Model
         public string? Phone { get; set; }
         public string Username { get; set; } = null!;   
         public bool? Status { get; set; }
+
+        public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
     }
 }

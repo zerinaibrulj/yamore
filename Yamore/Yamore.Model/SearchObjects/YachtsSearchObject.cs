@@ -6,6 +6,6 @@ namespace Yamore.Model.SearchObjects
 {
     public class YachtsSearchObject
     {
-        public string FTS { get; set; }
+        public string? FTS { get; set; }
     }
 }
