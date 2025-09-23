@@ -57,6 +57,14 @@ namespace Yamore.Services
                 query = query.Include(x => x.UserRoles).ThenInclude(x => x.Role);
             }
             
+
+            if(searchObject?.Page.HasValue==true && searchObject?.PageSize.HasValue == true)
+            {
+                query = query.Take(searchObject.PageSize.Value).Skip(searchObject.Page.Value * searchObject.PageSize.Value);
+            }
+
+
+
         
             
             var list = query.ToList();
