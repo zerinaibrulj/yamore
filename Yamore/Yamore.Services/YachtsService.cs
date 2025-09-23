@@ -1,9 +1,11 @@
-﻿using System;
+﻿using MapsterMapper;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Yamore.Model;
+using Yamore.Model.SearchObjects;
 using Yamore.Services.Database;
 
 namespace Yamore.Services
@@ -11,29 +13,30 @@ namespace Yamore.Services
     public class YachtsService : IYachtsService
     {
         public _220245Context Context { get; set; }
+        public IMapper Mapper { get; set; }
 
-        public YachtsService(_220245Context context)
+        public YachtsService(_220245Context context, IMapper mapper)
         {
             Context = context;
+            Mapper = mapper;
         }
 
 
-        public virtual List<Model.Yachts> GetList()   //klasa koja premapira iz baze i vraca 6 polja
+        public virtual List<Model.Yachts> GetList(YachtsSearchObject searchObject)   
         {
-            var list = Context.Yachts.ToList();
-            var result = new List<Model.Yachts>();
-            list.ForEach(item =>
+            List<Model.Yachts> result = new List<Model.Yachts>();
+
+            var query = Context.Yachts.AsQueryable();   
+
+            if (!string.IsNullOrWhiteSpace(searchObject?.FTS))
             {
-                result.Add(new Model.Yachts()
-                {
-                    YachtId = item.YachtId,
-                    Name = item.Name,
-                    Capacity = item.Capacity,
-                    Length = item.Length.Value,
-                    PricePerDay = item.PricePerDay,
-                    YearBuilt = item.YearBuilt.Value
-                });
-            });
+                query = query.Where(x => x.Name.Contains(searchObject.FTS) || x.Description.Contains(searchObject.FTS));
+            }
+
+
+            var list = query.ToList();
+
+            result = Mapper.Map(list, result);
             return result;
         }
     }

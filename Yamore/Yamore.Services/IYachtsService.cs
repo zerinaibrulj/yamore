@@ -1,9 +1,10 @@
 ﻿using Yamore.Model;
+using Yamore.Model.SearchObjects;
 
 namespace Yamore.Services
 {
     public interface IYachtsService
     {
-        List<Yachts> GetList();
+        List<Yachts> GetList(YachtsSearchObject searchObject);
     }
 }

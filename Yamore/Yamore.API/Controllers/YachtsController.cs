@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Yamore.Model;
+using Yamore.Model.SearchObjects;
 using Yamore.Services;
 
 namespace Yamore.API.Controllers
@@ -16,9 +17,9 @@ namespace Yamore.API.Controllers
         }
 
         [HttpGet]
-        public List<Yachts> GetList()
+        public List<Yachts> GetList([FromQuery]YachtsSearchObject searchObject)
         {
-            return _service.GetList();
+            return _service.GetList(searchObject);
         }
     }
 }

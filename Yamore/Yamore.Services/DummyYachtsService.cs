@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Yamore.Model;
+using Yamore.Model.SearchObjects;
 
 namespace Yamore.Services
 {
@@ -21,7 +22,7 @@ namespace Yamore.Services
                 PricePerDay=1500
             }
         };
-        public List<Yachts> GetList()
+        public List<Yachts> GetList(YachtsSearchObject searchObject)
         {
             return List;
         }
