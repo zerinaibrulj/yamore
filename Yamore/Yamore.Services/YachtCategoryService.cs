@@ -6,6 +6,7 @@ using System.Linq.Dynamic.Core;
 using System.Text;
 using System.Threading.Tasks;
 using Yamore.Model;
+using Yamore.Model.Requests;
 using Yamore.Model.SearchObjects;
 using Yamore.Services.Database;
 
@@ -50,6 +51,19 @@ namespace Yamore.Services
             result = Mapper.Map(list, result);
 
             return result;
+        }
+
+        public Model.YachtCategory Insert(YachtCategoryInsertRequest request)
+        {
+            Database.YachtCategory entity = new Database.YachtCategory();         
+            Mapper.Map(request, entity);
+
+
+            Context.YachtCategories.Add(entity);
+            Context.SaveChanges();
+
+
+            return Mapper.Map<Model.YachtCategory>(entity);
         }
     }
 }
