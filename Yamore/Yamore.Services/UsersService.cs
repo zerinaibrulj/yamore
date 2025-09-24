@@ -60,7 +60,7 @@ namespace Yamore.Services
 
             if(searchObject?.Page.HasValue==true && searchObject?.PageSize.HasValue == true)
             {
-                query = query.Take(searchObject.PageSize.Value).Skip(searchObject.Page.Value * searchObject.PageSize.Value);
+                query = query.Skip(searchObject.Page.Value * searchObject.PageSize.Value).Take(searchObject.PageSize.Value);
             }
 
 
