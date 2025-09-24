@@ -12,6 +12,7 @@ builder.Services.AddTransient<IYachtsService, YachtsService>();  //dodamo servis
 //builder.Services.AddTransient<YachtsService, DummyYachtsService>();
 //builder.Services.AddTransient<IYachtsService, DummyYachtsService>();
 builder.Services.AddTransient<IUsersService, UsersService>();
+builder.Services.AddTransient<IYachtCategoryService, YachtCategoryService>();
 
 
 builder.Services.AddControllers();

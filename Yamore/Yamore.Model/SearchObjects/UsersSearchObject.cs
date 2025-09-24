@@ -13,6 +13,6 @@ namespace Yamore.Model.SearchObjects
         public bool? IsUserRoleIncluded { get; set; }
         public int? Page { get; set; }
         public int? PageSize { get; set; }
-        public string OrderBy { get; set; } = null!;
+        public string? OrderBy { get; set; }
     }
 }
