@@ -18,7 +18,7 @@ namespace Yamore.API.Controllers
         }
 
         [HttpGet]
-        public List<Model.User> GetList([FromQuery]UsersSearchObject searchObject)
+        public PagedResult<Model.User> GetList([FromQuery]UsersSearchObject searchObject)
         {
             return _service.GetList(searchObject);
         }

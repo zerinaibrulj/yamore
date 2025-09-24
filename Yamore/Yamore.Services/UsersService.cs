@@ -26,7 +26,7 @@ namespace Yamore.Services
         }
 
 
-        public virtual List<Model.User> GetList(UsersSearchObject searchObject)
+        public virtual PagedResult<Model.User> GetList(UsersSearchObject searchObject)
         {
             List<Model.User> result = new List<Model.User>();
 
@@ -56,7 +56,16 @@ namespace Yamore.Services
             {
                 query = query.Include(x => x.UserRoles).ThenInclude(x => x.Role);
             }
-            
+
+
+            int count = query.Count();
+
+
+            if (!string.IsNullOrWhiteSpace(searchObject.OrderBy))
+            {
+                //query = query.OrderBy(searchObject.OrderBy);       //trebamo zavrsiti ovu funkciju za sortiranje
+            }
+
 
             if(searchObject?.Page.HasValue == true && searchObject?.PageSize.HasValue == true)
             {
@@ -68,10 +77,14 @@ namespace Yamore.Services
         
             
             var list = query.ToList();
+            var resultList = Mapper.Map(list, result);
 
+            PagedResult<Model.User> response = new PagedResult<Model.User>();
 
-            result = Mapper.Map(list, result);     
-            return result;
+            response.ResultList = resultList;
+            response.Count = count;
+
+            return response;
         }
 
         public Model.User Insert(UserInsertRequest request)

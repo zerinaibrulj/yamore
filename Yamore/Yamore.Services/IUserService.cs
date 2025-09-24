@@ -6,7 +6,7 @@ namespace Yamore.Services
 {
     public interface IUsersService
     {
-        List<Model.User> GetList(UsersSearchObject searchObject);
+        PagedResult<Model.User> GetList(UsersSearchObject searchObject);
         User Insert(UserInsertRequest request);
         User Update(int id, UserUpdateRequest request);
     }
