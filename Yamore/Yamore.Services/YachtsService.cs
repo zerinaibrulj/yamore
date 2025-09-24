@@ -51,7 +51,7 @@ namespace Yamore.Services
             return result;
         }
 
-        public Yachts Insert(YachtsInsertRequest request)
+        public Model.Yachts Insert(YachtsInsertRequest request)
         {
             Database.Yacht entity = new Database.Yacht();          //instanciramo novu jahtu
             Mapper.Map(request, entity);                           //mapiramo podatke iz request-a u entitet
