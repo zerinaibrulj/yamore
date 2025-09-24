@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Yamore.Model;
+using Yamore.Model.Requests;
 using Yamore.Model.SearchObjects;
 
 namespace Yamore.Services
@@ -25,6 +26,11 @@ namespace Yamore.Services
         public List<Yachts> GetList(YachtsSearchObject searchObject)
         {
             return List;
+        }
+
+        public Yachts Insert(YachtsInsertRequest request)
+        {
+            throw new NotImplementedException();
         }
     }
 }

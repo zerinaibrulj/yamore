@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Yamore.Model;
+using Yamore.Model.Requests;
 using Yamore.Model.SearchObjects;
 using Yamore.Services.Database;
 
@@ -48,6 +49,17 @@ namespace Yamore.Services
 
             result = Mapper.Map(list, result);
             return result;
+        }
+
+        public Yachts Insert(YachtsInsertRequest request)
+        {
+            Database.Yacht entity = new Database.Yacht();          //instanciramo novu jahtu
+            Mapper.Map(request, entity);                           //mapiramo podatke iz request-a u entitet
+
+            Context.Yachts.Add(entity);                            //dodamo entitet u bazu
+            Context.SaveChanges();                                 //spremimo promjene u bazu
+
+            return Mapper.Map<Yachts>(entity);                    //vratimo mapirani entitet u model
         }
     }
 }

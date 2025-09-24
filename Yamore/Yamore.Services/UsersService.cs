@@ -58,7 +58,7 @@ namespace Yamore.Services
             }
             
 
-            if(searchObject?.Page.HasValue==true && searchObject?.PageSize.HasValue == true)
+            if(searchObject?.Page.HasValue == true && searchObject?.PageSize.HasValue == true)
             {
                 query = query.Skip(searchObject.Page.Value * searchObject.PageSize.Value).Take(searchObject.PageSize.Value);
             }
