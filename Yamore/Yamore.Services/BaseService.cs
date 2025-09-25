@@ -48,8 +48,8 @@ namespace Yamore.Services
 
             PagedResult<TModel> response = new PagedResult<TModel>();
 
-            response.ResultList = result;   
-            response.Count = count;         
+            //response.ResultList = result;   
+            //response.Count = count;         
 
           
             return response;

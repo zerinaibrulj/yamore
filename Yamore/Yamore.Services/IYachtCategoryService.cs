@@ -9,10 +9,10 @@ using Yamore.Model.SearchObjects;
 
 namespace Yamore.Services
 {
-    public interface IYachtCategoryService
+    public interface IYachtCategoryService : IService<YachtCategory, YachtCategorySearchObject>
     {
-        List<Model.YachtCategory> GetList(YachtCategorySearchObject searchObject);
-        YachtCategory Insert(YachtCategoryInsertRequest request);
-        YachtCategory Update(int id, YachtCategoryUpdateRequest request);
+        //List<Model.YachtCategory> GetList(YachtCategorySearchObject searchObject);
+        //YachtCategory Insert(YachtCategoryInsertRequest request);
+        //YachtCategory Update(int id, YachtCategoryUpdateRequest request);
     }
 }
