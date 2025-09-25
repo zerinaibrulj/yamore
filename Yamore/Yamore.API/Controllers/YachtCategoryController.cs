@@ -29,5 +29,12 @@ namespace Yamore.API.Controllers
         {
             return _service.Insert(request);
         }
+
+
+        [HttpPut("{id}")]
+        public YachtCategory Update(int id, YachtCategoryUpdateRequest request)
+        {
+            return _service.Update(id, request);
+        }
     }
 }

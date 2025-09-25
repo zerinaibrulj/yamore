@@ -13,5 +13,6 @@ namespace Yamore.Services
     {
         List<Model.YachtCategory> GetList(YachtCategorySearchObject searchObject);
         YachtCategory Insert(YachtCategoryInsertRequest request);
+        YachtCategory Update(int id, YachtCategoryUpdateRequest request);
     }
 }
