@@ -48,15 +48,16 @@ namespace Yamore.Services
 
             PagedResult<TModel> response = new PagedResult<TModel>();
 
-            //response.ResultList = result;   
-            //response.Count = count;         
+            response.ResultList = result;   
+            response.Count = count;         
 
+          
             return response;
         }
 
 
 
-        public IQueryable<TDbEntity> AddFilter(TSearch search, IQueryable<TDbEntity> query)
+        public virtual IQueryable<TDbEntity> AddFilter(TSearch search, IQueryable<TDbEntity> query)
         {
             return query;
         }

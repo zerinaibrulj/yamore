@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -19,7 +20,18 @@ namespace Yamore.Services
         public UsersService(_220245Context context, IMapper mapper)
             : base(context, mapper)                                                                 //proslijedit cemo ono sto je potrebno baznoj klasi a to su context i mapper
         {
+            
+        }
 
+        public override IQueryable<Database.User> AddFilter(UsersSearchObject search, IQueryable<Database.User> query)
+        {
+            var filteredQuery = base.AddFilter(search, query);
+
+            if (!string.IsNullOrWhiteSpace(search?.FirstNameGTE))
+            {
+                filteredQuery = filteredQuery.Where(x => x.FirstName.StartsWith(search.FirstNameGTE));
+            }
+            return filteredQuery;
         }
 
         //public virtual PagedResult<Model.User> GetList(UsersSearchObject searchObject)
