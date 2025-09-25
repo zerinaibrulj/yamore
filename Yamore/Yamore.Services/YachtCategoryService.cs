@@ -69,7 +69,6 @@ namespace Yamore.Services
         public Model.YachtCategory Update(int id, YachtCategoryUpdateRequest request)
         {
             var entity = Context.YachtCategories.Find(id);
-
             Mapper.Map(request, entity);
 
           

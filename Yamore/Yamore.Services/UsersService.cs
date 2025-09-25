@@ -14,78 +14,74 @@ using Yamore.Services.Database;
 
 namespace Yamore.Services
 {
-    public class UsersService : IUsersService
+    public class UsersService : BaseService<Model.User, UsersSearchObject, Database.User>, IUsersService    //Database.User -> predstavlja tabelu s kojom radimo
     {
-        public _220245Context Context { get; set; }
-        public IMapper Mapper { get; set; }
-
         public UsersService(_220245Context context, IMapper mapper)
+            : base(context, mapper)                                                                 //proslijedit cemo ono sto je potrebno baznoj klasi a to su context i mapper
         {
-            Context = context;
-            Mapper = mapper;
+
         }
 
+        //public virtual PagedResult<Model.User> GetList(UsersSearchObject searchObject)
+        //{
+        //    List<Model.User> result = new List<Model.User>();
 
-        public virtual PagedResult<Model.User> GetList(UsersSearchObject searchObject)
-        {
-            List<Model.User> result = new List<Model.User>();
+        //    var query = Context.Users.AsQueryable();   // Linq query to get all users from the database
 
-            var query = Context.Users.AsQueryable();   // Linq query to get all users from the database
+        //    if (!string.IsNullOrWhiteSpace(searchObject?.FirstNameGTE))
+        //    {
+        //        query = query.Where(x => x.FirstName.StartsWith(searchObject.FirstNameGTE));
+        //    }
 
-            if (!string.IsNullOrWhiteSpace(searchObject?.FirstNameGTE))
-            {
-                query = query.Where(x => x.FirstName.StartsWith(searchObject.FirstNameGTE));
-            }
+        //    if (!string.IsNullOrWhiteSpace(searchObject?.LastNameGTE))
+        //    {
+        //        query = query.Where(x => x.LastName.StartsWith(searchObject.LastNameGTE));
+        //    }
 
-            if (!string.IsNullOrWhiteSpace(searchObject?.LastNameGTE))
-            {
-                query = query.Where(x => x.LastName.StartsWith(searchObject.LastNameGTE));
-            }
+        //    if (!string.IsNullOrWhiteSpace(searchObject?.Email))
+        //    {
+        //        query = query.Where(x => x.Email == searchObject.Email);
+        //    }
 
-            if (!string.IsNullOrWhiteSpace(searchObject?.Email))
-            {
-                query = query.Where(x => x.Email == searchObject.Email);
-            }
+        //    if (!string.IsNullOrWhiteSpace(searchObject?.Username))
+        //    {
+        //        query = query.Where(x => x.Username == searchObject.Username);
+        //    }
 
-            if (!string.IsNullOrWhiteSpace(searchObject?.Username))
-            {
-                query = query.Where(x => x.Username == searchObject.Username);
-            }
-
-            if (searchObject?.IsUserRoleIncluded == true)
-            {
-                query = query.Include(x => x.UserRoles).ThenInclude(x => x.Role);
-            }
-
-
-            int count = query.Count();
+        //    if (searchObject?.IsUserRoleIncluded == true)
+        //    {
+        //        query = query.Include(x => x.UserRoles).ThenInclude(x => x.Role);
+        //    }
 
 
-            if (!string.IsNullOrWhiteSpace(searchObject.OrderBy))
-            {
-                //query = query.OrderBy(searchObject.OrderBy);       //trebamo zavrsiti ovu funkciju za sortiranje
-            }
+        //    int count = query.Count();
 
 
-            if(searchObject?.Page.HasValue == true && searchObject?.PageSize.HasValue == true)
-            {
-                query = query.Skip(searchObject.Page.Value * searchObject.PageSize.Value).Take(searchObject.PageSize.Value);
-            }
+        //    if (!string.IsNullOrWhiteSpace(searchObject.OrderBy))
+        //    {
+        //        //query = query.OrderBy(searchObject.OrderBy);       //trebamo zavrsiti ovu funkciju za sortiranje
+        //    }
+
+
+        //    if(searchObject?.Page.HasValue == true && searchObject?.PageSize.HasValue == true)
+        //    {
+        //        query = query.Skip(searchObject.Page.Value * searchObject.PageSize.Value).Take(searchObject.PageSize.Value);
+        //    }
 
 
 
         
             
-            var list = query.ToList();
-            var resultList = Mapper.Map(list, result);
+        //    var list = query.ToList();
+        //    var resultList = Mapper.Map(list, result);
 
-            PagedResult<Model.User> response = new PagedResult<Model.User>();
+        //    PagedResult<Model.User> response = new PagedResult<Model.User>();
 
-            response.ResultList = resultList;
-            response.Count = count;
+        //    response.ResultList = resultList;
+        //    response.Count = count;
 
-            return response;
-        }
+        //    return response;
+        //}
 
         public Model.User Insert(UserInsertRequest request)
         {
