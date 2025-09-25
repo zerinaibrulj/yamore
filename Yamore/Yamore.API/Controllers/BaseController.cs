@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using System.Linq.Dynamic.Core;
+using Yamore.Model;
 using Yamore.Model.Requests;
 using Yamore.Model.SearchObjects;
 using Yamore.Services;
@@ -19,7 +20,7 @@ namespace Yamore.API.Controllers
         }
 
         [HttpGet]
-        public PagedResult<TModel> GetList([FromQuery] TSearch search)
+        public PagedResponse<TModel> GetList([FromQuery] TSearch search)
         {
             return _service.GetPaged(search);
         }

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Linq.Dynamic.Core;
 using System.Text;
 using System.Threading.Tasks;
+using Yamore.Model;
 using Yamore.Model.SearchObjects;
 using Yamore.Services.Database;
 
@@ -27,7 +28,7 @@ namespace Yamore.Services
 
 
 
-        public PagedResult<TModel> GetPaged(TSearch search)
+        public PagedResponse<TModel> GetPaged(TSearch search)
         {
             List<TModel> result = new List<TModel>();
             var query = Context.Set<TDbEntity>().AsQueryable();
@@ -46,12 +47,12 @@ namespace Yamore.Services
             var list = query.ToList();
             result = Mapper.Map(list, result);
 
-            PagedResult<TModel> response = new PagedResult<TModel>();
+            PagedResponse<TModel> response = new PagedResponse<TModel>();
 
-            //response.ResultList = result;   
-            //response.Count = count;         
+            response.ResultList = result;   
+            response.Count = count;         
 
-          
+
             return response;
         }
 

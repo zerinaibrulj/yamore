@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Yamore.Model
 {
-    public class PagedResult<T>
+    public class PagedResponse<T>
     {
         public int? Count { get; set; }
         public IList<T>? ResultList { get; set; }
