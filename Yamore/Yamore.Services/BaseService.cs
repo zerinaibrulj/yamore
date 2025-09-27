@@ -12,7 +12,7 @@ using Yamore.Services.Database;
 
 namespace Yamore.Services
 {
-    public class BaseService<TModel, TSearch, TDbEntity> : IService<TModel, TSearch>
+    public abstract class BaseService<TModel, TSearch, TDbEntity> : IService<TModel, TSearch>
         where TSearch : BaseSearchObject 
         where TDbEntity : class
         where TModel : class

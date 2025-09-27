@@ -95,25 +95,25 @@ namespace Yamore.Services
         //    return response;
         //}
 
-        public Model.User Insert(UserInsertRequest request)
-        {
-            if (request.Password != request.PasswordConfirmation)
-            {
-                throw new Exception("Password and password confirmation must match!");
-            }
+        //public Model.User Insert(UserInsertRequest request)
+        //{
+        //    if (request.Password != request.PasswordConfirmation)
+        //    {
+        //        throw new Exception("Password and password confirmation must match!");
+        //    }
 
-            Database.User entity = new Database.User();         //instanciramo novog korisnika
-            Mapper.Map(request, entity);
+        //    Database.User entity = new Database.User();         //instanciramo novog korisnika
+        //    Mapper.Map(request, entity);
 
 
-            entity.PasswordSalt = GenerateSalt();
-            entity.PasswordHash = GenerateHash(entity.PasswordSalt, request.Password);
+        //    entity.PasswordSalt = GenerateSalt();
+        //    entity.PasswordHash = GenerateHash(entity.PasswordSalt, request.Password);
 
-            Context.Users.Add(entity);
-            Context.SaveChanges();
+        //    Context.Users.Add(entity);
+        //    Context.SaveChanges();
 
-            return Mapper.Map<Model.User>(entity);
-        }
+        //    return Mapper.Map<Model.User>(entity);
+        //}
 
 
         public static string GenerateSalt()
