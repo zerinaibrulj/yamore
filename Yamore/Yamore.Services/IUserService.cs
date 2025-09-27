@@ -4,7 +4,7 @@ using Yamore.Model.SearchObjects;
 
 namespace Yamore.Services
 {
-    public interface IUsersService : IService<User, UsersSearchObject>
+    public interface IUsersService : ICRUDService<User, UsersSearchObject, UserInsertRequest, UserUpdateRequest>
     {
         //PagedResult<Model.User> GetList(UsersSearchObject searchObject);
         //User Insert(UserInsertRequest request);        //moramo ove dvije dodati u IService

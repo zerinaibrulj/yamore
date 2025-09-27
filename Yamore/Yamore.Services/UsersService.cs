@@ -15,13 +15,13 @@ using Yamore.Services.Database;
 
 namespace Yamore.Services
 {
-    public class UsersService : BaseService<Model.User, UsersSearchObject, Database.User>, IUsersService    //Database.User -> predstavlja tabelu s kojom radimo
+    public class UsersService : BaseCRUDService<Model.User, UsersSearchObject, Database.User, UserInsertRequest, UserUpdateRequest>, IUsersService    //Database.User -> predstavlja tabelu s kojom radimo
     {
         public UsersService(_220245Context context, IMapper mapper)
             : base(context, mapper)                                                                 //proslijedit cemo ono sto je potrebno baznoj klasi a to su context i mapper
         {
-            
-        }
+
+        }       
 
         public override IQueryable<Database.User> AddFilter(UsersSearchObject search, IQueryable<Database.User> query)
         {
@@ -31,8 +31,65 @@ namespace Yamore.Services
             {
                 filteredQuery = filteredQuery.Where(x => x.FirstName.StartsWith(search.FirstNameGTE));
             }
+
+            if (!string.IsNullOrWhiteSpace(search?.LastNameGTE))
+            {
+                filteredQuery = filteredQuery.Where(x => x.LastName.StartsWith(search.LastNameGTE));
+            }
+
+            if (!string.IsNullOrWhiteSpace(search?.Email))
+            {
+                filteredQuery = filteredQuery.Where(x => x.Email == search.Email);
+            }
+
+            if (!string.IsNullOrWhiteSpace(search?.Username))
+            {
+                filteredQuery = filteredQuery.Where(x => x.Username == search.Username);
+            }
+
+            if (search?.IsUserRoleIncluded == true)
+            {
+                filteredQuery = filteredQuery.Include(x => x.UserRoles).ThenInclude(x => x.Role);
+            }
+
+
             return filteredQuery;
         }
+
+
+
+        public override void BeforeInsret(UserInsertRequest request, Database.User entity)  //dodajemo samo ono sto je karakteristicno za Insert korisnika
+        {
+            if (request.Password != request.PasswordConfirmation)
+            {
+                throw new Exception("Password and password confirmation must match!");
+            }
+      
+            entity.PasswordSalt = GenerateSalt();
+            entity.PasswordHash = GenerateHash(entity.PasswordSalt, request.Password);
+
+            base.BeforeInsret(request, entity);
+        }
+
+
+        public override void BeforeUpdate(UserUpdateRequest request, Database.User entity)
+        {
+            base.BeforeUpdate(request, entity);
+
+            if (request.Password != null)
+            {
+                if (request.Password != request.PasswordConfirmation)
+                {
+                    throw new Exception("Password and password confirmation must match!");
+                }
+                entity.PasswordSalt = GenerateSalt();
+                entity.PasswordHash = GenerateHash(entity.PasswordSalt, request.Password);
+            }  
+        }
+
+
+
+
 
         //public virtual PagedResult<Model.User> GetList(UsersSearchObject searchObject)
         //{
@@ -82,8 +139,6 @@ namespace Yamore.Services
 
 
 
-        
-            
         //    var list = query.ToList();
         //    var resultList = Mapper.Map(list, result);
 
@@ -94,6 +149,11 @@ namespace Yamore.Services
 
         //    return response;
         //}
+
+
+
+
+
 
         //public Model.User Insert(UserInsertRequest request)
         //{
@@ -116,6 +176,9 @@ namespace Yamore.Services
         //}
 
 
+
+
+
         public static string GenerateSalt()
         {
             RNGCryptoServiceProvider provider = new RNGCryptoServiceProvider();
@@ -124,6 +187,9 @@ namespace Yamore.Services
 
             return Convert.ToBase64String(byteArray);
         }
+
+
+
 
         public static string GenerateHash(string salt, string password)
         {
@@ -139,23 +205,26 @@ namespace Yamore.Services
             return Convert.ToBase64String(inArray);
         }
 
-        public Model.User Update(int id, UserUpdateRequest request)
-        {
-            var entity = Context.Users.Find(id);
 
-            Mapper.Map(request, entity);
 
-            if(request.Password != null)
-            {
-                if (request.Password != request.PasswordConfirmation)
-                {
-                    throw new Exception("Password and password confirmation must match!");
-                }
-                entity.PasswordSalt = GenerateSalt();
-                entity.PasswordHash = GenerateHash(entity.PasswordSalt, request.Password);
-            }
-            Context.SaveChanges();
-            return Mapper.Map<Model.User>(entity);
-        }
+
+        //public Model.User Update(int id, UserUpdateRequest request)
+        //{
+        //    var entity = Context.Users.Find(id);
+
+        //    Mapper.Map(request, entity);
+
+        //    if(request.Password != null)
+        //    {
+        //        if (request.Password != request.PasswordConfirmation)
+        //        {
+        //            throw new Exception("Password and password confirmation must match!");
+        //        }
+        //        entity.PasswordSalt = GenerateSalt();
+        //        entity.PasswordHash = GenerateHash(entity.PasswordSalt, request.Password);
+        //    }
+        //    Context.SaveChanges();
+        //    return Mapper.Map<Model.User>(entity);
+        //}
     }
 }

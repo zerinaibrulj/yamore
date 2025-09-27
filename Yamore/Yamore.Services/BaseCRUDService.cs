@@ -26,7 +26,6 @@ namespace Yamore.Services
         {
             TDbEntity entity = Mapper.Map<TDbEntity>(request);
 
-
             BeforeInsret(request, entity);
 
 
@@ -39,14 +38,6 @@ namespace Yamore.Services
 
         public virtual void BeforeInsret(TInsert request, TDbEntity entity)
         {
-            //if (request.Password != request.PasswordConfirmation)
-            //{
-            //    throw new Exception("Password and password confirmation must match!");
-            //}
-
-
-            //entity.PasswordSalt = GenerateSalt();
-            //entity.PasswordHash = GenerateHash(entity.PasswordSalt, request.Password);
         }
 
 
