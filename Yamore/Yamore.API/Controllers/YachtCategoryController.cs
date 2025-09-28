@@ -9,31 +9,12 @@ namespace Yamore.API.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class YachtCategoryController : BaseController<Model.YachtCategory, YachtCategorySearchObject>
+    public class YachtCategoryController : BaseCRUDController<Model.YachtCategory, YachtCategorySearchObject, YachtCategoryInsertRequest, YachtCategoryUpdateRequest>
+        
     {
         public YachtCategoryController(IYachtCategoryService service)
             : base(service)
         {
         }
-
-        //[HttpGet]
-        //public List<Model.YachtCategory> GetList([FromQuery] YachtCategorySearchObject searchObject)
-        //{
-        //    return _service.GetList(searchObject);
-        //}
-
-
-        //[HttpPost]
-        //public YachtCategory Insert(YachtCategoryInsertRequest request)
-        //{
-        //    return _service.Insert(request);
-        //}
-
-
-        //[HttpPut("{id}")]
-        //public YachtCategory Update(int id, YachtCategoryUpdateRequest request)
-        //{
-        //    return _service.Update(id, request);
-        //}
     }
 }

@@ -9,10 +9,13 @@ namespace Yamore.API.Controllers
         where TModel : class
         where TSearch : BaseSearchObject
     {
+        private IYachtCategoryService service;
+
         public BaseCRUDController(ICRUDService<TModel, TSearch, TInsert, TUpdate> service) 
             : base(service)
         {
         }
+
 
         [HttpPost]
         public TModel Insert(TInsert request)

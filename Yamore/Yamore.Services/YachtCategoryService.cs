@@ -12,41 +12,14 @@ using Yamore.Services.Database;
 
 namespace Yamore.Services
 {
-    public class YachtCategoryService : BaseService<Model.YachtCategory, YachtCategorySearchObject, Database.YachtCategory>, IYachtCategoryService
+    public class YachtCategoryService : BaseCRUDService<Model.YachtCategory, YachtCategorySearchObject, Database.YachtCategory, YachtCategoryInsertRequest, YachtCategoryUpdateRequest>, IYachtCategoryService
     {
         public YachtCategoryService(_220245Context context, IMapper mapper) 
             : base(context, mapper)
         {
         }
 
-        //public virtual List<Model.YachtCategory> GetList(YachtCategorySearchObject searchObject)
-        //{
-        //    List<Model.YachtCategory> result = new List<Model.YachtCategory>();
-
-        //    var query = Context.YachtCategories.AsQueryable();  
-            
-
-
-
-        //    if (!string.IsNullOrWhiteSpace(searchObject?.NameGTE))
-        //    {
-        //        query = query.Where(x => x.Name.StartsWith(searchObject.NameGTE));
-        //    }
-
-
-        //    if (searchObject?.Page.HasValue == true && searchObject?.PageSize.HasValue == true)
-        //    {
-        //        query = query.Skip(searchObject.Page.Value * searchObject.PageSize.Value).Take(searchObject.PageSize.Value);
-        //    }
-
-
-
-        //    var list = query.ToList();
-        //    result = Mapper.Map(list, result);
-
-        //    return result;
-        //}
-
+    
         public Model.YachtCategory Insert(YachtCategoryInsertRequest request)
         {
             Database.YachtCategory entity = new Database.YachtCategory();         

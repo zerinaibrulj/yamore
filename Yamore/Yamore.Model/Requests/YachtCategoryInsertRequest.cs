@@ -6,6 +6,6 @@ namespace Yamore.Model.Requests
 {
     public class YachtCategoryInsertRequest
     {
-        public string Name { get; set; } = null!;
+        public string? Name { get; set; } 
     }
 }

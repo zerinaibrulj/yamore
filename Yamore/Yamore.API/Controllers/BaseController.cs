@@ -10,6 +10,7 @@ namespace Yamore.API.Controllers
     [ApiController]
     [Route("[controller]")]
     public class BaseController<TModel, TSearch> : ControllerBase 
+        where TModel : class
         where TSearch : BaseSearchObject
     {
         protected IService<TModel, TSearch> _service;

@@ -9,7 +9,9 @@ using Yamore.Model.SearchObjects;
 
 namespace Yamore.Services
 {
-    public interface IService<TModel, TSearch> where TSearch : BaseSearchObject
+    public interface IService<TModel, TSearch>
+        where TModel : class
+        where TSearch : BaseSearchObject
     {
         public PagedResponse<TModel> GetPaged(TSearch search);
         public TModel GetById(int id);
