@@ -14,6 +14,7 @@ namespace Yamore.API.Controllers
         public BaseCRUDController(ICRUDService<TModel, TSearch, TInsert, TUpdate> service) 
             : base(service)
         {
+            _service = service;                                                    //ovo moramo napisati obzirom da smo gore koristili kljucnu rijec NEW
         }
 
 
