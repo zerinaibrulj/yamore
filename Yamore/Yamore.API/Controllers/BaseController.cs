@@ -31,20 +31,5 @@ namespace Yamore.API.Controllers
         {
             return _service.GetById(id);
         }
-
-
-
-        //[HttpPost]
-        //public User Insert(UserInsertRequest request)
-        //{
-        //    return _service.Insert(request);
-        //}
-
-
-        //[HttpPut("{id}")]
-        //public User Update(int id, UserUpdateRequest request)
-        //{
-        //    return _service.Update(id, request);
-        //}
     }
 }

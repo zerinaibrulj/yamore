@@ -8,7 +8,7 @@ namespace Yamore.API.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class UsersController : BaseController<User, UsersSearchObject>
+    public class UsersController : BaseCRUDController<User, UsersSearchObject, UserInsertRequest, UserUpdateRequest>
     {
         public UsersController(IUsersService service)
             : base(service)
