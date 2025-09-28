@@ -9,7 +9,7 @@ namespace Yamore.API.Controllers
         where TModel : class
         where TSearch : BaseSearchObject
     {
-        private IYachtCategoryService service;
+        protected new ICRUDService<TModel, TSearch, TInsert, TUpdate> _service;      //na ovaj nacin smo omogucili da imamo pristip insertu i update-u
 
         public BaseCRUDController(ICRUDService<TModel, TSearch, TInsert, TUpdate> service) 
             : base(service)
@@ -20,13 +20,13 @@ namespace Yamore.API.Controllers
         [HttpPost]
         public TModel Insert(TInsert request)
         {
-            return (_service as ICRUDService<TModel, TSearch, TInsert, TUpdate>).Insert(request);   //Uradit cemo kasting ICRUDService da bi imali pristup metodi Insert i Update
+            return _service.Insert(request);   
         }
 
         [HttpPut("{id}")]
         public TModel Update(int id, TUpdate request)
         {
-            return (_service as ICRUDService<TModel, TSearch, TInsert, TUpdate>).Update(id, request);
+            return _service.Update(id, request);
         }
     }
 }
