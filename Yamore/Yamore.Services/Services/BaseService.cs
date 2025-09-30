@@ -9,8 +9,9 @@ using System.Threading.Tasks;
 using Yamore.Model;
 using Yamore.Model.SearchObjects;
 using Yamore.Services.Database;
+using Yamore.Services.Interfaces;
 
-namespace Yamore.Services
+namespace Yamore.Services.Services
 {
     public abstract class BaseService<TModel, TSearch, TDbEntity> : IService<TModel, TSearch>
         where TModel : class

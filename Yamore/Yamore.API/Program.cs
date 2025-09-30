@@ -1,7 +1,8 @@
 using Mapster;
 using Microsoft.EntityFrameworkCore;
-using Yamore.Services;
 using Yamore.Services.Database;
+using Yamore.Services.Interfaces;
+using Yamore.Services.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 

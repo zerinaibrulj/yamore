@@ -6,8 +6,9 @@ using System.Threading.Tasks;
 using Yamore.Model;
 using Yamore.Model.Requests;
 using Yamore.Model.SearchObjects;
+using Yamore.Services.Interfaces;
 
-namespace Yamore.Services
+namespace Yamore.Services.DummyService
 {
     public class DummyYachtsService : IYachtsService
     {

@@ -7,9 +7,9 @@ using Yamore.Model;
 using Yamore.Model.Requests;
 using Yamore.Model.SearchObjects;
 
-namespace Yamore.Services
+namespace Yamore.Services.Interfaces
 {
-    public interface IYachtCategoryService : ICRUDService<Model.YachtCategory, YachtCategorySearchObject, YachtCategoryInsertRequest, YachtCategoryUpdateRequest>
+    public interface IYachtCategoryService : ICRUDService<YachtCategory, YachtCategorySearchObject, YachtCategoryInsertRequest, YachtCategoryUpdateRequest>
     {
      
     }

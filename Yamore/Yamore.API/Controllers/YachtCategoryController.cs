@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Yamore.Model;
 using Yamore.Model.Requests;
 using Yamore.Model.SearchObjects;
-using Yamore.Services;
+using Yamore.Services.Interfaces;
 
 namespace Yamore.API.Controllers
 {

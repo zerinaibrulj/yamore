@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Yamore.Model;
 using Yamore.Model.SearchObjects;
 
-namespace Yamore.Services
+namespace Yamore.Services.Interfaces
 {
     public interface IService<TModel, TSearch>
         where TModel : class

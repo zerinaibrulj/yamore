@@ -12,8 +12,9 @@ using Yamore.Model;
 using Yamore.Model.Requests;
 using Yamore.Model.SearchObjects;
 using Yamore.Services.Database;
+using Yamore.Services.Interfaces;
 
-namespace Yamore.Services
+namespace Yamore.Services.Services
 {
     public class UsersService : BaseCRUDService<Model.User, UsersSearchObject, Database.User, UserInsertRequest, UserUpdateRequest>, IUsersService    //Database.User -> predstavlja tabelu s kojom radimo
     {
@@ -105,8 +106,8 @@ namespace Yamore.Services
             byte[] bytes = Encoding.Unicode.GetBytes(password);
             byte[] dst = new byte[src.Length + bytes.Length];
 
-            System.Buffer.BlockCopy(src, 0, dst, 0, src.Length);
-            System.Buffer.BlockCopy(bytes, 0, dst, src.Length, bytes.Length);
+            Buffer.BlockCopy(src, 0, dst, 0, src.Length);
+            Buffer.BlockCopy(bytes, 0, dst, src.Length, bytes.Length);
 
             HashAlgorithm algorithm = HashAlgorithm.Create("SHA1");
             byte[] inArray = algorithm.ComputeHash(dst);
