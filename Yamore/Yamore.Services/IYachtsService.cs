@@ -4,9 +4,7 @@ using Yamore.Model.SearchObjects;
 
 namespace Yamore.Services
 {
-    public interface IYachtsService
+    public interface IYachtsService : ICRUDService<Model.Yachts, YachtsSearchObject, YachtsInsertRequest, YachtsUpdateRequest>
     {
-        List<Yachts> GetList(YachtsSearchObject searchObject);
-        Yachts Insert(YachtsInsertRequest request);
     }
 }

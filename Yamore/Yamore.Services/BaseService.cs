@@ -13,9 +13,9 @@ using Yamore.Services.Database;
 namespace Yamore.Services
 {
     public abstract class BaseService<TModel, TSearch, TDbEntity> : IService<TModel, TSearch>
+        where TModel : class
         where TSearch : BaseSearchObject 
         where TDbEntity : class
-        where TModel : class
     {
         public _220245Context Context { get; set; }
         public IMapper Mapper { get; set; }

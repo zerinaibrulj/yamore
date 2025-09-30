@@ -11,8 +11,6 @@ namespace Yamore.Model.SearchObjects
         public string? Email { get; set; }
         public string? Username { get; set; }
         public bool? IsUserRoleIncluded { get; set; }
-        //public int? Page { get; set; }
-        //public int? PageSize { get; set; }
         public string? OrderBy { get; set; }
     }
 }

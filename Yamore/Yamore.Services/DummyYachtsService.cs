@@ -23,12 +23,28 @@ namespace Yamore.Services
                 PricePerDay=1500
             }
         };
+
+        public Yachts GetById(int id)
+        {
+            throw new NotImplementedException();
+        }
+
         public List<Yachts> GetList(YachtsSearchObject searchObject)
         {
             return List;
         }
 
+        public PagedResponse<Yachts> GetPaged(YachtsSearchObject search)
+        {
+            throw new NotImplementedException();
+        }
+
         public Yachts Insert(YachtsInsertRequest request)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Yachts Update(int id, YachtsUpdateRequest request)
         {
             throw new NotImplementedException();
         }

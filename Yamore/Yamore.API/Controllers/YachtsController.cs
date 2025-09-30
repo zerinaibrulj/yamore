@@ -8,25 +8,11 @@ namespace Yamore.API.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class YachtsController : ControllerBase
+    public class YachtsController : BaseCRUDController<Model.Yachts, YachtsSearchObject, YachtsInsertRequest, YachtsUpdateRequest>
     {
-        protected IYachtsService _service;
-
-        public YachtsController(IYachtsService service) 
+        public YachtsController(ICRUDService<Yachts, YachtsSearchObject, YachtsInsertRequest, YachtsUpdateRequest> service) 
+            : base(service)
         {
-            _service = service;
-        }
-
-        [HttpGet]
-        public List<Yachts> GetList([FromQuery]YachtsSearchObject searchObject)
-        {
-            return _service.GetList(searchObject);
-        }
-
-        [HttpPost]
-        public Yachts Insert(YachtsInsertRequest request)
-        {
-            return _service.Insert(request);
         }
     }
 }
