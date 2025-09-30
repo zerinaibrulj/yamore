@@ -12,7 +12,7 @@ using Yamore.Services.Interfaces;
 
 namespace Yamore.Services.Services
 {
-    public class YachtsService : BaseCRUDService<Yachts, YachtsSearchObject, Yacht, YachtsInsertRequest, YachtsUpdateRequest>, IYachtsService
+    public class YachtsService : BaseCRUDService<Model.Yacht, YachtsSearchObject, Database.Yacht, YachtsInsertRequest, YachtsUpdateRequest>, IYachtsService
     {
         public YachtsService(_220245Context context, IMapper mapper) 
             : base(context, mapper)

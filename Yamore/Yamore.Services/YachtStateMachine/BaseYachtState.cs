@@ -24,25 +24,25 @@ namespace Yamore.Services.YachtStateMachine
         }
 
 
-        public virtual Model.Yachts Insert(YachtsInsertRequest request)
+        public virtual Model.Yacht Insert(YachtsInsertRequest request)
         {
             throw new Exception("Method not allowed!");
         }
 
 
-        public virtual Model.Yachts Update(int id, YachtsUpdateRequest request)
+        public virtual Model.Yacht Update(int id, YachtsUpdateRequest request)
         {
             throw new Exception("Method not allowed!");
         }
 
 
-        public virtual Model.Yachts Activate(int id)
+        public virtual Model.Yacht Activate(int id)
         {
             throw new Exception("Method not allowed!");
         }
 
 
-        public virtual Model.Yachts Hide(int id)
+        public virtual Model.Yacht Hide(int id)
         {
             throw new Exception("Method not allowed!");
         }

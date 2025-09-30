@@ -12,9 +12,9 @@ namespace Yamore.Services.DummyService
 {
     public class DummyYachtsService : IYachtsService
     {
-        public List<Yachts> List = new List<Yachts>()
+        public List<Yacht> List = new List<Yacht>()
         {
-            new Yachts()
+            new Yacht()
             {
                 YachtId=1,
                 Name ="Sea Breeze",
@@ -25,27 +25,27 @@ namespace Yamore.Services.DummyService
             }
         };
 
-        public Yachts GetById(int id)
+        public Yacht GetById(int id)
         {
             throw new NotImplementedException();
         }
 
-        public List<Yachts> GetList(YachtsSearchObject searchObject)
+        public List<Yacht> GetList(YachtsSearchObject searchObject)
         {
             return List;
         }
 
-        public PagedResponse<Yachts> GetPaged(YachtsSearchObject search)
+        public PagedResponse<Yacht> GetPaged(YachtsSearchObject search)
         {
             throw new NotImplementedException();
         }
 
-        public Yachts Insert(YachtsInsertRequest request)
+        public Yacht Insert(YachtsInsertRequest request)
         {
             throw new NotImplementedException();
         }
 
-        public Yachts Update(int id, YachtsUpdateRequest request)
+        public Yacht Update(int id, YachtsUpdateRequest request)
         {
             throw new NotImplementedException();
         }

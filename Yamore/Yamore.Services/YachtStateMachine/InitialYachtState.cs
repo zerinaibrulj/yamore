@@ -17,7 +17,7 @@ namespace Yamore.Services.YachtStateMachine
         {
         }
 
-        public override Yachts Insert(YachtsInsertRequest request)
+        public override Model.Yacht Insert(YachtsInsertRequest request)
         {
             var set = Context.Set<Database.Yacht>();
             var entity = Mapper.Map<Database.Yacht>(request);
@@ -26,7 +26,7 @@ namespace Yamore.Services.YachtStateMachine
             set.Add(entity);
             Context.SaveChanges();
 
-            return Mapper.Map<Yachts>(entity);
+            return Mapper.Map<Model.Yacht>(entity);
         }
     }
 }
