@@ -6,5 +6,6 @@ namespace Yamore.Model.Requests.User
 {
     public class UserDeleteRequest
     {
+
     }
 }

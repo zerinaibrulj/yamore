@@ -1,4 +1,5 @@
 using Mapster;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Yamore.Services.Database;
 using Yamore.Services.Interfaces;
@@ -15,6 +16,7 @@ builder.Services.AddTransient<IYachtsService, YachtsService>();  //dodamo servis
 builder.Services.AddTransient<IUsersService, UsersService>();
 builder.Services.AddTransient<IYachtCategoryService, YachtCategoryService>();
 builder.Services.AddTransient<ICountryService, CountryService>();
+builder.Services.AddTransient<ICityService, CityService>();
 
 
 builder.Services.AddControllers();

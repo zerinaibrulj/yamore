@@ -6,5 +6,6 @@ namespace Yamore.Model.Requests.Yachts
 {
     public class YachtsDeleteRequest
     {
+        public string? Name { get; set; }
     }
 }
