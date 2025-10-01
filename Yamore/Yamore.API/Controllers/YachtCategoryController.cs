@@ -9,7 +9,7 @@ namespace Yamore.API.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class YachtCategoryController : BaseCRUDController<Model.YachtCategory, YachtCategorySearchObject, YachtCategoryInsertRequest, YachtCategoryUpdateRequest>
+    public class YachtCategoryController : BaseCRUDController<Model.YachtCategory, YachtCategorySearchObject, YachtCategoryInsertRequest, YachtCategoryUpdateRequest, YachtCategoryDeleteRequest>
         
     {
         public YachtCategoryController(IYachtCategoryService service)

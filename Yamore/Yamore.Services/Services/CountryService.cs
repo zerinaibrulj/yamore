@@ -12,7 +12,7 @@ using Yamore.Services.Interfaces;
 
 namespace Yamore.Services.Services
 {
-    public class CountryService : BaseCRUDService<Model.Country, CountrySearchObject, Database.Country, CountryInsertRequest, CountryUpdateRequest>, ICountryService
+    public class CountryService : BaseCRUDService<Model.Country, CountrySearchObject, Database.Country, CountryInsertRequest, CountryUpdateRequest, CountryDeleteRequest>, ICountryService
     {
         public CountryService(_220245Context context, IMapper mapper) 
             : base(context, mapper)

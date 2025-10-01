@@ -4,7 +4,7 @@ using Yamore.Model.SearchObjects;
 
 namespace Yamore.Services.Interfaces
 {
-    public interface IUsersService : ICRUDService<User, UsersSearchObject, UserInsertRequest, UserUpdateRequest>
+    public interface IUsersService : ICRUDService<User, UsersSearchObject, UserInsertRequest, UserUpdateRequest, UserDeleteRequest>
     {
     }
 }

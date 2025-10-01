@@ -5,13 +5,13 @@ using Yamore.Services.Interfaces;
 
 namespace Yamore.API.Controllers
 {
-    public class BaseCRUDController<TModel, TSearch, TInsert, TUpdate> : BaseController<TModel, TSearch>
+    public class BaseCRUDController<TModel, TSearch, TInsert, TUpdate, TDelete> : BaseController<TModel, TSearch>
         where TModel : class
         where TSearch : BaseSearchObject
     {
-        protected new ICRUDService<TModel, TSearch, TInsert, TUpdate> _service;      //na ovaj nacin smo omogucili da imamo pristip insertu i update-u
+        protected new ICRUDService<TModel, TSearch, TInsert, TUpdate, TDelete> _service;      //na ovaj nacin smo omogucili da imamo pristip insertu i update-u
 
-        public BaseCRUDController(ICRUDService<TModel, TSearch, TInsert, TUpdate> service) 
+        public BaseCRUDController(ICRUDService<TModel, TSearch, TInsert, TUpdate, TDelete> service) 
             : base(service)
         {
             _service = service;                                                    //ovo moramo napisati obzirom da smo gore koristili kljucnu rijec NEW
@@ -28,6 +28,12 @@ namespace Yamore.API.Controllers
         public TModel Update(int id, TUpdate request)
         {
             return _service.Update(id, request);
+        }
+
+        [HttpDelete("{id}")]
+        public TModel Delete(int id)
+        {
+            return _service.Delete(id);
         }
     }
 }

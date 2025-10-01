@@ -16,7 +16,7 @@ using Yamore.Services.Interfaces;
 
 namespace Yamore.Services.Services
 {
-    public class UsersService : BaseCRUDService<Model.User, UsersSearchObject, Database.User, UserInsertRequest, UserUpdateRequest>, IUsersService    //Database.User -> predstavlja tabelu s kojom radimo
+    public class UsersService : BaseCRUDService<Model.User, UsersSearchObject, Database.User, UserInsertRequest, UserUpdateRequest, UserDeleteRequest>, IUsersService    //Database.User -> predstavlja tabelu s kojom radimo
     {
         public UsersService(_220245Context context, IMapper mapper)
             : base(context, mapper)                                                                 //proslijedit cemo ono sto je potrebno baznoj klasi a to su context i mapper

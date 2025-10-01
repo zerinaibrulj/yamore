@@ -13,7 +13,7 @@ using Yamore.Services.Interfaces;
 
 namespace Yamore.Services.Services
 {
-    public abstract class BaseCRUDService<TModel, TSearch, TDbEntity, TInsert, TUpdate> : BaseService<TModel, TSearch, TDbEntity>, ICRUDService<TModel, TSearch, TInsert, TUpdate>
+    public abstract class BaseCRUDService<TModel, TSearch, TDbEntity, TInsert, TUpdate, TDelete> : BaseService<TModel, TSearch, TDbEntity>, ICRUDService<TModel, TSearch, TInsert, TUpdate, TDelete>
         where TModel : class
         where TSearch : BaseSearchObject
         where TDbEntity : class
@@ -61,6 +61,21 @@ namespace Yamore.Services.Services
         public virtual void BeforeUpdate(TUpdate request, TDbEntity entity)
         {
      
+        }
+
+        public virtual TModel Delete(int id)
+        {
+            var set = Context.Set<TDbEntity>();
+            var entity = set.Find(id);
+
+            if (entity == null)
+                throw new KeyNotFoundException($"Entity with id {id} not found.");
+
+
+            set.Remove(entity);
+            Context.SaveChanges();
+
+            return Mapper.Map<TModel>(entity);
         }
     }
 }

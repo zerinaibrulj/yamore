@@ -8,7 +8,7 @@ using Yamore.Model.SearchObjects;
 
 namespace Yamore.Services.Interfaces
 {
-    public interface ICountryService : ICRUDService<Model.Country, CountrySearchObject, CountryInsertRequest, CountryUpdateRequest>
+    public interface ICountryService : ICRUDService<Model.Country, CountrySearchObject, CountryInsertRequest, CountryUpdateRequest, CountryDeleteRequest>
     {
     }
 }

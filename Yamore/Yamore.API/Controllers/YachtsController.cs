@@ -8,9 +8,9 @@ namespace Yamore.API.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class YachtsController : BaseCRUDController<Model.Yacht, YachtsSearchObject, YachtsInsertRequest, YachtsUpdateRequest>
+    public class YachtsController : BaseCRUDController<Model.Yacht, YachtsSearchObject, YachtsInsertRequest, YachtsUpdateRequest, YachtCategoryDeleteRequest>
     {
-        public YachtsController(ICRUDService<Yacht, YachtsSearchObject, YachtsInsertRequest, YachtsUpdateRequest> service) 
+        public YachtsController(ICRUDService<Yacht, YachtsSearchObject, YachtsInsertRequest, YachtsUpdateRequest, YachtCategoryDeleteRequest> service) 
             : base(service)
         {
         }
