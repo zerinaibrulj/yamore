@@ -18,5 +18,31 @@ namespace Yamore.Services.Services
             : base(context, mapper)
         {
         }
+        public override IQueryable<Database.Yacht> AddFilter(YachtsSearchObject search, IQueryable<Database.Yacht> query)
+        {
+            var filteredQurey = base.AddFilter(search, query);
+
+            if (!string.IsNullOrWhiteSpace(search?.NameGTE))
+            {
+                filteredQurey = filteredQurey.Where(x => x.Name.StartsWith(search.NameGTE));
+            }
+
+            if(search?.YearBuilt != null)
+            {
+                filteredQurey = filteredQurey.Where(x => x.YearBuilt == search.YearBuilt);
+            }
+
+            if(search?.Capacity != null)
+            {
+                filteredQurey = filteredQurey.Where(x => x.Capacity == search.Capacity);
+            }
+
+            if(search?.PricePerDay != null)
+            {
+                filteredQurey = filteredQurey.Where(x => x.PricePerDay == search.PricePerDay);
+            }
+
+            return filteredQurey;
+        }
     }
 }
