@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Yamore.Model.Requests
+namespace Yamore.Model.Requests.Yachts
 {
     public class YachtsInsertRequest
     {

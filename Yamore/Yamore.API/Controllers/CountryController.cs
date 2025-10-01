@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Yamore.Model;
-using Yamore.Model.Requests;
+using Yamore.Model.Requests.Country;
 using Yamore.Model.SearchObjects;
 using Yamore.Services.Interfaces;
 

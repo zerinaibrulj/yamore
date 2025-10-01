@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Yamore.Model.Requests
+namespace Yamore.Model.Requests.YachtCategory
 {
-    public class YachtCategoryUpdateRequest
+    public class YachtCategoryInsertRequest
     {
         public string? Name { get; set; } 
     }

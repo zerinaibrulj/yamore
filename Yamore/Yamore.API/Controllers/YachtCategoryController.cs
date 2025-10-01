@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore.Storage;
 using Yamore.Model;
-using Yamore.Model.Requests;
+using Yamore.Model.Requests.YachtCategory;
 using Yamore.Model.SearchObjects;
 using Yamore.Services.Interfaces;
 

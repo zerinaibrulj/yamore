@@ -1,5 +1,5 @@
 ﻿using Yamore.Model;
-using Yamore.Model.Requests;
+using Yamore.Model.Requests.User;
 using Yamore.Model.SearchObjects;
 
 namespace Yamore.Services.Interfaces

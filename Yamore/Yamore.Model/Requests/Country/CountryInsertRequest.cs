@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Yamore.Model.Requests
+namespace Yamore.Model.Requests.Country
 {
-    public class CountryDeleteRequest
+    public class CountryInsertRequest
     {
         public string? Name { get; set; }
     }
