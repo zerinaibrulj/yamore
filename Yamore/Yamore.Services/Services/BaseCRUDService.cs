@@ -60,7 +60,6 @@ namespace Yamore.Services.Services
 
         public virtual void BeforeUpdate(TUpdate request, TDbEntity entity)
         {
-     
         }
 
         public virtual TModel Delete(int id)

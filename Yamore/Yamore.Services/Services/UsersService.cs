@@ -13,6 +13,7 @@ using Yamore.Model.Requests.User;
 using Yamore.Model.SearchObjects;
 using Yamore.Services.Database;
 using Yamore.Services.Interfaces;
+using System.Linq.Dynamic.Core;
 
 namespace Yamore.Services.Services
 {
@@ -51,6 +52,23 @@ namespace Yamore.Services.Services
             if (search?.IsUserRoleIncluded == true)
             {
                 filteredQuery = filteredQuery.Include(x => x.UserRoles).ThenInclude(x => x.Role);
+            }
+
+            if (!string.IsNullOrWhiteSpace(search?.OrderBy))
+            {
+                var item = search.OrderBy.Split(' ');
+                if(item.Length>2 || item.Length == 0)
+                {
+                    throw new ApplicationException("You can only sort by one field!");
+                }
+                if (item.Length == 1)
+                {
+                    filteredQuery = filteredQuery.OrderBy(search.OrderBy);
+                }
+                else
+                {
+                    filteredQuery = filteredQuery.OrderBy($"{item[0]} {item[1]}");
+                }
             }
 
 
