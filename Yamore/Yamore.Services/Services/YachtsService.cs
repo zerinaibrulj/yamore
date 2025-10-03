@@ -9,6 +9,7 @@ using Yamore.Model.Requests.Yachts;
 using Yamore.Model.SearchObjects;
 using Yamore.Services.Database;
 using Yamore.Services.Interfaces;
+using System.Linq.Dynamic.Core;
 
 namespace Yamore.Services.Services
 {
@@ -40,6 +41,23 @@ namespace Yamore.Services.Services
             if(search?.PricePerDay != null)
             {
                 filteredQurey = filteredQurey.Where(x => x.PricePerDay == search.PricePerDay);
+            }
+
+            if (!string.IsNullOrWhiteSpace(search?.OrderBy))
+            {
+                var item = search.OrderBy.Split(' ');
+                if (item.Length > 2 || item.Length == 0)
+                {
+                    throw new ApplicationException("You can only sort by one field!");
+                }
+                if (item.Length == 1)
+                {
+                    filteredQurey = filteredQurey.OrderBy(search.OrderBy);
+                }
+                else
+                {
+                    filteredQurey = filteredQurey.OrderBy($"{item[0]} {item[1]}");
+                }
             }
 
             return filteredQurey;

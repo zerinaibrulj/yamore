@@ -10,5 +10,6 @@ namespace Yamore.Model.SearchObjects
         public int? YearBuilt { get; set; }
         public int? Capacity { get; set; }
         public decimal? PricePerDay { get; set; }
+        public string? OrderBy { get; set; }
     }
 }
