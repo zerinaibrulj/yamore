@@ -27,6 +27,7 @@ builder.Services.AddTransient<BaseYachtState>();
 builder.Services.AddTransient<InitialYachtState>();
 builder.Services.AddTransient<DraftYachtState>();
 builder.Services.AddTransient<ActiveYachtState>();
+builder.Services.AddTransient<HiddenYachtState>();
 
 
 builder.Services.AddControllers();

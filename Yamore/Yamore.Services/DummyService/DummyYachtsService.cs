@@ -35,6 +35,11 @@ namespace Yamore.Services.DummyService
             throw new NotImplementedException();
         }
 
+        public Yacht Edit(int id)
+        {
+            throw new NotImplementedException();
+        }
+
         public Yacht GetById(int id)
         {
             throw new NotImplementedException();
@@ -46,6 +51,11 @@ namespace Yamore.Services.DummyService
         }
 
         public PagedResponse<Yacht> GetPaged(YachtsSearchObject search)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Yacht Hide(int id)
         {
             throw new NotImplementedException();
         }

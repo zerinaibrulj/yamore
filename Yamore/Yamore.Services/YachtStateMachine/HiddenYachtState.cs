@@ -14,5 +14,16 @@ namespace Yamore.Services.YachtStateMachine
             : base(context, mapper, serviceProvider)
         {
         }
+
+        public override Model.Yacht Edit(int id)
+        {
+            var set = Context.Set<Database.Yacht>();
+            var entity = set.Find(id);
+
+            entity.StateMachine = "draft";
+            Context.SaveChanges();
+
+            return Mapper.Map<Model.Yacht>(entity);
+        }
     }
 }
