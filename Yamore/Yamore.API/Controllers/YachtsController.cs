@@ -22,5 +22,17 @@ namespace Yamore.API.Controllers
         {
             return (_service as IYachtsService).Activate(id);
         }
+
+        [HttpPut("{id}/hide")]
+        public Yacht Hide(int id)
+        {
+            return (_service as IYachtsService).Hide(id);
+        }
+
+        [HttpPut("{id}/edit")]
+        public Yacht Edit(int id)
+        {
+            return (_service as IYachtsService).Edit(id);
+        }
     }
 }

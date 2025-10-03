@@ -15,9 +15,15 @@ namespace Yamore.Services.YachtStateMachine
         {
         }
 
-        public override Model.Yacht Activate(int id)
+        public override Model.Yacht Hide(int id)
         {
-            return base.Activate(id);
+            var set = Context.Set<Database.Yacht>();
+            var entity = set.Find(id);
+
+            entity.StateMachine = "hidden";
+            Context.SaveChanges();
+
+            return Mapper.Map<Model.Yacht>(entity);
         }
     }
 }

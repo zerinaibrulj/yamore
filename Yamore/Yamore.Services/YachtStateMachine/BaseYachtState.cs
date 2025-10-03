@@ -47,7 +47,10 @@ namespace Yamore.Services.YachtStateMachine
             throw new Exception("Method not allowed!");
         }
 
-
+        public virtual Model.Yacht Edit(int id)
+        {
+            throw new Exception("Method not allowed!");
+        }
 
         public BaseYachtState CreateState(string stateName)
         {
@@ -59,6 +62,8 @@ namespace Yamore.Services.YachtStateMachine
                     return ServiceProvider.GetService<DraftYachtState>();
                 case "active":
                     return ServiceProvider.GetService<ActiveYachtState>();
+                case "hidden":
+                    return ServiceProvider.GetService<HiddenYachtState>();
                 default:
                     throw new Exception("State not recognized!");
             }

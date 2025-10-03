@@ -93,5 +93,19 @@ namespace Yamore.Services.Services
             var state = BaseYachtState.CreateState(entity.StateMachine);
             return state.Activate(id);
         }
+
+        public Model.Yacht Hide(int id)
+        {
+            var entity = GetById(id);
+            var state = BaseYachtState.CreateState(entity.StateMachine);
+            return state.Hide(id);
+        }
+
+        public Model.Yacht Edit(int id)
+        {
+            var entity = GetById(id);
+            var state = BaseYachtState.CreateState(entity.StateMachine);
+            return state.Edit(id);
+        }
     }
 }
