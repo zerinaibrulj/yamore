@@ -26,6 +26,7 @@ builder.Services.AddTransient<IRouteService, RouteService>();
 builder.Services.AddTransient<BaseYachtState>();
 builder.Services.AddTransient<InitialYachtState>();
 builder.Services.AddTransient<DraftYachtState>();
+builder.Services.AddTransient<ActiveYachtState>();
 
 
 builder.Services.AddControllers();
