@@ -30,6 +30,11 @@ namespace Yamore.Services.DummyService
             throw new NotImplementedException();
         }
 
+        public List<string> AllowedActions(int id)
+        {
+            throw new NotImplementedException();
+        }
+
         public Yacht Delete(int id)
         {
             throw new NotImplementedException();
