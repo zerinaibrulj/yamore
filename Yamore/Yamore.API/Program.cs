@@ -18,6 +18,7 @@ builder.Services.AddTransient<IYachtCategoryService, YachtCategoryService>();
 builder.Services.AddTransient<ICountryService, CountryService>();
 builder.Services.AddTransient<ICityService, CityService>();
 builder.Services.AddTransient<IServiceService, ServiceService>();
+builder.Services.AddTransient<IRouteService, RouteService>();
 
 
 builder.Services.AddControllers();
