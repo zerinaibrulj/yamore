@@ -10,15 +10,22 @@ using Yamore.Model.SearchObjects;
 using Yamore.Services.Database;
 using Yamore.Services.Interfaces;
 using System.Linq.Dynamic.Core;
+using Yamore.Services.YachtStateMachine;
 
 namespace Yamore.Services.Services
 {
     public class YachtsService : BaseCRUDService<Model.Yacht, YachtsSearchObject, Database.Yacht, YachtsInsertRequest, YachtsUpdateRequest, YachtsDeleteRequest>, IYachtsService
     {
-        public YachtsService(_220245Context context, IMapper mapper) 
+        public BaseYachtState BaseYachtState { get; set; }
+
+        public YachtsService(_220245Context context, IMapper mapper, BaseYachtState baseYachtState) 
             : base(context, mapper)
         {
+            BaseYachtState = baseYachtState;
         }
+
+
+
         public override IQueryable<Database.Yacht> AddFilter(YachtsSearchObject search, IQueryable<Database.Yacht> query)
         {
             var filteredQurey = base.AddFilter(search, query);
@@ -61,6 +68,14 @@ namespace Yamore.Services.Services
             }
 
             return filteredQurey;
+        }
+
+
+
+        public override Model.Yacht Insert(YachtsInsertRequest request)
+        {
+            var state = BaseYachtState.CreateState("initial");
+            return state.Insert(request);
         }
     }
 }

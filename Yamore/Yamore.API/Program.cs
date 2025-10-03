@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Yamore.Services.Database;
 using Yamore.Services.Interfaces;
 using Yamore.Services.Services;
+using Yamore.Services.YachtStateMachine;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +20,12 @@ builder.Services.AddTransient<ICountryService, CountryService>();
 builder.Services.AddTransient<ICityService, CityService>();
 builder.Services.AddTransient<IServiceService, ServiceService>();
 builder.Services.AddTransient<IRouteService, RouteService>();
+
+
+
+builder.Services.AddTransient<BaseYachtState>();
+builder.Services.AddTransient<InitialYachtState>();
+
 
 
 builder.Services.AddControllers();

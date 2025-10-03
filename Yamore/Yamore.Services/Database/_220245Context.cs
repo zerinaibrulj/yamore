@@ -244,6 +244,7 @@ public partial class _220245Context : DbContext
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.Length).HasColumnType("decimal(5, 2)");
             entity.Property(e => e.Name).HasMaxLength(100);
+            entity.Property(entity => entity.StateMachine).HasMaxLength(100);
             entity.Property(e => e.PricePerDay).HasColumnType("decimal(10, 2)");
 
             entity.HasOne(d => d.Category).WithMany(p => p.Yachts)

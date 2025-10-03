@@ -21,7 +21,8 @@ namespace Yamore.Services.YachtStateMachine
         {
             var set = Context.Set<Database.Yacht>();
             var entity = Mapper.Map<Database.Yacht>(request);
-            //entity.StateMachine = "draft";                         //iz nekog razloga mi podvlaci StateMachine
+
+            entity.StateMachine = "draft";                   // zahvaljujuci Insert metodi iz initial stanja prelazimo u draft  
 
             set.Add(entity);
             Context.SaveChanges();

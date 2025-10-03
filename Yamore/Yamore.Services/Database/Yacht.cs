@@ -30,6 +30,7 @@ public partial class Yacht
     public int CategoryId { get; set; }
 
     public bool? IsActive { get; set; }
+    public string? StateMachine { get; set; }
 
     public virtual YachtCategory Category { get; set; } = null!;
 
