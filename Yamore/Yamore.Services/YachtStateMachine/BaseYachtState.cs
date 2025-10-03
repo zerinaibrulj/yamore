@@ -55,6 +55,8 @@ namespace Yamore.Services.YachtStateMachine
             {
                 case "initial":
                     return ServiceProvider.GetService<InitialYachtState>();
+                case "draft":
+                    return ServiceProvider.GetService<DraftYachtState>();
                 default:
                     throw new Exception("State not recognized!");
             }

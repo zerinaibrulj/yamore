@@ -77,5 +77,13 @@ namespace Yamore.Services.Services
             var state = BaseYachtState.CreateState("initial");
             return state.Insert(request);
         }
+
+
+        public override Model.Yacht Update(int id, YachtsUpdateRequest request)
+        {
+            var entity = GetById(id);
+            var state = BaseYachtState.CreateState(entity.StateMachine);   //u entity.StateMachine se nalazi draft i on predstavlja trenutno stanje u kojem se nalazi jahta
+            return state.Update(id, request);
+        }
     }
 }
