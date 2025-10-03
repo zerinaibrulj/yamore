@@ -7,5 +7,6 @@ namespace Yamore.Services.Interfaces
 {
     public interface IYachtsService : ICRUDService<Yacht, YachtsSearchObject, YachtsInsertRequest, YachtsUpdateRequest, YachtsDeleteRequest>
     {
+        public Yacht Activate(int id);
     }
 }

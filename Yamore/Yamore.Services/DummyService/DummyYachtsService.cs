@@ -25,6 +25,11 @@ namespace Yamore.Services.DummyService
             }
         };
 
+        public Yacht Activate(int id)
+        {
+            throw new NotImplementedException();
+        }
+
         public Yacht Delete(int id)
         {
             throw new NotImplementedException();

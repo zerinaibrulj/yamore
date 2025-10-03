@@ -15,5 +15,12 @@ namespace Yamore.API.Controllers
             : base(service)
         {
         }
+
+
+        [HttpPut("{id}/activate")]
+        public Yacht Activate(int id)
+        {
+            return (_service as IYachtsService).Activate(id);
+        }
     }
 }

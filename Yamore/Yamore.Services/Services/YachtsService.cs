@@ -1,7 +1,9 @@
-﻿using MapsterMapper;
+﻿using Azure.Core;
+using MapsterMapper;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Dynamic.Core;
 using System.Text;
 using System.Threading.Tasks;
 using Yamore.Model;
@@ -9,7 +11,6 @@ using Yamore.Model.Requests.Yachts;
 using Yamore.Model.SearchObjects;
 using Yamore.Services.Database;
 using Yamore.Services.Interfaces;
-using System.Linq.Dynamic.Core;
 using Yamore.Services.YachtStateMachine;
 
 namespace Yamore.Services.Services
@@ -84,6 +85,13 @@ namespace Yamore.Services.Services
             var entity = GetById(id);
             var state = BaseYachtState.CreateState(entity.StateMachine);   //u entity.StateMachine se nalazi draft i on predstavlja trenutno stanje u kojem se nalazi jahta
             return state.Update(id, request);
+        }
+
+        public Model.Yacht Activate(int id)
+        {
+            var entity = GetById(id);
+            var state = BaseYachtState.CreateState(entity.StateMachine);
+            return state.Activate(id);
         }
     }
 }
