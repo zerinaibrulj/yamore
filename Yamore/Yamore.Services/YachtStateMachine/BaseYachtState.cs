@@ -52,6 +52,14 @@ namespace Yamore.Services.YachtStateMachine
             throw new Exception("Method not allowed!");
         }
 
+
+        public virtual List<string> AllowedActions(Database.Yacht entity)
+        {
+            throw new Exception("Method not allowed!");
+        }
+
+
+
         public BaseYachtState CreateState(string stateName)
         {
             switch (stateName)

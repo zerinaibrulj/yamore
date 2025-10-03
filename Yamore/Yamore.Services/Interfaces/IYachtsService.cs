@@ -10,5 +10,6 @@ namespace Yamore.Services.Interfaces
         public Yacht Activate(int id);    //dodali smo ove metode u interfejs da bi mogli da ih koristimo u controlleru
         public Yacht Hide(int id);
         public Yacht Edit(int id);
+        public List<string> AllowedActions(int id);
     }
 }

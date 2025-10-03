@@ -49,5 +49,11 @@ namespace Yamore.Services.YachtStateMachine
 
             return Mapper.Map<Model.Yacht>(entity);
         }
+
+
+        public override List<string> AllowedActions(Yacht entity)
+        {
+            return new List<string> { nameof(Update), nameof(Activate), nameof(Hide) };
+        }
     }
 }

@@ -34,5 +34,11 @@ namespace Yamore.API.Controllers
         {
             return (_service as IYachtsService).Edit(id);
         }
+
+        [HttpGet("{id}/allowedActions")]
+        public List<string> AllowedActions(int id)
+        {
+            return (_service as IYachtsService).AllowedActions(id);
+        }
     }
 }

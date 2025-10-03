@@ -107,5 +107,20 @@ namespace Yamore.Services.Services
             var state = BaseYachtState.CreateState(entity.StateMachine);
             return state.Edit(id);
         }
+
+        public List<string> AllowedActions(int id)
+        {
+            if (id <= 0)                                             //ako id ne postoji instancirat cemo novu jahtu
+            {
+                var state = BaseYachtState.CreateState("initial");
+                return state.AllowedActions(null);
+            }
+            else
+            {
+                var entity = Context.Yachts.Find(id);
+                var state = BaseYachtState.CreateState(entity.StateMachine);
+                return state.AllowedActions(entity);
+            }
+        }
     }
 }
