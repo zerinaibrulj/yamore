@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Yamore.Model;
 using Yamore.Model.Requests.Yachts;
 using Yamore.Services.Database;
 
@@ -26,36 +27,36 @@ namespace Yamore.Services.YachtStateMachine
 
         public virtual Model.Yacht Insert(YachtsInsertRequest request)
         {
-            throw new Exception("Method not allowed!");
+            throw new UserException("Method not allowed!");
         }
 
 
         public virtual Model.Yacht Update(int id, YachtsUpdateRequest request)
         {
-            throw new Exception("Method not allowed!");
+            throw new UserException("Method not allowed!");
         }
 
 
         public virtual Model.Yacht Activate(int id)
         {
-            throw new Exception("Method not allowed!");
+            throw new UserException("Method not allowed!");
         }
 
 
         public virtual Model.Yacht Hide(int id)
         {
-            throw new Exception("Method not allowed!");
+            throw new UserException("Method not allowed!");
         }
 
         public virtual Model.Yacht Edit(int id)
         {
-            throw new Exception("Method not allowed!");
+            throw new UserException("Method not allowed!");
         }
 
 
         public virtual List<string> AllowedActions(Database.Yacht entity)
         {
-            throw new Exception("Method not allowed!");
+            throw new UserException("Method not allowed!");
         }
 
 
