@@ -1,6 +1,7 @@
 using Mapster;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Yamore.API.Filters;
 using Yamore.Services.Database;
 using Yamore.Services.Interfaces;
 using Yamore.Services.Services;
@@ -30,7 +31,15 @@ builder.Services.AddTransient<ActiveYachtState>();
 builder.Services.AddTransient<HiddenYachtState>();
 
 
-builder.Services.AddControllers();
+
+
+builder.Services.AddControllers( x=>
+{
+    x.Filters.Add<ExceptionFilter>();
+});
+
+
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
