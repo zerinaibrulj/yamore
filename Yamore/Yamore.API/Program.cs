@@ -1,6 +1,9 @@
 using Mapster;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
+using Yamore.API;
 using Yamore.API.Filters;
 using Yamore.Services.Database;
 using Yamore.Services.Interfaces;
@@ -42,7 +45,25 @@ builder.Services.AddControllers( x=>
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.AddSecurityDefinition("basicAuth", new Microsoft.OpenApi.Models.OpenApiSecurityScheme()
+    {
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "basic"
+    });
+
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement()
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference=new OpenApiReference{Type=ReferenceType.SecurityScheme, Id="basicAuth"}
+            },
+            new string[]{}
+        }
+    });
+});
 
 
 // For Appsetting.json
@@ -50,6 +71,11 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<_220245Context>(options => options.UseSqlServer(connectionString));
 
 builder.Services.AddMapster();      //dodamo Mapster za automatsko mapiranje entiteta u modele
+
+
+builder.Services.AddAuthentication("BasicAuthentication")
+    .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null);
+
 
 var app = builder.Build();
 

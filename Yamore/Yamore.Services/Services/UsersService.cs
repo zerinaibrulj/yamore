@@ -131,5 +131,24 @@ namespace Yamore.Services.Services
             byte[] inArray = algorithm.ComputeHash(dst);
             return Convert.ToBase64String(inArray);
         }
+
+        public Model.User Login(string username, string password)
+        {
+            var entity = Context.Users.FirstOrDefault(x => x.Username == username);
+
+            if (entity == null)     //ako ne postoji u bazi korisnik sa tim username-om
+            {
+                return null;    
+            }
+
+            var hash = GenerateHash(entity.PasswordSalt, password);
+
+            if(hash != entity.PasswordHash)          //ako je korsnik pogrijesio password opet vrati null
+            {
+                return null;
+            }
+
+            return Mapper.Map<Model.User>(entity);
+        }
     }
 }

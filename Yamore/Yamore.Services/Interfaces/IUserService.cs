@@ -6,5 +6,6 @@ namespace Yamore.Services.Interfaces
 {
     public interface IUsersService : ICRUDService<User, UsersSearchObject, UserInsertRequest, UserUpdateRequest, UserDeleteRequest>
     {
+        Model.User Login(string username, string password);
     }
 }
