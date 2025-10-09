@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using System.Linq.Dynamic.Core;
 using Yamore.Model;
 using Yamore.Model.Requests;
@@ -9,6 +10,9 @@ namespace Yamore.API.Controllers
 {
     [ApiController]
     [Route("[controller]")]
+    [Authorize]
+
+
     public class BaseController<TModel, TSearch> : ControllerBase 
         where TModel : class
         where TSearch : BaseSearchObject
