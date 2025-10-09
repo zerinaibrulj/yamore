@@ -12,6 +12,7 @@ using Yamore.Services.YachtStateMachine;
 
 var builder = WebApplication.CreateBuilder(args);
 
+
 // Add services to the container.
 
 builder.Services.AddTransient<IYachtsService, YachtsService>();  //dodamo servis
@@ -36,7 +37,7 @@ builder.Services.AddTransient<HiddenYachtState>();
 
 
 
-builder.Services.AddControllers( x=>
+builder.Services.AddControllers(x =>
 {
     x.Filters.Add<ExceptionFilter>();
 });
@@ -66,6 +67,7 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 
+
 // For Appsetting.json
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<_220245Context>(options => options.UseSqlServer(connectionString));
@@ -78,6 +80,8 @@ builder.Services.AddAuthentication("BasicAuthentication")
 
 
 var app = builder.Build();
+
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

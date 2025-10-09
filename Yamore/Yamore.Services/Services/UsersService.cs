@@ -132,6 +132,12 @@ namespace Yamore.Services.Services
             return Convert.ToBase64String(inArray);
         }
 
+
+
+
+
+
+
         public Model.User Login(string username, string password)
         {
             var entity = Context.Users.FirstOrDefault(x => x.Username == username);

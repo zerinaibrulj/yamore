@@ -55,8 +55,6 @@ namespace Yamore.API
 
                 return AuthenticateResult.Success(ticket);
             }
-
-
         }
     }
 }

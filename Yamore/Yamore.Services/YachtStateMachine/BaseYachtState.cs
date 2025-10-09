@@ -77,6 +77,5 @@ namespace Yamore.Services.YachtStateMachine
                     throw new Exception("State not recognized!");
             }
         }
-
     }
 }

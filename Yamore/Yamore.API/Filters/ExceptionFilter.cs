@@ -7,8 +7,8 @@ namespace Yamore.API.Filters
 {
     public class ExceptionFilter : ExceptionFilterAttribute
     {
-        ILogger<Exception> Logger { get; set; }
-        public ExceptionFilter(ILogger<Exception> logger)
+        ILogger<ExceptionFilter> Logger { get; set; }
+        public ExceptionFilter(ILogger<ExceptionFilter> logger)
         {
             Logger = logger;
         }
@@ -23,17 +23,17 @@ namespace Yamore.API.Filters
 
             if(context.Exception is UserException)
             {
-                context.ModelState.AddModelError("userError", context.Exception.Message);
+                context.ModelState.AddModelError("userError", context.Exception.Message);      // json struktura se treba prikazati na swaggeru
                 context.HttpContext.Response.StatusCode = (int)HttpStatusCode.BadRequest;    //400
             }
             else
             {
-                context.ModelState.AddModelError("Error", "Server side error, please check logs");
+                context.ModelState.AddModelError("ERROR", "Server side error, please check logs");
                 context.HttpContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;   //500
             }
 
-            var list = context.ModelState.Where(x => x.Value?.Errors.Count() > 0)
-                .ToDictionary(x => x.Key, y => y.Value?.Errors.Select(z => z.ErrorMessage));
+            var list = context.ModelState.Where(x => x.Value.Errors.Count() > 0)              // response pretvaramo u json
+                .ToDictionary(x => x.Key, y => y.Value.Errors.Select(z => z.ErrorMessage));
 
             context.Result = new JsonResult(new { errors = list });
         }
