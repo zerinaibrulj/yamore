@@ -149,7 +149,7 @@ namespace Yamore.Services.Services
 
             var hash = GenerateHash(entity.PasswordSalt, password);
 
-            if(hash != entity.PasswordHash)          //ako je korsnik pogrijesio password opet vrati null
+            if (hash != entity.PasswordHash)          //ako je korsnik pogrijesio password opet vrati null
             {
                 return null;
             }
