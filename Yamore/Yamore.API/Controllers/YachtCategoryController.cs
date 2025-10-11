@@ -10,13 +10,19 @@ namespace Yamore.API.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    [AllowAnonymous]
+    //[AllowAnonymous]
     public class YachtCategoryController : BaseCRUDController<Model.YachtCategory, YachtCategorySearchObject, YachtCategoryInsertRequest, YachtCategoryUpdateRequest, YachtCategoryDeleteRequest>
         
     {
         public YachtCategoryController(IYachtCategoryService service)
             : base(service)
         {
+        }
+
+        [AllowAnonymous]
+        public override PagedResponse<YachtCategory> GetPaged([FromQuery] YachtCategorySearchObject search)
+        {
+            return base.GetPaged(search);
         }
     }
 }

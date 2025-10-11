@@ -25,14 +25,14 @@ namespace Yamore.API.Controllers
         }
 
         [HttpGet]
-        public PagedResponse<TModel> GetPaged([FromQuery] TSearch search)
+        public virtual PagedResponse<TModel> GetPaged([FromQuery] TSearch search)
         {
             return _service.GetPaged(search);
         }
 
 
         [HttpGet("{id}")]
-        public TModel GetById(int id)
+        public virtual TModel GetById(int id)
         {
             return _service.GetById(id);
         }
