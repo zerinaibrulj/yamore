@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Yamore.Model;
 using Yamore.Model.Requests.User;
 using Yamore.Model.SearchObjects;
@@ -13,7 +14,14 @@ namespace Yamore.API.Controllers
         public UsersController(IUsersService service)
             : base(service)
         {
+        }
 
+
+        [HttpPost("login")]
+        [AllowAnonymous]
+        public Model.User Login(string username, string password)
+        {
+            return (_service as IUsersService).Login(username, password);
         }
     }
 }

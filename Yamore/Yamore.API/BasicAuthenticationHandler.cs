@@ -48,6 +48,14 @@ namespace Yamore.API
                     new Claim(ClaimTypes.NameIdentifier, user.Username)
                 };
 
+
+                foreach(var role in user.UserRoles)
+                {
+                    claims.Add(new Claim(ClaimTypes.Role, role.Role.Name));     //Name se mora slagati sa onim koji se nalazi u Controlleru
+                }
+
+
+
                 var identity = new ClaimsIdentity(claims, Scheme.Name);
                 var principal = new ClaimsPrincipal(identity);
 

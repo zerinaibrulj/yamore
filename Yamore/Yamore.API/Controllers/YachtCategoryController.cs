@@ -19,7 +19,13 @@ namespace Yamore.API.Controllers
         {
         }
 
-        [AllowAnonymous]
+        [Authorize(Roles ="Admin")]                      // samo admin moze da dodaje nove kategorije
+        public override YachtCategory Insert(YachtCategoryInsertRequest request)
+        {
+            return base.Insert(request);
+        }
+
+        [AllowAnonymous]                                // samo ova metoda je dostupna anonimnim korisnicima
         public override PagedResponse<YachtCategory> GetPaged([FromQuery] YachtCategorySearchObject search)
         {
             return base.GetPaged(search);
