@@ -10,7 +10,7 @@ namespace Yamore.API.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    //[AllowAnonymous]
+    //[AllowAnonymous]                // cijeli endpoint ce biti dostupan anonimnim korisnicima
     public class YachtCategoryController : BaseCRUDController<Model.YachtCategory, YachtCategorySearchObject, YachtCategoryInsertRequest, YachtCategoryUpdateRequest, YachtCategoryDeleteRequest>
         
     {
