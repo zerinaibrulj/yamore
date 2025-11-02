@@ -9,7 +9,7 @@ public partial class WeatherForecast
 
     public int RouteId { get; set; }
 
-    public DateOnly? ForecastDate { get; set; }
+    public DateTime? ForecastDate { get; set; }         //DateOnly
 
     public decimal? Temperature { get; set; }
 
