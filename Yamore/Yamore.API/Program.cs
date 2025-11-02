@@ -27,6 +27,7 @@ builder.Services.AddTransient<IServiceService, ServiceService>();
 builder.Services.AddTransient<IRouteService, RouteService>();
 builder.Services.AddTransient<IRoleService, RoleService>();
 builder.Services.AddTransient<IUserRoleService, UserRoleService>();
+builder.Services.AddTransient<IWeatherForecastService, WeatherForecastService>();
 
 
 builder.Services.AddTransient<BaseYachtState>();

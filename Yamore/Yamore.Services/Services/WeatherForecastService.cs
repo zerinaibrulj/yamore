@@ -20,19 +20,19 @@ namespace Yamore.Services.Services
 
         public override IQueryable<Database.WeatherForecast> AddFilter(WeatherForecastSearchObject search, IQueryable<Database.WeatherForecast> query)
         {
-            var filteredQuery = base.AddFilter(search, query);
+            var filteredQurey = base.AddFilter(search, query);
 
-            if (search != null && search.ForecastId != 0)
+            if (search?.ForecastId != null)
             {
-                filteredQuery = filteredQuery.Where(x => x.ForecastId == search.ForecastId);
+                filteredQurey = filteredQurey.Where(x => x.ForecastId == search.ForecastId);
             }
 
-            if (search != null && search.RouteId != 0)
+            if (search?.RouteId != null)
             {
-                filteredQuery = filteredQuery.Where(x => x.RouteId == search.RouteId);
+                filteredQurey = filteredQurey.Where(x => x.RouteId == search.RouteId);
             }
 
-            return filteredQuery;
+            return filteredQurey;
         }
     }
 }
