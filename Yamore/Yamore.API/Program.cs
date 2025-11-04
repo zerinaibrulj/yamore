@@ -32,6 +32,8 @@ builder.Services.AddTransient<IReservationService, Yamore.Services.Services.Rese
 builder.Services.AddTransient<ISpecialRequestService, SpecialRequestService>();
 builder.Services.AddTransient<IReservationServiceService, ReservationServiceService>();
 builder.Services.AddTransient<IReviewService, ReviewService>();
+builder.Services.AddTransient<INotificationService, NotificationService>();
+
 
 
 builder.Services.AddTransient<BaseYachtState>();
