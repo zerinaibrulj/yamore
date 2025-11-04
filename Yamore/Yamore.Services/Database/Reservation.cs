@@ -11,9 +11,9 @@ public partial class Reservation
 
     public int YachtId { get; set; }
 
-    public DateOnly StartDate { get; set; }
+    public DateTime StartDate { get; set; }       //DateOnly - bilo je prvobitno ali smo ga promijenili zbog mapiranja
 
-    public DateOnly EndDate { get; set; }
+    public DateTime EndDate { get; set; }         //DateOnly
 
     public decimal? TotalPrice { get; set; }
 

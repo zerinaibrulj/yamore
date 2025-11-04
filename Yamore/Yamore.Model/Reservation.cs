@@ -21,6 +21,7 @@ namespace Yamore.Model
         public string? Status { get; set; }
 
         public DateTime? CreatedAt { get; set; }
+
         public virtual User User { get; set; } = null!;
 
         public virtual Yacht Yacht { get; set; } = null!;
