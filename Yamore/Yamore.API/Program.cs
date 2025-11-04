@@ -31,6 +31,7 @@ builder.Services.AddTransient<IWeatherForecastService, WeatherForecastService>()
 builder.Services.AddTransient<IReservationService, Yamore.Services.Services.ReservationService>();   //imam klasu ReservationService pa sam zbog toga morala navesti tacnu putanju da se odnosi na servis a ne na klasu
 builder.Services.AddTransient<ISpecialRequestService, SpecialRequestService>();
 builder.Services.AddTransient<IReservationServiceService, ReservationServiceService>();
+builder.Services.AddTransient<IReviewService, ReviewService>();
 
 
 builder.Services.AddTransient<BaseYachtState>();
