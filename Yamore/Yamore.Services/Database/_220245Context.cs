@@ -270,6 +270,20 @@ public partial class _220245Context : DbContext
             entity.Property(e => e.Name).HasMaxLength(100);
         });
 
+        // User - UserRole
+        modelBuilder.Entity<UserRole>()
+            .HasOne(ur => ur.User)
+            .WithMany(u => u.UserRoles)
+            .HasForeignKey(ur => ur.UserId)
+            .OnDelete(DeleteBehavior.Cascade); // po želji
+
+        // UserRole - Role
+        modelBuilder.Entity<UserRole>()
+            .HasOne(ur => ur.Role)
+            .WithMany(r => r.UserRoles)
+            .HasForeignKey(ur => ur.RoleId)
+            .OnDelete(DeleteBehavior.Cascade); // po želji
+
         OnModelCreatingPartial(modelBuilder);
     }
 

@@ -21,7 +21,7 @@ public partial class User
     public bool? Status { get; set; }
 
 
-    public virtual ICollection<Model.UserRole> UserRoles { get; set; } = new List<Model.UserRole>();
+    public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 
 
     public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();

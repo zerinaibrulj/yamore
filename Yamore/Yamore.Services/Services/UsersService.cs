@@ -140,7 +140,7 @@ namespace Yamore.Services.Services
 
         public Model.User Login(string username, string password)
         {
-            var entity = Context.Users.Include(x => x.UserRoles).ThenInclude(y => y.RoleId).FirstOrDefault(x => x.Username == username);
+            var entity = Context.Users.Include(x => x.UserRoles).ThenInclude(y => y.Role).FirstOrDefault(x => x.Username == username);
 
             if (entity == null)     //ako ne postoji u bazi korisnik sa tim username-om
             {
