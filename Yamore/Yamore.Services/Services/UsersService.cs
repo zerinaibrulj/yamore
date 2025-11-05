@@ -51,7 +51,7 @@ namespace Yamore.Services.Services
 
             if (search?.IsUserRoleIncluded == true)
             {
-                filteredQuery = filteredQuery.Include(x => x.UserRoles).ThenInclude(x => x.Role);
+                filteredQuery = filteredQuery.Include(x => x.UserRoles).ThenInclude(x => x.RoleId);
             }
 
             if (!string.IsNullOrWhiteSpace(search?.OrderBy))
@@ -140,7 +140,7 @@ namespace Yamore.Services.Services
 
         public Model.User Login(string username, string password)
         {
-            var entity = Context.Users.Include(x => x.UserRoles).ThenInclude(y => y.Role).FirstOrDefault(x => x.Username == username);
+            var entity = Context.Users.Include(x => x.UserRoles).ThenInclude(y => y.RoleId).FirstOrDefault(x => x.Username == username);
 
             if (entity == null)     //ako ne postoji u bazi korisnik sa tim username-om
             {
