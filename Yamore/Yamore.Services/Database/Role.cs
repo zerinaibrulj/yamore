@@ -11,6 +11,6 @@ namespace Yamore.Services.Database
         public int RoleId { get; set; }
         public string Name { get; set; } = null!;
         public string? Description { get; set; }
-        //public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
+        public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();     //ovo trebamo zakomentarisati
     }
 }
