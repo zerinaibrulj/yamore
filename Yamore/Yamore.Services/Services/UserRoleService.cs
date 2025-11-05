@@ -24,12 +24,12 @@ namespace Yamore.Services.Services
         {
             var filteredQuery = base.AddFilter(search, query);
 
-            if (search != null && search.UserId != 0)
+            if (search.UserId != null && search.UserId != 0)
             {
                 filteredQuery = filteredQuery.Where(x => x.UserId == search.UserId);
             }
 
-            if (search != null && search.RoleId != 0)
+            if (search.RoleId != null && search.RoleId != 0)
             {
                 filteredQuery = filteredQuery.Where(x => x.RoleId == search.RoleId);
             }

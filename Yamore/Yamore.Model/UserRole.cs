@@ -11,6 +11,6 @@ namespace Yamore.Model
         public int RoleId { get; set; }
         public DateTime DateModification { get; set; }
         //public virtual User User { get; set; } = null!;   //making circular reference
-        public virtual Role Role { get; set; } = null!;
+        //public virtual Role Role { get; set; } = null!;
     }
 }

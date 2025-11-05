@@ -51,7 +51,7 @@ namespace Yamore.API
 
                 foreach(var role in user.UserRoles)
                 {
-                    claims.Add(new Claim(ClaimTypes.Role, role.Role.Name));     //Name se mora slagati sa onim koji se nalazi u Controlleru
+                    claims.Add(new Claim(ClaimTypes.Role, role.RoleId.ToString()));     //Name se mora slagati sa onim koji se nalazi u Controlleru  //Prepravili smo da se RoleId salje kao string
                 }
 
 

@@ -6,6 +6,6 @@ namespace Yamore.Model.Requests.Roles
 {
     public class RoleDeleteRequest
     {
-        public string Name { get; set; } = null!;
+        public int RoleId { get; set; }
     }
 }
