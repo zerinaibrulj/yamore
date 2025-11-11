@@ -44,22 +44,22 @@ namespace Yamore.API
             {
                 var claims = new List<Claim>()
                 {
-                    new Claim(ClaimTypes.Name, user.Username),
+                    new Claim(ClaimTypes.Name, user.FirstName),
                     new Claim(ClaimTypes.NameIdentifier, user.Username)
                 };
 
 
                 foreach(var role in user.UserRoles)
                 {
-                    claims.Add(new Claim(ClaimTypes.Role, role.Role.Name));     //Name se mora slagati sa onim koji se nalazi u Controlleru  //Prepravili smo da se RoleId salje kao string
+                    claims.Add(new Claim(ClaimTypes.Role, role.Role.Name));     //Name se mora slagati sa onim koji se nalazi u Controlleru, odnosno [Authorize(Roles = "Admin")]
                 }
 
 
 
                 var identity = new ClaimsIdentity(claims, Scheme.Name);
                 var principal = new ClaimsPrincipal(identity);
-
                 var ticket = new AuthenticationTicket(principal, Scheme.Name);
+
 
                 return AuthenticateResult.Success(ticket);
             }

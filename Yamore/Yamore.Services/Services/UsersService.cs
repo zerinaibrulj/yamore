@@ -154,7 +154,7 @@ namespace Yamore.Services.Services
                 return null;
             }
 
-            return Mapper.Map<Model.User>(entity);
+            return this.Mapper.Map<Model.User>(entity);
         }
     }
 }
