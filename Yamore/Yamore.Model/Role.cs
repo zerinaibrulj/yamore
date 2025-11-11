@@ -9,5 +9,6 @@ namespace Yamore.Model
         public int RoleId { get; set; }
         public string Name { get; set; } = null!;
         public string? Description { get; set; }
+        //public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
     }
 }
