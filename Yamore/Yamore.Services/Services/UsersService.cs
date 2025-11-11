@@ -51,7 +51,7 @@ namespace Yamore.Services.Services
 
             if (search?.IsUserRoleIncluded == true)
             {
-                filteredQuery = filteredQuery.Include(x => x.UserRoles).ThenInclude(x => x.RoleId);
+                filteredQuery = filteredQuery.Include(ur => ur.UserRoles).ThenInclude(r => r.Role);
             }
 
             if (!string.IsNullOrWhiteSpace(search?.OrderBy))

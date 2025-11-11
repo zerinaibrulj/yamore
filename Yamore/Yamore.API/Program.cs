@@ -2,6 +2,8 @@ using Mapster;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.OpenApi.Models;
 using Yamore.API;
 using Yamore.API.Filters;
@@ -9,6 +11,7 @@ using Yamore.Services.Database;
 using Yamore.Services.Interfaces;
 using Yamore.Services.Services;
 using Yamore.Services.YachtStateMachine;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -83,6 +86,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<_220245Context>(options => options.UseSqlServer(connectionString));
 
 builder.Services.AddMapster();      //dodamo Mapster za automatsko mapiranje entiteta u modele
+
 
 
 builder.Services.AddAuthentication("BasicAuthentication")
