@@ -17,15 +17,32 @@ using Yamore.Services.YachtStateMachine;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// READ allowed origins from configuration (appsettings or environment)
+var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowLocalhost5096", policy =>
+    options.AddPolicy("DefaultCorsPolicy", policy =>
     {
-        policy
-            .WithOrigins("http://localhost:5096", "https://localhost:5096")
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
+        if (allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        }
+        else if (builder.Environment.IsDevelopment())
+        {
+            // development fallback (only)
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
+        else
+        {
+            // production: deny by default (or set a secure default)
+            policy.DisallowCredentials();
+        }
     });
 });
 
@@ -137,7 +154,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseCors("AllowLocalhost5096");
+// apply the named CORS policy
+app.UseCors("DefaultCorsPolicy");
 
 app.UseAuthentication();
 
