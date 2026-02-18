@@ -1,4 +1,4 @@
-﻿using MapsterMapper;
+using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -155,6 +155,16 @@ namespace Yamore.Services.Services
             }
 
             return this.Mapper.Map<Model.User>(entity);
+        }
+
+        public bool VerifyPassword(int userId, string password)
+        {
+            var entity = Context.Users.Find(userId);
+            if (entity == null)
+                return false;
+
+            var hash = GenerateHash(entity.PasswordSalt, password);
+            return hash == entity.PasswordHash;
         }
     }
 }

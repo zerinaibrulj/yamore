@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 using Microsoft.Identity.Client;
 using System.Net.Http.Headers;
@@ -44,8 +44,9 @@ namespace Yamore.API
             {
                 var claims = new List<Claim>()
                 {
-                    new Claim(ClaimTypes.Name, user.FirstName),
-                    new Claim(ClaimTypes.NameIdentifier, user.Username)
+                    new Claim(ClaimTypes.Name, user.Username),
+                    new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+                    new Claim("username", user.Username)
                 };
 
 

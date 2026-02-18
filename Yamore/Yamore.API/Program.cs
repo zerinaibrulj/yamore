@@ -1,12 +1,14 @@
 using Mapster;
+using FluentValidation;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
 using Yamore.API;
 using Yamore.API.Filters;
+using Yamore.API.Validation;
 using Yamore.Services.Database;
 using Yamore.Services.Interfaces;
 using Yamore.Services.Services;
@@ -65,7 +67,24 @@ builder.Services.AddTransient<HiddenYachtState>();
 builder.Services.AddControllers(x =>
 {
     x.Filters.Add<ExceptionFilter>();
+    x.Filters.Add<FluentValidationActionFilter>();
+})
+.ConfigureApiBehaviorOptions(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var problem = new ValidationProblemDetails(context.ModelState)
+        {
+            Title = "Validation failed",
+            Detail = "Please fix the highlighted fields and try again.",
+            Status = StatusCodes.Status400BadRequest
+        };
+
+        return new BadRequestObjectResult(problem);
+    };
 });
+
+builder.Services.AddValidatorsFromAssemblyContaining<UserInsertRequestValidator>();
 
 
 

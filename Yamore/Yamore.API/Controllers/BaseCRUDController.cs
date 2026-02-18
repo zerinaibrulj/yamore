@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc;
 using Yamore.Model.SearchObjects;
 using Yamore.Services.Interfaces;
 
@@ -19,21 +18,27 @@ namespace Yamore.API.Controllers
 
 
         [HttpPost]
-        public virtual TModel Insert(TInsert request)
+        public virtual ActionResult<TModel> Insert(TInsert request)
         {
-            return _service.Insert(request);   
+            var result = _service.Insert(request);
+            Response.Headers["X-Operation-Message"] = $"{typeof(TModel).Name} created successfully.";
+            return Ok(result);
         }
 
         [HttpPut("{id}")]
-        public virtual TModel Update(int id, TUpdate request)
+        public virtual ActionResult<TModel> Update(int id, TUpdate request)
         {
-            return _service.Update(id, request);
+            var result = _service.Update(id, request);
+            Response.Headers["X-Operation-Message"] = $"{typeof(TModel).Name} updated successfully.";
+            return Ok(result);
         }
 
         [HttpDelete("{id}")]
-        public virtual TModel Delete(int id)
+        public virtual ActionResult<TModel> Delete(int id)
         {
-            return _service.Delete(id);
+            var result = _service.Delete(id);
+            Response.Headers["X-Operation-Message"] = $"{typeof(TModel).Name} deleted successfully.";
+            return Ok(result);
         }
     }
 }
