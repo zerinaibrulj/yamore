@@ -19,6 +19,12 @@ namespace Yamore.Services.Services
         {
         }
 
+        public override void BeforeInsret(UserRoleInsertRequest request, Database.UserRole entity)
+        {
+            entity.DateModification = DateTime.UtcNow;
+            base.BeforeInsret(request, entity);
+        }
+
 
         public override IQueryable<Database.UserRole> AddFilter(UserRoleSearchObject search, IQueryable<Database.UserRole> query)
         {

@@ -15,6 +15,18 @@ using Yamore.Services.YachtStateMachine;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowLocalhost5096", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:5096", "https://localhost:5096")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
+
 
 // Add services to the container.
 
@@ -106,7 +118,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-//app.UseAuthentication();
+app.UseCors("AllowLocalhost5096");
+
+app.UseAuthentication();
 
 app.UseAuthorization();
 
