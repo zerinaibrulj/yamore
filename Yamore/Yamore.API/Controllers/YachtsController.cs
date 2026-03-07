@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Yamore.Model;
 using Yamore.Model.Requests.YachtCategory;
 using Yamore.Model.Requests.Yachts;
@@ -11,34 +13,46 @@ namespace Yamore.API.Controllers
     [Route("[controller]")]
     public class YachtsController : BaseCRUDController<Model.Yacht, YachtsSearchObject, YachtsInsertRequest, YachtsUpdateRequest, YachtsDeleteRequest>
     {
-        public YachtsController(IYachtsService service) 
+        private readonly IYachtsService _yachtsService;
+
+        public YachtsController(IYachtsService service)
             : base(service)
         {
+            _yachtsService = service;
         }
 
-
         [HttpPut("{id}/activate")]
+        [Authorize(Roles = "Admin,YachtOwner")]
         public Yacht Activate(int id)
         {
-            return (_service as IYachtsService).Activate(id);
+            return _yachtsService.Activate(id);
         }
 
         [HttpPut("{id}/hide")]
+        [Authorize(Roles = "Admin,YachtOwner")]
         public Yacht Hide(int id)
         {
-            return (_service as IYachtsService).Hide(id);
+            return _yachtsService.Hide(id);
         }
 
         [HttpPut("{id}/edit")]
         public Yacht Edit(int id)
         {
-            return (_service as IYachtsService).Edit(id);
+            return _yachtsService.Edit(id);
         }
 
         [HttpGet("{id}/allowedActions")]
         public List<string> AllowedActions(int id)
         {
-            return (_service as IYachtsService).AllowedActions(id);
+            return _yachtsService.AllowedActions(id);
+        }
+
+        [HttpGet("recommendations")]
+        public PagedResponse<Yacht> GetRecommendations([FromQuery] int? userId, [FromQuery] int page = 0, [FromQuery] int pageSize = 10)
+        {
+            var currentUserId = User?.FindFirstValue(ClaimTypes.NameIdentifier);
+            var id = userId ?? (int.TryParse(currentUserId, out var uid) ? (int?)uid : null);
+            return _yachtsService.GetRecommendations(id, page, pageSize);
         }
     }
 }

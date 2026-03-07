@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -19,5 +19,11 @@ namespace Yamore.Model
         public string? Comment { get; set; }
 
         public DateTime? DatePosted { get; set; }
+
+        public string? OwnerResponse { get; set; }
+
+        public DateTime? OwnerResponseDate { get; set; }
+
+        public bool IsReported { get; set; }
     }
 }

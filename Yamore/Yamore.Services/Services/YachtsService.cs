@@ -1,4 +1,4 @@
-﻿using Azure.Core;
+using Azure.Core;
 using MapsterMapper;
 using System;
 using System.Collections.Generic;
@@ -36,19 +36,64 @@ namespace Yamore.Services.Services
                 filteredQurey = filteredQurey.Where(x => x.Name.StartsWith(search.NameGTE));
             }
 
-            if(search?.YearBuilt != null)
+            if (search?.YearBuilt != null)
             {
                 filteredQurey = filteredQurey.Where(x => x.YearBuilt == search.YearBuilt);
             }
 
-            if(search?.Capacity != null)
+            if (search?.Capacity != null)
             {
                 filteredQurey = filteredQurey.Where(x => x.Capacity == search.Capacity);
             }
 
-            if(search?.PricePerDay != null)
+            if (search?.CapacityMin != null)
+            {
+                filteredQurey = filteredQurey.Where(x => x.Capacity >= search.CapacityMin);
+            }
+
+            if (search?.CapacityMax != null)
+            {
+                filteredQurey = filteredQurey.Where(x => x.Capacity <= search.CapacityMax);
+            }
+
+            if (search?.PricePerDay != null)
             {
                 filteredQurey = filteredQurey.Where(x => x.PricePerDay == search.PricePerDay);
+            }
+
+            if (search?.PricePerDayMin != null)
+            {
+                filteredQurey = filteredQurey.Where(x => x.PricePerDay >= search.PricePerDayMin);
+            }
+
+            if (search?.PricePerDayMax != null)
+            {
+                filteredQurey = filteredQurey.Where(x => x.PricePerDay <= search.PricePerDayMax);
+            }
+
+            if (search?.LocationId != null)
+            {
+                filteredQurey = filteredQurey.Where(x => x.LocationId == search.LocationId);
+            }
+
+            if (search?.CityId != null)
+            {
+                filteredQurey = filteredQurey.Where(x => x.LocationId == search.CityId);
+            }
+
+            if (search?.CountryId != null)
+            {
+                filteredQurey = filteredQurey.Where(x => x.Location != null && x.Location.CountryId == search.CountryId);
+            }
+
+            if (search?.AvailableFrom != null && search?.AvailableTo != null)
+            {
+                var from = search.AvailableFrom.Value;
+                var to = search.AvailableTo.Value;
+                var confirmedStatuses = new[] { "Confirmed", "Pending", "Completed" };
+                filteredQurey = filteredQurey.Where(y =>
+                    !Context.Reservations.Any(r => r.YachtId == y.YachtId && r.StartDate < to && r.EndDate > from && r.Status != "Cancelled") &&
+                    !Context.YachtAvailabilities.Any(a => a.YachtId == y.YachtId && a.IsBlocked && a.StartDate < to && a.EndDate > from));
             }
 
             if (!string.IsNullOrWhiteSpace(search?.OrderBy))
@@ -110,7 +155,7 @@ namespace Yamore.Services.Services
 
         public List<string> AllowedActions(int id)
         {
-            if (id <= 0)                                             //ako id ne postoji instancirat cemo novu jahtu
+            if (id <= 0)
             {
                 var state = BaseYachtState.CreateState("initial");
                 return state.AllowedActions(null);
@@ -121,6 +166,34 @@ namespace Yamore.Services.Services
                 var state = BaseYachtState.CreateState(entity.StateMachine);
                 return state.AllowedActions(entity);
             }
+        }
+
+        public PagedResponse<Model.Yacht> GetRecommendations(int? userId, int page = 0, int pageSize = 10)
+        {
+            var activeYachts = Context.Yachts.Where(y => y.StateMachine == "active").AsQueryable();
+            IQueryable<Database.Yacht> query;
+
+            if (userId.HasValue)
+            {
+                var userYachtIds = Context.Reservations.Where(r => r.UserId == userId && r.Status != "Cancelled")
+                    .Select(r => r.YachtId).Distinct().ToList();
+                var preferredCategoryIds = Context.Yachts.Where(y => userYachtIds.Contains(y.YachtId)).Select(y => y.CategoryId).Distinct().ToList();
+                var preferredLocationIds = Context.Yachts.Where(y => userYachtIds.Contains(y.YachtId)).Select(y => y.LocationId).Distinct().ToList();
+                query = activeYachts
+                    .Where(y => !userYachtIds.Contains(y.YachtId) &&
+                        (preferredCategoryIds.Contains(y.CategoryId) || preferredLocationIds.Contains(y.LocationId)))
+                    .OrderByDescending(y => y.Reviews.Any() ? y.Reviews.Average(r => r.Rating ?? 0) : 0);
+            }
+            else
+            {
+                query = activeYachts
+                    .OrderByDescending(y => y.Reservations.Count(r => r.Status != "Cancelled"));
+            }
+
+            var count = query.Count();
+            var list = query.Skip(page * pageSize).Take(pageSize).ToList();
+            var result = Mapper.Map<List<Model.Yacht>>(list);
+            return new PagedResponse<Model.Yacht> { Count = count, ResultList = result };
         }
     }
 }

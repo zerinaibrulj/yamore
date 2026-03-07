@@ -1,4 +1,4 @@
-﻿using MapsterMapper;
+using MapsterMapper;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -42,8 +42,33 @@ namespace Yamore.Services.Services
                 filteredQurey = filteredQurey.Where(x => x.Rating == search.Rating);
             }
 
+            if (search?.IsReported != null)
+            {
+                filteredQurey = filteredQurey.Where(x => x.IsReported == search.IsReported);
+            }
+
             return filteredQurey;
         }
 
+        public Model.Review Report(int id)
+        {
+            var entity = Context.Reviews.Find(id);
+            if (entity == null)
+                throw new KeyNotFoundException($"Review with id {id} not found.");
+            entity.IsReported = true;
+            Context.SaveChanges();
+            return Mapper.Map<Model.Review>(entity);
+        }
+
+        public Model.Review RespondAsOwner(int id, string ownerResponse)
+        {
+            var entity = Context.Reviews.Find(id);
+            if (entity == null)
+                throw new KeyNotFoundException($"Review with id {id} not found.");
+            entity.OwnerResponse = ownerResponse;
+            entity.OwnerResponseDate = DateTime.UtcNow;
+            Context.SaveChanges();
+            return Mapper.Map<Model.Review>(entity);
+        }
     }
 }

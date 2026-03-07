@@ -1,4 +1,4 @@
-﻿using MapsterMapper;
+using MapsterMapper;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -37,7 +37,23 @@ namespace Yamore.Services.Services
                 filteredQurey = filteredQurey.Where(x => x.YachtId == search.YachtId);
             }
 
+            if (!string.IsNullOrWhiteSpace(search?.Status))
+            {
+                filteredQurey = filteredQurey.Where(x => x.Status == search.Status);
+            }
+
             return filteredQurey;
+        }
+
+        public Model.Reservation Cancel(int id)
+        {
+            var set = Context.Set<Database.Reservation>();
+            var entity = set.Find(id);
+            if (entity == null)
+                throw new KeyNotFoundException($"Reservation with id {id} not found.");
+            entity.Status = "Cancelled";
+            Context.SaveChanges();
+            return Mapper.Map<Model.Reservation>(entity);
         }
     }
 }

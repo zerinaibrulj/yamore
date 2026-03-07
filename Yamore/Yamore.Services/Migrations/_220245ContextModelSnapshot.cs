@@ -22,30 +22,6 @@ namespace Yamore.Services.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("Yamore.Model.UserRole", b =>
-                {
-                    b.Property<int>("UserRoleId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UserRoleId"));
-
-                    b.Property<DateTime>("DateModification")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("RoleId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("UserRoleId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("UserRole");
-                });
-
             modelBuilder.Entity("Yamore.Services.Database.City", b =>
                 {
                     b.Property<int>("CityId")
@@ -240,6 +216,18 @@ namespace Yamore.Services.Migrations
                         .HasColumnType("datetime")
                         .HasDefaultValueSql("(getdate())");
 
+                    b.Property<bool>("IsReported")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("OwnerResponse")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("OwnerResponseDate")
+                        .HasColumnType("datetime");
+
                     b.Property<int?>("Rating")
                         .HasColumnType("int");
 
@@ -340,10 +328,38 @@ namespace Yamore.Services.Migrations
                     b.Property<decimal?>("Price")
                         .HasColumnType("decimal(10, 2)");
 
+                    b.Property<int?>("ServiceCategoryId")
+                        .HasColumnType("int");
+
                     b.HasKey("ServiceId")
                         .HasName("PK__Services__C51BB00AA4083F57");
 
+                    b.HasIndex("ServiceCategoryId");
+
                     b.ToTable("Services");
+                });
+
+            modelBuilder.Entity("Yamore.Services.Database.ServiceCategory", b =>
+                {
+                    b.Property<int>("ServiceCategoryId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ServiceCategoryId"));
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("ServiceCategoryId")
+                        .HasName("PK_ServiceCategories");
+
+                    b.ToTable("ServiceCategories");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.SpecialRequest", b =>
@@ -544,6 +560,38 @@ namespace Yamore.Services.Migrations
                     b.ToTable("Yachts");
                 });
 
+            modelBuilder.Entity("Yamore.Services.Database.YachtAvailability", b =>
+                {
+                    b.Property<int>("YachtAvailabilityId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("YachtAvailabilityId"));
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsBlocked")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("YachtId")
+                        .HasColumnType("int");
+
+                    b.HasKey("YachtAvailabilityId")
+                        .HasName("PK_YachtAvailabilities");
+
+                    b.HasIndex("YachtId");
+
+                    b.ToTable("YachtAvailabilities");
+                });
+
             modelBuilder.Entity("Yamore.Services.Database.YachtCategory", b =>
                 {
                     b.Property<int>("CategoryId")
@@ -563,13 +611,48 @@ namespace Yamore.Services.Migrations
                     b.ToTable("YachtCategories");
                 });
 
-            modelBuilder.Entity("Yamore.Model.UserRole", b =>
+            modelBuilder.Entity("Yamore.Services.Database.YachtDocument", b =>
                 {
-                    b.HasOne("Yamore.Services.Database.User", null)
-                        .WithMany("UserRoles")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.Property<int>("YachtDocumentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("YachtDocumentId"));
+
+                    b.Property<string>("DocumentType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("FileName")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("FileUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("VerifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("VerifiedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("YachtId")
+                        .HasColumnType("int");
+
+                    b.HasKey("YachtDocumentId")
+                        .HasName("PK_YachtDocuments");
+
+                    b.HasIndex("VerifiedByUserId");
+
+                    b.HasIndex("YachtId");
+
+                    b.ToTable("YachtDocuments");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.City", b =>
@@ -697,6 +780,17 @@ namespace Yamore.Services.Migrations
                     b.Navigation("Yacht");
                 });
 
+            modelBuilder.Entity("Yamore.Services.Database.Service", b =>
+                {
+                    b.HasOne("Yamore.Services.Database.ServiceCategory", "ServiceCategory")
+                        .WithMany("Services")
+                        .HasForeignKey("ServiceCategoryId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("FK_Services_ServiceCategories");
+
+                    b.Navigation("ServiceCategory");
+                });
+
             modelBuilder.Entity("Yamore.Services.Database.SpecialRequest", b =>
                 {
                     b.HasOne("Yamore.Services.Database.Reservation", "Reservation")
@@ -717,7 +811,7 @@ namespace Yamore.Services.Migrations
                         .IsRequired();
 
                     b.HasOne("Yamore.Services.Database.User", "User")
-                        .WithMany()
+                        .WithMany("UserRoles")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -765,6 +859,38 @@ namespace Yamore.Services.Migrations
                     b.Navigation("Owner");
                 });
 
+            modelBuilder.Entity("Yamore.Services.Database.YachtAvailability", b =>
+                {
+                    b.HasOne("Yamore.Services.Database.Yacht", "Yacht")
+                        .WithMany("YachtAvailabilities")
+                        .HasForeignKey("YachtId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_YachtAvailabilities_Yachts");
+
+                    b.Navigation("Yacht");
+                });
+
+            modelBuilder.Entity("Yamore.Services.Database.YachtDocument", b =>
+                {
+                    b.HasOne("Yamore.Services.Database.User", "VerifiedByUser")
+                        .WithMany("YachtDocumentsVerified")
+                        .HasForeignKey("VerifiedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("FK_YachtDocuments_Users");
+
+                    b.HasOne("Yamore.Services.Database.Yacht", "Yacht")
+                        .WithMany("YachtDocuments")
+                        .HasForeignKey("YachtId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_YachtDocuments_Yachts");
+
+                    b.Navigation("VerifiedByUser");
+
+                    b.Navigation("Yacht");
+                });
+
             modelBuilder.Entity("Yamore.Services.Database.City", b =>
                 {
                     b.Navigation("RouteEndCities");
@@ -805,6 +931,11 @@ namespace Yamore.Services.Migrations
                     b.Navigation("ReservationServices");
                 });
 
+            modelBuilder.Entity("Yamore.Services.Database.ServiceCategory", b =>
+                {
+                    b.Navigation("Services");
+                });
+
             modelBuilder.Entity("Yamore.Services.Database.User", b =>
                 {
                     b.Navigation("Notifications");
@@ -814,6 +945,8 @@ namespace Yamore.Services.Migrations
                     b.Navigation("Reviews");
 
                     b.Navigation("UserRoles");
+
+                    b.Navigation("YachtDocumentsVerified");
 
                     b.Navigation("Yachts");
                 });
@@ -825,6 +958,10 @@ namespace Yamore.Services.Migrations
                     b.Navigation("Reviews");
 
                     b.Navigation("Routes");
+
+                    b.Navigation("YachtAvailabilities");
+
+                    b.Navigation("YachtDocuments");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.YachtCategory", b =>

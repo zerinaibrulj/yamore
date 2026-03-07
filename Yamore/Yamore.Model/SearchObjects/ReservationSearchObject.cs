@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -11,5 +11,7 @@ namespace Yamore.Model.SearchObjects
         public int? UserId { get; set; }
 
         public int? YachtId { get; set; }
+
+        public string? Status { get; set; }
     }
 }

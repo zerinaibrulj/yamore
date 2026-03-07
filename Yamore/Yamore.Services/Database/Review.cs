@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Yamore.Services.Database;
@@ -18,6 +18,12 @@ public partial class Review
     public string? Comment { get; set; }
 
     public DateTime? DatePosted { get; set; }
+
+    public string? OwnerResponse { get; set; }
+
+    public DateTime? OwnerResponseDate { get; set; }
+
+    public bool IsReported { get; set; }
 
     public virtual Reservation Reservation { get; set; } = null!;
 

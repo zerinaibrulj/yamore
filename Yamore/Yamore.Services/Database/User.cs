@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Yamore.Services.Database;
@@ -31,4 +31,6 @@ public partial class User
     public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
 
     public virtual ICollection<Yacht> Yachts { get; set; } = new List<Yacht>();
+
+    public virtual ICollection<YachtDocument> YachtDocumentsVerified { get; set; } = new List<YachtDocument>();
 }

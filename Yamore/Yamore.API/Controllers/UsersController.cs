@@ -93,5 +93,14 @@ namespace Yamore.API.Controllers
         {
             return (_service as IUsersService).Login(username, password);
         }
+
+        [HttpPost("register")]
+        [AllowAnonymous]
+        public ActionResult<Model.User> Register([FromBody] UserInsertRequest request)
+        {
+            var user = _usersService.Register(request);
+            Response.Headers["X-Operation-Message"] = "Registration successful.";
+            return Ok(user);
+        }
     }
 }

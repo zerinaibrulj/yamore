@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,5 +10,7 @@ namespace Yamore.Services.Interfaces
 {
     public interface IReviewService : ICRUDService<Model.Review, ReviewSearchObject, ReviewInsertRequest, ReviewUpdateRequest, ReviewDeleteRequest>
     {
+        Model.Review Report(int id);
+        Model.Review RespondAsOwner(int id, string ownerResponse);
     }
 }

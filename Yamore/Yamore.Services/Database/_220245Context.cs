@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
@@ -42,8 +42,11 @@ public partial class _220245Context : DbContext
     public virtual DbSet<Yacht> Yachts { get; set; }
 
     public virtual DbSet<YachtCategory> YachtCategories { get; set; }
-    public virtual DbSet<Role> Roles { get; set; }   
-    public virtual DbSet<UserRole> UserRoles { get; set; }   
+    public virtual DbSet<Role> Roles { get; set; }
+    public virtual DbSet<UserRole> UserRoles { get; set; }
+    public virtual DbSet<YachtAvailability> YachtAvailabilities { get; set; }
+    public virtual DbSet<ServiceCategory> ServiceCategories { get; set; }
+    public virtual DbSet<YachtDocument> YachtDocuments { get; set; }   
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -148,6 +151,9 @@ public partial class _220245Context : DbContext
             entity.Property(e => e.DatePosted)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
+            entity.Property(e => e.OwnerResponse).HasMaxLength(1000);
+            entity.Property(e => e.OwnerResponseDate).HasColumnType("datetime");
+            entity.Property(e => e.IsReported).HasDefaultValue(false);
 
             entity.HasOne(d => d.Reservation).WithMany(p => p.Reviews)
                 .HasForeignKey(d => d.ReservationId)
@@ -194,6 +200,45 @@ public partial class _220245Context : DbContext
             entity.Property(e => e.Description).HasMaxLength(255);
             entity.Property(e => e.Name).HasMaxLength(100);
             entity.Property(e => e.Price).HasColumnType("decimal(10, 2)");
+
+            entity.HasOne(d => d.ServiceCategory).WithMany(p => p.Services)
+                .HasForeignKey(d => d.ServiceCategoryId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_Services_ServiceCategories");
+        });
+
+        modelBuilder.Entity<ServiceCategory>(entity =>
+        {
+            entity.HasKey(e => e.ServiceCategoryId).HasName("PK_ServiceCategories");
+            entity.Property(e => e.Name).HasMaxLength(100);
+            entity.Property(e => e.Description).HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<YachtAvailability>(entity =>
+        {
+            entity.HasKey(e => e.YachtAvailabilityId).HasName("PK_YachtAvailabilities");
+            entity.Property(e => e.Note).HasMaxLength(255);
+            entity.HasOne(d => d.Yacht).WithMany(p => p.YachtAvailabilities)
+                .HasForeignKey(d => d.YachtId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_YachtAvailabilities_Yachts");
+        });
+
+        modelBuilder.Entity<YachtDocument>(entity =>
+        {
+            entity.HasKey(e => e.YachtDocumentId).HasName("PK_YachtDocuments");
+            entity.Property(e => e.DocumentType).HasMaxLength(50);
+            entity.Property(e => e.FileName).HasMaxLength(255);
+            entity.Property(e => e.FileUrl).HasMaxLength(500);
+            entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.HasOne(d => d.Yacht).WithMany(p => p.YachtDocuments)
+                .HasForeignKey(d => d.YachtId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_YachtDocuments_Yachts");
+            entity.HasOne(d => d.VerifiedByUser).WithMany(p => p.YachtDocumentsVerified)
+                .HasForeignKey(d => d.VerifiedByUserId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_YachtDocuments_Users");
         });
 
         modelBuilder.Entity<SpecialRequest>(entity =>

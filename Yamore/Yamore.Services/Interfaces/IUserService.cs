@@ -8,5 +8,7 @@ namespace Yamore.Services.Interfaces
     {
         Model.User Login(string username, string password);
         bool VerifyPassword(int userId, string password);
+        /// <summary>Register a new end user and assign default "User" role.</summary>
+        Model.User Register(UserInsertRequest request);
     }
 }

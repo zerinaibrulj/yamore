@@ -166,5 +166,22 @@ namespace Yamore.Services.Services
             var hash = GenerateHash(entity.PasswordSalt, password);
             return hash == entity.PasswordHash;
         }
+
+        public Model.User Register(UserInsertRequest request)
+        {
+            var user = Insert(request);
+            var userRole = Context.Roles.FirstOrDefault(r => r.Name == "User" || r.Name == "EndUser");
+            if (userRole != null)
+            {
+                Context.UserRoles.Add(new Database.UserRole
+                {
+                    UserId = user.UserId,
+                    RoleId = userRole.RoleId,
+                    DateModification = DateTime.UtcNow
+                });
+                Context.SaveChanges();
+            }
+            return user;
+        }
     }
 }
