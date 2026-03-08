@@ -55,6 +55,11 @@ namespace Yamore.Services.DummyService
             return List;
         }
 
+        public PagedResponse<YachtOverviewDto> GetOverviewForAdmin(YachtsSearchObject search)
+        {
+            throw new NotImplementedException();
+        }
+
         public PagedResponse<Yacht> GetPaged(YachtsSearchObject search)
         {
             throw new NotImplementedException();

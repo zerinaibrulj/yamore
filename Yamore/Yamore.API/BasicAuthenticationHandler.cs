@@ -50,9 +50,9 @@ namespace Yamore.API
                 };
 
 
-                foreach(var role in user.UserRoles)
+                foreach(var role in user.Roles)
                 {
-                    claims.Add(new Claim(ClaimTypes.Role, role.Role.Name));     //Name se mora slagati sa onim koji se nalazi u Controlleru, odnosno [Authorize(Roles = "Admin")]
+                    claims.Add(new Claim(ClaimTypes.Role, role));     //Name se mora slagati sa onim koji se nalazi u Controlleru, odnosno [Authorize(Roles = "Admin")]
                 }
 
 

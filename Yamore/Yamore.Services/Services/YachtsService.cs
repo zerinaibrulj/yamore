@@ -1,5 +1,6 @@
 using Azure.Core;
 using MapsterMapper;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -194,6 +195,37 @@ namespace Yamore.Services.Services
             var list = query.Skip(page * pageSize).Take(pageSize).ToList();
             var result = Mapper.Map<List<Model.Yacht>>(list);
             return new PagedResponse<Model.Yacht> { Count = count, ResultList = result };
+        }
+
+        public PagedResponse<YachtOverviewDto> GetOverviewForAdmin(YachtsSearchObject search)
+        {
+            var query = Context.Yachts
+                .Include(y => y.Owner)
+                .Include(y => y.Location)
+                .AsQueryable();
+
+            query = AddFilter(search, query);
+            var count = query.Count();
+
+            if (search?.Page.HasValue == true && search?.PageSize.HasValue == true)
+                query = query.Skip(search.Page.Value * search.PageSize.Value).Take(search.PageSize.Value);
+
+            var list = query.ToList();
+            var result = list.Select(y => new YachtOverviewDto
+            {
+                YachtId = y.YachtId,
+                Name = y.Name,
+                LocationName = y.Location?.Name,
+                OwnerName = y.Owner != null ? $"{y.Owner.FirstName} {y.Owner.LastName}".Trim() : null,
+                OwnerId = y.OwnerId,
+                YearBuilt = y.YearBuilt,
+                Length = y.Length,
+                Capacity = y.Capacity,
+                PricePerDay = y.PricePerDay,
+                StateMachine = y.StateMachine
+            }).ToList();
+
+            return new PagedResponse<YachtOverviewDto> { Count = count, ResultList = result };
         }
     }
 }

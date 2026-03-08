@@ -54,5 +54,12 @@ namespace Yamore.API.Controllers
             var id = userId ?? (int.TryParse(currentUserId, out var uid) ? (int?)uid : null);
             return _yachtsService.GetRecommendations(id, page, pageSize);
         }
+
+        [HttpGet("admin/overview")]
+        [Authorize(Roles = "Admin")]
+        public PagedResponse<YachtOverviewDto> GetOverviewForAdmin([FromQuery] YachtsSearchObject search)
+        {
+            return _yachtsService.GetOverviewForAdmin(search ?? new YachtsSearchObject());
+        }
     }
 }

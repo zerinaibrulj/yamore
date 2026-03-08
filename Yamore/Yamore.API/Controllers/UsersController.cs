@@ -89,9 +89,12 @@ namespace Yamore.API.Controllers
 
         [HttpPost("login")]
         [AllowAnonymous]
-        public Model.User Login(string username, string password)
+        public ActionResult<Model.LoginResponseDto> Login(string username, string password)
         {
-            return (_service as IUsersService).Login(username, password);
+            var result = (_service as IUsersService).Login(username, password);
+            if (result == null)
+                return Unauthorized();
+            return Ok(result);
         }
 
         [HttpPost("register")]

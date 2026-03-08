@@ -138,23 +138,28 @@ namespace Yamore.Services.Services
 
 
 
-        public Model.User Login(string username, string password)
+        public Model.LoginResponseDto Login(string username, string password)
         {
             var entity = Context.Users.Include(x => x.UserRoles).ThenInclude(y => y.Role).FirstOrDefault(x => x.Username == username);
 
-            if (entity == null)     //ako ne postoji u bazi korisnik sa tim username-om
-            {
-                return null;    
-            }
+            if (entity == null)
+                return null;
 
             var hash = GenerateHash(entity.PasswordSalt, password);
-
-            if (hash != entity.PasswordHash)          //ako je korsnik pogrijesio password opet vrati null
-            {
+            if (hash != entity.PasswordHash)
                 return null;
-            }
 
-            return this.Mapper.Map<Model.User>(entity);
+            var roles = entity.UserRoles?.Select(ur => ur.Role?.Name).Where(n => !string.IsNullOrEmpty(n)).Cast<string>().ToList() ?? new List<string>();
+            return new Model.LoginResponseDto
+            {
+                UserId = entity.UserId,
+                FirstName = entity.FirstName,
+                LastName = entity.LastName,
+                Email = entity.Email,
+                Username = entity.Username,
+                Status = entity.Status,
+                Roles = roles
+            };
         }
 
         public bool VerifyPassword(int userId, string password)

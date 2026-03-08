@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Mapster;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication;
@@ -88,6 +89,10 @@ builder.Services.AddControllers(x =>
 {
     x.Filters.Add<ExceptionFilter>();
     x.Filters.Add<FluentValidationActionFilter>();
+})
+.AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
 })
 .ConfigureApiBehaviorOptions(options =>
 {
