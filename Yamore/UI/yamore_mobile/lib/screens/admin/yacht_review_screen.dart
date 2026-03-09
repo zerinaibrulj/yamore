@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../models/yacht_overview.dart';
 import '../../models/yacht_detail.dart';
+import '../../models/city.dart';
+import '../../models/yacht_category.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 
@@ -28,10 +30,28 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
   bool _loading = true;
   String? _error;
 
+  // lookups
+  List<CityModel> _cities = [];
+  List<YachtCategoryModel> _categories = [];
+
+  // filters
+  final TextEditingController _searchNameController = TextEditingController();
+  final TextEditingController _priceMinController = TextEditingController();
+  final TextEditingController _priceMaxController = TextEditingController();
+  int? _selectedSearchLocationId;
+
+  // selection
+  int? _selectedYachtId;
+
   @override
   void initState() {
     super.initState();
-    _loadYachts();
+    _init();
+  }
+
+  Future<void> _init() async {
+    await _loadLookups();
+    await _loadYachts();
   }
 
   Future<void> _loadYachts() async {
@@ -40,7 +60,22 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
       _error = null;
     });
     try {
-      final paged = await _api.getYachtOverviewForAdmin(page: 0, pageSize: 50);
+      final name = _searchNameController.text.trim().isEmpty
+          ? null
+          : _searchNameController.text.trim();
+      final priceMin =
+          _priceMinController.text.trim().isEmpty ? null : double.tryParse(_priceMinController.text.trim());
+      final priceMax =
+          _priceMaxController.text.trim().isEmpty ? null : double.tryParse(_priceMaxController.text.trim());
+
+      final paged = await _api.getYachtOverviewForAdmin(
+        page: 0,
+        pageSize: 50,
+        name: name,
+        locationId: _selectedSearchLocationId,
+        priceMin: priceMin,
+        priceMax: priceMax,
+      );
       setState(() {
         _yachts = paged.resultList;
         _totalCount = paged.count;
@@ -56,6 +91,19 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
         _error = e.toString();
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _loadLookups() async {
+    try {
+      final cities = await _api.getCities();
+      final cats = await _api.getYachtCategories();
+      setState(() {
+        _cities = cities;
+        _categories = cats;
+      });
+    } catch (_) {
+      // keep working even if lookups fail
     }
   }
 
@@ -94,7 +142,9 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+          _buildFilters(context),
+          const SizedBox(height: 16),
           Expanded(
             child: _buildBody(),
           ),
@@ -127,6 +177,7 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
+          showCheckboxColumn: true,
           headingRowColor: WidgetStateProperty.all(AppTheme.primaryBlue),
           headingTextStyle: const TextStyle(
             color: Colors.white,
@@ -146,8 +197,12 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
           rows: _yachts
               .map(
                 (y) => DataRow(
+                  selected: _selectedYachtId == y.yachtId,
                   onSelectChanged: (selected) {
                     if (selected == true) {
+                      setState(() {
+                        _selectedYachtId = y.yachtId;
+                      });
                       _openEditYachtDialog(y);
                     }
                   },
@@ -175,12 +230,106 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
     );
   }
 
+  Widget _buildFilters(BuildContext context) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 220,
+              child: TextField(
+                controller: _searchNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Search by name',
+                  prefixIcon: Icon(Icons.search),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            SizedBox(
+              width: 220,
+              child: DropdownButtonFormField<int>(
+                value: _selectedSearchLocationId,
+                decoration: const InputDecoration(
+                  labelText: 'Location',
+                  prefixIcon: Icon(Icons.location_on_outlined),
+                ),
+                items: [
+                  const DropdownMenuItem<int>(
+                    value: null,
+                    child: Text('All locations'),
+                  ),
+                  ..._cities.map(
+                    (c) => DropdownMenuItem<int>(
+                      value: c.cityId,
+                      child: Text(c.name),
+                    ),
+                  ),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _selectedSearchLocationId = value;
+                  });
+                },
+              ),
+            ),
+            const SizedBox(width: 16),
+            SizedBox(
+              width: 140,
+              child: TextField(
+                controller: _priceMinController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Min price (€)',
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 140,
+              child: TextField(
+                controller: _priceMaxController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Max price (€)',
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            FilledButton.icon(
+              onPressed: _loadYachts,
+              icon: const Icon(Icons.filter_list),
+              label: const Text('Apply'),
+            ),
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: () {
+                _searchNameController.clear();
+                _priceMinController.clear();
+                _priceMaxController.clear();
+                setState(() {
+                  _selectedSearchLocationId = null;
+                });
+                _loadYachts();
+              },
+              child: const Text('Clear'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _openAddYachtDialog() async {
     final created = await showDialog<bool>(
       context: context,
       builder: (context) => YachtFormDialog(
         title: 'Add Yacht',
         api: _api,
+        cities: _cities,
+        categories: _categories,
       ),
     );
     if (created == true) {
@@ -197,6 +346,8 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
           title: 'Edit Yacht',
           api: _api,
           initial: detail,
+          cities: _cities,
+          categories: _categories,
         ),
       );
       if (updated == true) {
@@ -244,12 +395,16 @@ class YachtFormDialog extends StatefulWidget {
   final String title;
   final ApiService api;
   final YachtDetail? initial;
+  final List<CityModel> cities;
+  final List<YachtCategoryModel> categories;
 
   const YachtFormDialog({
     super.key,
     required this.title,
     required this.api,
     this.initial,
+    required this.cities,
+    required this.categories,
   });
 
   @override
@@ -367,11 +522,24 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                   decoration: const InputDecoration(labelText: 'Owner ID'),
                   keyboardType: TextInputType.number,
                 ),
-                TextFormField(
-                  controller: _year,
+                DropdownButtonFormField<int>(
+                  value: int.tryParse(_year.text),
                   decoration: const InputDecoration(labelText: 'Year built'),
-                  keyboardType: TextInputType.number,
-                  validator: (v) => int.tryParse(v ?? '') == null ? 'Enter valid year' : null,
+                  items: List<int>.generate(
+                    40,
+                    (i) => DateTime.now().year - i,
+                  )
+                      .map(
+                        (y) => DropdownMenuItem<int>(
+                          value: y,
+                          child: Text(y.toString()),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (val) {
+                    _year.text = (val ?? DateTime.now().year).toString();
+                  },
+                  validator: (v) => v == null ? 'Select year' : null,
                 ),
                 TextFormField(
                   controller: _length,
@@ -379,22 +547,56 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                   keyboardType: TextInputType.number,
                   validator: (v) => double.tryParse(v ?? '') == null ? 'Enter valid length' : null,
                 ),
-                TextFormField(
-                  controller: _capacity,
+                DropdownButtonFormField<int>(
+                  value: int.tryParse(_capacity.text),
                   decoration: const InputDecoration(labelText: 'Capacity (people)'),
-                  keyboardType: TextInputType.number,
-                  validator: (v) => int.tryParse(v ?? '') == null ? 'Enter valid capacity' : null,
+                  items: List<int>.generate(20, (i) => i + 1)
+                      .map(
+                        (c) => DropdownMenuItem<int>(
+                          value: c,
+                          child: Text(c.toString()),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (val) {
+                    _capacity.text = (val ?? 1).toString();
+                  },
+                  validator: (v) => v == null ? 'Select capacity' : null,
                 ),
-                TextFormField(
-                  controller: _cabins,
+                DropdownButtonFormField<int>(
+                  value: int.tryParse(_cabins.text),
                   decoration: const InputDecoration(labelText: 'Cabins'),
-                  keyboardType: TextInputType.number,
-                  validator: (v) => int.tryParse(v ?? '') == null ? 'Enter valid cabins' : null,
+                  items: List<int>.generate(10, (i) => i + 1)
+                      .map(
+                        (c) => DropdownMenuItem<int>(
+                          value: c,
+                          child: Text(c.toString()),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (val) {
+                    _cabins.text = (val ?? 1).toString();
+                  },
+                  validator: (v) => v == null ? 'Select cabins' : null,
                 ),
-                TextFormField(
-                  controller: _bathrooms,
-                  decoration: const InputDecoration(labelText: 'Bathrooms (optional)'),
-                  keyboardType: TextInputType.number,
+                DropdownButtonFormField<int>(
+                  value: _bathrooms.text.isEmpty ? null : int.tryParse(_bathrooms.text),
+                  decoration: const InputDecoration(labelText: 'Bathrooms'),
+                  items: [
+                    const DropdownMenuItem<int>(
+                      value: null,
+                      child: Text('None'),
+                    ),
+                    ...List<int>.generate(8, (i) => i + 1).map(
+                      (b) => DropdownMenuItem<int>(
+                        value: b,
+                        child: Text(b.toString()),
+                      ),
+                    ),
+                  ],
+                  onChanged: (val) {
+                    _bathrooms.text = val?.toString() ?? '';
+                  },
                 ),
                 TextFormField(
                   controller: _price,
@@ -402,17 +604,37 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                   keyboardType: TextInputType.number,
                   validator: (v) => double.tryParse(v ?? '') == null ? 'Enter valid price' : null,
                 ),
-                TextFormField(
-                  controller: _locationId,
-                  decoration: const InputDecoration(labelText: 'Location ID (City)'),
-                  keyboardType: TextInputType.number,
-                  validator: (v) => int.tryParse(v ?? '') == null ? 'Enter valid LocationId' : null,
+                DropdownButtonFormField<int>(
+                  value: int.tryParse(_locationId.text),
+                  decoration: const InputDecoration(labelText: 'Location'),
+                  items: widget.cities
+                      .map(
+                        (c) => DropdownMenuItem<int>(
+                          value: c.cityId,
+                          child: Text(c.name),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (val) {
+                    _locationId.text = (val ?? 0).toString();
+                  },
+                  validator: (v) => v == null ? 'Select location' : null,
                 ),
-                TextFormField(
-                  controller: _categoryId,
-                  decoration: const InputDecoration(labelText: 'Category ID'),
-                  keyboardType: TextInputType.number,
-                  validator: (v) => int.tryParse(v ?? '') == null ? 'Enter valid CategoryId' : null,
+                DropdownButtonFormField<int>(
+                  value: int.tryParse(_categoryId.text),
+                  decoration: const InputDecoration(labelText: 'Category'),
+                  items: widget.categories
+                      .map(
+                        (c) => DropdownMenuItem<int>(
+                          value: c.categoryId,
+                          child: Text(c.name),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (val) {
+                    _categoryId.text = (val ?? 0).toString();
+                  },
+                  validator: (v) => v == null ? 'Select category' : null,
                 ),
                 TextFormField(
                   controller: _description,

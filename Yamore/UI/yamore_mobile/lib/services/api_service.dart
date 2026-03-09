@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/yacht_overview.dart';
 import '../models/yacht_detail.dart';
+import '../models/city.dart';
+import '../models/yacht_category.dart';
 
 class ApiService {
   final String baseUrl;
@@ -29,11 +31,20 @@ class ApiService {
   Future<PagedYachtOverview> getYachtOverviewForAdmin({
     int? page,
     int? pageSize,
+    String? name,
+    int? locationId,
+    double? priceMin,
+    double? priceMax,
   }) async {
     final query = <String, String>{};
-    if (page != null) query['page'] = page.toString();
-    if (pageSize != null) query['pageSize'] = pageSize.toString();
-    final uri = Uri.parse('$baseUrl/Yachts/admin/overview').replace(queryParameters: query.isNotEmpty ? query : null);
+    if (page != null) query['Page'] = page.toString();
+    if (pageSize != null) query['PageSize'] = pageSize.toString();
+    if (name != null && name.isNotEmpty) query['NameGTE'] = name;
+    if (locationId != null) query['LocationId'] = locationId.toString();
+    if (priceMin != null) query['PricePerDayMin'] = priceMin.toString();
+    if (priceMax != null) query['PricePerDayMax'] = priceMax.toString();
+    final uri = Uri.parse('$baseUrl/Yachts/admin/overview')
+        .replace(queryParameters: query.isNotEmpty ? query : null);
     final response = await http.get(uri, headers: _headers);
     if (response.statusCode != 200) {
       throw ApiException(response.statusCode, response.body);
@@ -93,6 +104,40 @@ class ApiService {
     if (response.statusCode != 200) {
       throw ApiException(response.statusCode, response.body);
     }
+  }
+
+  Future<List<CityModel>> getCities() async {
+    final uri = Uri.parse('$baseUrl/City').replace(
+      queryParameters: {
+        'Page': '0',
+        'PageSize': '1000',
+      },
+    );
+    final response = await http.get(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final list = json['resultList'] as List<dynamic>? ?? [];
+    return list.map((e) => CityModel.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<YachtCategoryModel>> getYachtCategories() async {
+    final uri = Uri.parse('$baseUrl/YachtCategory').replace(
+      queryParameters: {
+        'Page': '0',
+        'PageSize': '100',
+      },
+    );
+    final response = await http.get(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final list = json['resultList'] as List<dynamic>? ?? [];
+    return list
+        .map((e) => YachtCategoryModel.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 }
 
