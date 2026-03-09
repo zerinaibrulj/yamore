@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/yacht_overview.dart';
+import '../models/yacht_detail.dart';
 
 class ApiService {
   final String baseUrl;
@@ -40,6 +41,58 @@ class ApiService {
     return PagedYachtOverview.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
+  }
+
+  Future<YachtDetail> getYachtById(int id) async {
+    final uri = Uri.parse('$baseUrl/Yachts/$id');
+    final response = await http.get(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return YachtDetail.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<YachtDetail> createYacht(YachtDetail yacht) async {
+    final uri = Uri.parse('$baseUrl/Yachts');
+    final response = await http.post(
+      uri,
+      headers: _headers,
+      body: jsonEncode(yacht.toJsonForSave()),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return YachtDetail.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<YachtDetail> updateYacht(YachtDetail yacht) async {
+    if (yacht.yachtId == null) {
+      throw ArgumentError('yachtId is required for update');
+    }
+    final uri = Uri.parse('$baseUrl/Yachts/${yacht.yachtId}');
+    final response = await http.put(
+      uri,
+      headers: _headers,
+      body: jsonEncode(yacht.toJsonForSave()),
+    );
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return YachtDetail.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<void> deleteYacht(int id) async {
+    final uri = Uri.parse('$baseUrl/Yachts/$id');
+    final response = await http.delete(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
   }
 }
 
