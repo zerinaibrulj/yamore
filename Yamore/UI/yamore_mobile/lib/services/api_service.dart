@@ -5,6 +5,7 @@ import '../models/yacht_detail.dart';
 import '../models/city.dart';
 import '../models/yacht_category.dart';
 import '../models/user.dart';
+import '../models/statistics.dart';
 
 class ApiService {
   final String baseUrl;
@@ -154,6 +155,20 @@ class ApiService {
         list.map((e) => AppUser.fromJson(e as Map<String, dynamic>)).toList();
     users.sort((a, b) => a.displayName.compareTo(b.displayName));
     return users;
+  }
+
+  Future<StatisticsDtoModel> getAdminStatistics({int? year}) async {
+    final uri = Uri.parse('$baseUrl/Statistics/admin').replace(
+      queryParameters:
+          year != null ? <String, String>{'year': year.toString()} : null,
+    );
+    final response = await http.get(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return StatisticsDtoModel.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 }
 

@@ -13,6 +13,7 @@ namespace Yamore.Model
         public int ReportedReviewsCount { get; set; }
         public List<PopularYachtDto> MostPopularYachts { get; set; } = new List<PopularYachtDto>();
         public List<RevenueByPeriodDto> RevenueByMonth { get; set; } = new List<RevenueByPeriodDto>();
+        public List<ReservationsByCityDto> ReservationsByCity { get; set; } = new List<ReservationsByCityDto>();
     }
 
     public class PopularYachtDto
@@ -29,6 +30,13 @@ namespace Yamore.Model
         public int Month { get; set; }
         public decimal Revenue { get; set; }
         public int BookingCount { get; set; }
+    }
+
+    public class ReservationsByCityDto
+    {
+        public string CityName { get; set; } = null!;
+        public int ReservationCount { get; set; }
+        public decimal Revenue { get; set; }
     }
 
     /// <summary>Owner dashboard: bookings and revenue for owner's yachts.</summary>

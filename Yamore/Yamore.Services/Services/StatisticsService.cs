@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
 using Yamore.Model;
 using Yamore.Services.Database;
 using Yamore.Services.Interfaces;
@@ -31,14 +32,22 @@ namespace Yamore.Services.Services
             var yachtsCount = _context.Yachts.Count(y => y.StateMachine == "active");
             var reportedReviewsCount = _context.Reviews.Count(r => r.IsReported);
 
+            // Group by scalar keys only (YachtId + YachtName) so EF Core can translate it.
             var yachtBookings = completedReservations
-                .GroupBy(r => new { r.YachtId, r.Yacht })
+                .Where(r => r.Yacht != null)
+                .Select(r => new
+                {
+                    r.YachtId,
+                    YachtName = r.Yacht.Name,
+                    r.TotalPrice
+                })
+                .GroupBy(x => new { x.YachtId, x.YachtName })
                 .Select(g => new PopularYachtDto
                 {
                     YachtId = g.Key.YachtId,
-                    YachtName = g.Key.Yacht != null ? g.Key.Yacht.Name : "",
+                    YachtName = g.Key.YachtName ?? string.Empty,
                     BookingCount = g.Count(),
-                    TotalRevenue = g.Sum(r => r.TotalPrice ?? 0)
+                    TotalRevenue = g.Sum(x => x.TotalPrice ?? 0)
                 })
                 .OrderByDescending(x => x.BookingCount)
                 .Take(10)
@@ -57,6 +66,24 @@ namespace Yamore.Services.Services
                 .OrderBy(x => x.Year).ThenBy(x => x.Month)
                 .ToList();
 
+            // Project first, then group by scalar CityName to avoid grouping on a complex EF Core shaper expression.
+            var reservationsByCity = completedReservations
+                .Where(r => r.Yacht != null && r.Yacht.Location != null)
+                .Select(r => new
+                {
+                    CityName = r.Yacht.Location.Name,
+                    r.TotalPrice
+                })
+                .GroupBy(x => x.CityName)
+                .Select(g => new ReservationsByCityDto
+                {
+                    CityName = g.Key,
+                    ReservationCount = g.Count(),
+                    Revenue = g.Sum(x => x.TotalPrice ?? 0)
+                })
+                .OrderByDescending(x => x.ReservationCount)
+                .ToList();
+
             return new StatisticsDto
             {
                 TotalBookings = totalBookings,
@@ -65,7 +92,8 @@ namespace Yamore.Services.Services
                 YachtsCount = yachtsCount,
                 ReportedReviewsCount = reportedReviewsCount,
                 MostPopularYachts = yachtBookings,
-                RevenueByMonth = revenueByMonth
+                RevenueByMonth = revenueByMonth,
+                ReservationsByCity = reservationsByCity
             };
         }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/auth_service.dart';
 import '../login/login_screen.dart';
+import 'admin_home_screen.dart';
 import 'yacht_review_screen.dart';
 
 class AdminShell extends StatefulWidget {
@@ -150,7 +151,7 @@ class _AdminShellState extends State<AdminShell> {
   Widget _buildContent() {
     switch (_selectedIndex) {
       case 0:
-        return const Center(child: Text('Home', style: TextStyle(fontSize: 18)));
+        return AdminHomeScreen(authService: widget.authService);
       case 1:
         return const Center(child: Text('Users', style: TextStyle(fontSize: 18)));
       case 2:
