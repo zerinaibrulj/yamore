@@ -105,5 +105,14 @@ namespace Yamore.API.Controllers
             Response.Headers["X-Operation-Message"] = "Registration successful.";
             return Ok(user);
         }
+
+        [HttpGet("owners")]
+        [Authorize(Roles = "Admin")]
+        public object GetOwners()
+        {
+            var owners = _usersService.GetOwners();
+            // Wrap in an object so the client can reuse the standard { resultList: [...] } shape.
+            return new { resultList = owners };
+        }
     }
 }

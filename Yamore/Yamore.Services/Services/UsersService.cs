@@ -188,5 +188,39 @@ namespace Yamore.Services.Services
             }
             return user;
         }
+
+        public List<Model.LoginResponseDto> GetOwners()
+        {
+            // For admin dropdowns we simply return ALL users,
+            // together with their roles. The UI can decide how to filter.
+            var list = Context.Users
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .ToList();
+
+            var result = new List<Model.LoginResponseDto>();
+            foreach (var u in list)
+            {
+                var roles = u.UserRoles
+                    .Where(ur => ur.Role != null)
+                    .Select(ur => ur.Role.Name)
+                    .Where(n => !string.IsNullOrWhiteSpace(n))
+                    .Distinct()
+                    .ToList()!;
+
+                result.Add(new Model.LoginResponseDto
+                {
+                    UserId = u.UserId,
+                    FirstName = u.FirstName,
+                    LastName = u.LastName,
+                    Email = u.Email,
+                    Username = u.Username,
+                    Status = u.Status,
+                    Roles = roles
+                });
+            }
+
+            return result;
+        }
     }
 }

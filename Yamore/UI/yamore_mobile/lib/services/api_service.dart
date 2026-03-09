@@ -4,6 +4,7 @@ import '../models/yacht_overview.dart';
 import '../models/yacht_detail.dart';
 import '../models/city.dart';
 import '../models/yacht_category.dart';
+import '../models/user.dart';
 
 class ApiService {
   final String baseUrl;
@@ -138,6 +139,21 @@ class ApiService {
     return list
         .map((e) => YachtCategoryModel.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  /// All users who have the YachtOwner/Owner role, sorted by display name.
+  Future<List<AppUser>> getOwners() async {
+    final uri = Uri.parse('$baseUrl/Users/owners');
+    final response = await http.get(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final list = json['resultList'] as List<dynamic>? ?? [];
+    final users =
+        list.map((e) => AppUser.fromJson(e as Map<String, dynamic>)).toList();
+    users.sort((a, b) => a.displayName.compareTo(b.displayName));
+    return users;
   }
 }
 

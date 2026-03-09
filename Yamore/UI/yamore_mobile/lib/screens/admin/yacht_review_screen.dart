@@ -4,6 +4,7 @@ import '../../models/yacht_overview.dart';
 import '../../models/yacht_detail.dart';
 import '../../models/city.dart';
 import '../../models/yacht_category.dart';
+import '../../models/user.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 
@@ -33,6 +34,7 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
   // lookups
   List<CityModel> _cities = [];
   List<YachtCategoryModel> _categories = [];
+  List<AppUser> _owners = [];
 
   // filters
   final TextEditingController _searchNameController = TextEditingController();
@@ -101,6 +103,10 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
       setState(() {
         _cities = cities;
         _categories = cats;
+      });
+      final owners = await _api.getOwners();
+      setState(() {
+        _owners = owners;
       });
     } catch (_) {
       // keep working even if lookups fail
@@ -330,6 +336,7 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
         api: _api,
         cities: _cities,
         categories: _categories,
+        owners: _owners,
       ),
     );
     if (created == true) {
@@ -348,6 +355,7 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
           initial: detail,
           cities: _cities,
           categories: _categories,
+          owners: _owners,
         ),
       );
       if (updated == true) {
@@ -397,6 +405,7 @@ class YachtFormDialog extends StatefulWidget {
   final YachtDetail? initial;
   final List<CityModel> cities;
   final List<YachtCategoryModel> categories;
+  final List<AppUser> owners;
 
   const YachtFormDialog({
     super.key,
@@ -405,6 +414,7 @@ class YachtFormDialog extends StatefulWidget {
     this.initial,
     required this.cities,
     required this.categories,
+    required this.owners,
   });
 
   @override
@@ -427,6 +437,7 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
   late TextEditingController _description;
 
   bool _saving = false;
+  AppUser? _selectedOwner;
 
   @override
   void initState() {
@@ -443,6 +454,20 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
     _locationId = TextEditingController(text: y?.locationId.toString() ?? '');
     _categoryId = TextEditingController(text: y?.categoryId.toString() ?? '');
     _description = TextEditingController(text: y?.description ?? '');
+
+    if (widget.owners.isNotEmpty) {
+      if (y?.ownerId != null) {
+        try {
+          _selectedOwner =
+              widget.owners.firstWhere((o) => o.userId == y!.ownerId);
+        } catch (_) {
+          _selectedOwner = widget.owners.first;
+        }
+      } else {
+        _selectedOwner = widget.owners.first;
+      }
+      _ownerId.text = _selectedOwner!.userId.toString();
+    }
   }
 
   @override
@@ -517,10 +542,24 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                   decoration: const InputDecoration(labelText: 'Name'),
                   validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
                 ),
-                TextFormField(
-                  controller: _ownerId,
-                  decoration: const InputDecoration(labelText: 'Owner ID'),
-                  keyboardType: TextInputType.number,
+                DropdownButtonFormField<AppUser>(
+                  value: _selectedOwner,
+                  decoration: const InputDecoration(labelText: 'Owner'),
+                  items: widget.owners
+                      .map(
+                        (o) => DropdownMenuItem<AppUser>(
+                          value: o,
+                          child: Text('${o.displayName} (${o.username})'),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      _selectedOwner = val;
+                      _ownerId.text = val?.userId.toString() ?? '';
+                    });
+                  },
+                  validator: (v) => v == null ? 'Select owner' : null,
                 ),
                 DropdownButtonFormField<int>(
                   value: int.tryParse(_year.text),
