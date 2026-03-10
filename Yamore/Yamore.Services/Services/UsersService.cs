@@ -191,11 +191,34 @@ namespace Yamore.Services.Services
             {
                 throw new Exception("Password and password confirmation must match!");
             }
-      
+
             entity.PasswordSalt = GenerateSalt();
             entity.PasswordHash = GenerateHash(entity.PasswordSalt, request.Password);
 
             base.BeforeInsret(request, entity);
+        }
+
+        public override Model.User Insert(UserInsertRequest request)
+        {
+            var user = base.Insert(request);
+
+            if (!string.IsNullOrWhiteSpace(request.RoleName))
+            {
+                var roleName = request.RoleName!.Trim();
+                var role = Context.Roles.FirstOrDefault(r => r.Name == roleName);
+                if (role != null)
+                {
+                    Context.UserRoles.Add(new Database.UserRole
+                    {
+                        UserId = user.UserId,
+                        RoleId = role.RoleId,
+                        DateModification = DateTime.UtcNow
+                    });
+                    Context.SaveChanges();
+                }
+            }
+
+            return user;
         }
 
 
@@ -296,6 +319,7 @@ namespace Yamore.Services.Services
 
         public Model.User Register(UserInsertRequest request)
         {
+            // For public registration, fall back to default User / EndUser role.
             var user = Insert(request);
             var userRole = Context.Roles.FirstOrDefault(r => r.Name == "User" || r.Name == "EndUser");
             if (userRole != null)

@@ -213,6 +213,7 @@ class ApiService {
     required String username,
     required String password,
     bool status = true,
+    String? roleName,
   }) async {
     final uri = Uri.parse('$baseUrl/Users');
     final body = <String, dynamic>{
@@ -225,6 +226,9 @@ class ApiService {
       'PasswordConfirmation': password,
       'Status': status,
     };
+    if (roleName != null && roleName.isNotEmpty) {
+      body['RoleName'] = roleName;
+    }
     final response = await http.post(
       uri,
       headers: _headers,

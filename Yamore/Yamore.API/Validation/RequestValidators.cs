@@ -82,6 +82,11 @@ public sealed class UserInsertRequestValidator : AbstractValidator<UserInsertReq
         RuleFor(x => x.PasswordConfirmation)
             .NotEmpty().WithMessage(ValidationMessages.Required("Confirm password"))
             .Equal(x => x.Password).WithMessage("Password and confirmation password must match.");
+
+        RuleFor(x => x.RoleName)
+            .MaximumLength(50)
+            .WithMessage(ValidationMessages.MaxLength("Role", 50))
+            .When(x => !string.IsNullOrWhiteSpace(x.RoleName));
     }
 }
 

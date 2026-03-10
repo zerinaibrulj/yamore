@@ -484,7 +484,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       context: context,
       builder: (context) {
         return _UserDialog(
-          onSave: (firstName, lastName, email, phone, username, password, status) async {
+          onSave: (firstName, lastName, email, phone, username, password,
+              status, roleName) async {
             await _api.createUser(
               firstName: firstName,
               lastName: lastName,
@@ -493,6 +494,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
               username: username,
               password: password,
               status: status,
+              roleName: roleName,
             );
           },
         );
@@ -516,7 +518,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       builder: (context) {
         return _UserDialog(
           existingUser: user,
-          onSave: (firstName, lastName, email, phone, username, password, status) async {
+          onSave: (firstName, lastName, email, phone, username, password,
+              status, roleName) async {
             await _api.updateUser(
               userId: user.userId,
               firstName: firstName,
@@ -671,7 +674,7 @@ Future<void> _showSuccessDialog(
 class _UserDialog extends StatefulWidget {
   final AppUser? existingUser;
   final Future<void> Function(String firstName, String lastName, String? email,
-      String? phone, String username, String password, bool status) onSave;
+      String? phone, String username, String password, bool status, String? roleName) onSave;
 
   const _UserDialog({
     this.existingUser,
@@ -697,11 +700,23 @@ class _UserDialogState extends State<_UserDialog> {
 
   bool _status = true;
   bool _saving = false;
+  String _selectedRole = 'User';
 
   @override
   void initState() {
     super.initState();
     _status = widget.existingUser?.status ?? true;
+    if (widget.existingUser != null) {
+      if (widget.existingUser!.isAdmin) {
+        _selectedRole = 'Admin';
+      } else if (widget.existingUser!.isYachtOwner) {
+        _selectedRole = 'YachtOwner';
+      } else {
+        _selectedRole = 'User';
+      }
+    } else {
+      _selectedRole = 'User';
+    }
   }
 
   @override
@@ -731,6 +746,32 @@ class _UserDialogState extends State<_UserDialog> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _selectedRole,
+                decoration: const InputDecoration(labelText: 'Role'),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'User',
+                    child: Text('Guest / End user'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'YachtOwner',
+                    child: Text('Yacht owner'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'Admin',
+                    child: Text('Admin'),
+                  ),
+                ],
+                onChanged: widget.existingUser == null
+                    ? (val) {
+                        setState(() {
+                          _selectedRole = val ?? 'User';
+                        });
+                      }
+                    : null,
               ),
               const SizedBox(height: 12),
               TextField(
@@ -825,6 +866,7 @@ class _UserDialogState extends State<_UserDialog> {
                       username,
                       password,
                       _status,
+                      widget.existingUser == null ? _selectedRole : null,
                     );
                     if (context.mounted) {
                       Navigator.of(context).pop(true);
