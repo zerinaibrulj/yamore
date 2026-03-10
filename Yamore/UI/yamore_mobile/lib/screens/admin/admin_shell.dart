@@ -39,6 +39,11 @@ class _AdminShellState extends State<AdminShell> {
       selectedIcon: Icons.description,
       label: 'Reports',
     ),
+    _NavItem(
+      icon: Icons.settings_outlined,
+      selectedIcon: Icons.settings,
+      label: 'Settings',
+    ),
   ];
 
   @override
@@ -116,6 +121,9 @@ class _AdminShellState extends State<AdminShell> {
       case 3:
         sectionTitle = 'Reports';
         break;
+      case 4:
+        sectionTitle = 'Settings';
+        break;
       default:
         sectionTitle = 'Yamore';
     }
@@ -136,47 +144,32 @@ class _AdminShellState extends State<AdminShell> {
             ),
           ),
           const Spacer(),
-          Stack(
-            clipBehavior: Clip.none,
+          Row(
             children: [
-              IconButton(
-                icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-                onPressed: () {},
+              const Icon(Icons.person_outline, color: Colors.white, size: 20),
+              const SizedBox(width: 6),
+              const Text(
+                'Administrator',
+                style: TextStyle(color: Colors.white, fontSize: 14),
               ),
-              Positioned(
-                right: 8,
-                top: 8,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: Colors.orange,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Text(
-                    '2',
-                    style: TextStyle(color: Colors.white, fontSize: 10),
-                  ),
+              const SizedBox(width: 16),
+              TextButton.icon(
+                onPressed: () {
+                  widget.authService.logout();
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  );
+                },
+                icon: const Icon(Icons.logout, size: 18, color: Colors.white),
+                label: const Text(
+                  'Logout',
+                  style: TextStyle(color: Colors.white),
+                ),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white,
                 ),
               ),
             ],
-          ),
-          const SizedBox(width: 8),
-          const Text(
-            'Administrator',
-            style: TextStyle(color: Colors.white, fontSize: 14),
-          ),
-          TextButton(
-            onPressed: () {},
-            child: const Text('Settings', style: TextStyle(color: Colors.white70, fontSize: 12)),
-          ),
-          IconButton(
-            icon: const Icon(Icons.person_outline, color: Colors.white),
-            onPressed: () {
-              widget.authService.logout();
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-              );
-            },
           ),
         ],
       ),
@@ -193,6 +186,14 @@ class _AdminShellState extends State<AdminShell> {
         return YachtReviewScreen(authService: widget.authService);
       case 3:
         return const Center(child: Text('Reports', style: TextStyle(fontSize: 18)));
+      case 4:
+        return const Center(
+          child: Text(
+            'Settings\n\nHere you can configure admin preferences and global options in the future.',
+            style: TextStyle(fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
+        );
       default:
         return YachtReviewScreen(authService: widget.authService);
     }
