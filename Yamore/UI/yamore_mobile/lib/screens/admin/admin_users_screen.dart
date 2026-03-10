@@ -271,7 +271,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                showCheckboxColumn: true,
+                showCheckboxColumn: false,
                 headingRowColor: WidgetStateProperty.all(AppTheme.primaryBlue),
                 headingTextStyle: const TextStyle(
                   color: Colors.white,
@@ -279,6 +279,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                   fontSize: 13,
                 ),
                 columns: const [
+                  DataColumn(label: Text('No.')),
                   DataColumn(label: Text('First Name')),
                   DataColumn(label: Text('Last Name')),
                   DataColumn(label: Text('Email')),
@@ -288,8 +289,15 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                   DataColumn(label: Text('')),
                 ],
                 rows: _users
+                    .asMap()
+                    .entries
                     .map(
-                      (u) => DataRow(
+                      (entry) {
+                        final index = entry.key;
+                        final u = entry.value;
+                        final displayIndex =
+                            _currentPage * _pageSize + index + 1;
+                        return DataRow(
                         selected: _selectedUserId == u.userId,
                         onSelectChanged: (selected) {
                           setState(() {
@@ -298,6 +306,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                           });
                         },
                         cells: [
+                          DataCell(Text('$displayIndex.')),
                           DataCell(Text(u.firstName)),
                           DataCell(Text(u.lastName)),
                           DataCell(Text(u.email ?? '—')),
@@ -363,8 +372,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                             ),
                           ),
                         ],
-                      ),
-                    )
+                      );
+                    })
                     .toList(),
               ),
             ),

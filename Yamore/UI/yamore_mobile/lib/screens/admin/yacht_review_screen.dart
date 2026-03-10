@@ -198,7 +198,7 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                showCheckboxColumn: true,
+                showCheckboxColumn: false,
                 headingRowColor:
                     WidgetStateProperty.all(AppTheme.primaryBlue),
                 headingTextStyle: const TextStyle(
@@ -207,6 +207,7 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
                   fontSize: 13,
                 ),
                 columns: const [
+                  DataColumn(label: Text('No.')),
                   DataColumn(label: Text('Name')),
                   DataColumn(label: Text('Location')),
                   DataColumn(label: Text('Owner')),
@@ -217,8 +218,15 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
                   DataColumn(label: Text('')),
                 ],
                 rows: _yachts
+                    .asMap()
+                    .entries
                     .map(
-                      (y) => DataRow(
+                      (entry) {
+                        final index = entry.key;
+                        final y = entry.value;
+                        final displayIndex =
+                            _currentPage * _pageSize + index + 1;
+                        return DataRow(
                         selected: _selectedYachtId == y.yachtId,
                         onSelectChanged: (selected) {
                           setState(() {
@@ -227,6 +235,7 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
                           });
                         },
                         cells: [
+                          DataCell(Text('$displayIndex.')),
                           DataCell(Text(y.name)),
                           DataCell(Text(y.locationName ?? '—')),
                           DataCell(Text(y.ownerName ?? '—')),
@@ -235,7 +244,7 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
                               ? '${y.length!.toStringAsFixed(2)} m'
                               : '—')),
                           DataCell(Text('${y.capacity}')),
-                          DataCell(Text('€${y.pricePerDay.toStringAsFixed(0)}')),
+                          DataCell(Text(_formatEuroPrice(y.pricePerDay))),
                           DataCell(
                             Row(
                               children: [
@@ -254,8 +263,8 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
                             ),
                           ),
                         ],
-                      ),
-                    )
+                      );
+                    })
                     .toList(),
               ),
             ),
@@ -837,6 +846,23 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
       ],
     );
   }
+}
+
+String _formatEuroPrice(double value) {
+  final intVal = value.round();
+  final raw = intVal.toString();
+  final buffer = StringBuffer();
+  int count = 0;
+  for (int i = raw.length - 1; i >= 0; i--) {
+    buffer.write(raw[i]);
+    count++;
+    if (count == 3 && i != 0) {
+      buffer.write('.');
+      count = 0;
+    }
+  }
+  final withDots = buffer.toString().split('').reversed.join();
+  return '€$withDots';
 }
 
 Future<void> _showSuccessDialog(
