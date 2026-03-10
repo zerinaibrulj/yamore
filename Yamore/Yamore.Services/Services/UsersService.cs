@@ -201,6 +201,20 @@ namespace Yamore.Services.Services
 
         public override void BeforeUpdate(UserUpdateRequest request, Database.User entity)
         {
+            // Enforce unique email if it is being changed.
+            if (!string.IsNullOrWhiteSpace(request.Email) &&
+                !string.Equals(request.Email!.Trim(), entity.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                var email = request.Email.Trim();
+                var emailInUse = Context.Users
+                    .Any(u => u.UserId != entity.UserId && u.Email != null && u.Email == email);
+
+                if (emailInUse)
+                {
+                    throw new UserException("The specified email address is already in use by another user.");
+                }
+            }
+
             base.BeforeUpdate(request, entity);
 
             if (request.Password != null)

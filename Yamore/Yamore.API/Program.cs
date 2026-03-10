@@ -18,10 +18,17 @@ using Yamore.Services.YachtStateMachine;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure Mapster mapping to avoid cycles between User and UserRole.
+// Configure Mapster mappings.
+// 1) Avoid cycles between User and UserRole.
 TypeAdapterConfig<Yamore.Services.Database.UserRole, Yamore.Model.UserRole>
     .NewConfig()
     .Ignore(dest => dest.User);
+
+// 2) For User updates, ignore null values so that fields not sent
+//    from the client (like Email/Username) do not overwrite existing data.
+TypeAdapterConfig<Yamore.Model.Requests.User.UserUpdateRequest, Yamore.Services.Database.User>
+    .NewConfig()
+    .IgnoreNullValues(true);
 
 // READ allowed origins from configuration (appsettings or environment)
 var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();

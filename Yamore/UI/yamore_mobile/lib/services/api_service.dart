@@ -254,6 +254,9 @@ class ApiService {
       'Phone': phone,
       'Status': status,
     };
+    if (email != null && email.isNotEmpty) {
+      body['Email'] = email;
+    }
     if (password != null && password.isNotEmpty) {
       body['Password'] = password;
       body['PasswordConfirmation'] = password;

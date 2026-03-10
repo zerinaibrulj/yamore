@@ -99,6 +99,12 @@ public sealed class UserUpdateRequestValidator : AbstractValidator<UserUpdateReq
             .MinimumLength(2).WithMessage(ValidationMessages.MinLength("Last name", 2))
             .MaximumLength(50).WithMessage(ValidationMessages.MaxLength("Last name", 50));
 
+        RuleFor(x => x.Email)
+            .Cascade(CascadeMode.Stop)
+            .MaximumLength(100).WithMessage(ValidationMessages.MaxLength("Email", 100))
+            .EmailAddress().WithMessage("Please enter a valid email address (example: name@example.com).")
+            .When(x => !string.IsNullOrWhiteSpace(x.Email));
+
         RuleFor(x => x.Phone)
             .Cascade(CascadeMode.Stop)
             .Matches(ValidationPatterns.Phone)
