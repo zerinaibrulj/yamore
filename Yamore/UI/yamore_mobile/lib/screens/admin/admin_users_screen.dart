@@ -491,6 +491,13 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     );
     if (created == true) {
       await _loadUsers();
+      if (mounted) {
+        await _showSuccessDialog(
+          context,
+          title: 'User created',
+          message: 'The new user has been added successfully.',
+        );
+      }
     }
   }
 
@@ -516,6 +523,13 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     );
     if (updated == true) {
       await _loadUsers();
+      if (mounted) {
+        await _showSuccessDialog(
+          context,
+          title: 'User updated',
+          message: 'The user has been updated successfully.',
+        );
+      }
     }
   }
 
@@ -545,6 +559,13 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       try {
         await _api.deleteUser(user.userId);
         await _loadUsers();
+        if (mounted) {
+          await _showSuccessDialog(
+            context,
+            title: 'User deleted',
+            message: 'The user has been deleted successfully.',
+          );
+        }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to delete user: $e')),
@@ -572,6 +593,70 @@ String _formatPhone(String? raw) {
   }
   final reversed = buffer.toString().split('').reversed.join();
   return reversed;
+}
+
+Future<void> _showSuccessDialog(
+  BuildContext context, {
+  required String title,
+  required String message,
+}) async {
+  return showDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    builder: (context) {
+      return Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 360, vertical: 240),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color(0xFF4CAF50),
+                    ),
+                    padding: const EdgeInsets.all(8),
+                    child: const Icon(
+                      Icons.check,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                message,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 20),
+              Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  child: const Text('OK'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
 }
 
 class _UserDialog extends StatefulWidget {

@@ -16,28 +16,28 @@ class AdminShell extends StatefulWidget {
 }
 
 class _AdminShellState extends State<AdminShell> {
-  int _selectedIndex = 2; // Yachts selected by default
+  int _selectedIndex = 0; // Home selected by default
 
-  static const List<NavigationRailDestination> destinations = [
-    NavigationRailDestination(
-      icon: Icon(Icons.home_outlined),
-      selectedIcon: Icon(Icons.home),
-      label: Text('Home'),
+  static const List<_NavItem> _items = [
+    _NavItem(
+      icon: Icons.home_outlined,
+      selectedIcon: Icons.home,
+      label: 'Home',
     ),
-    NavigationRailDestination(
-      icon: Icon(Icons.people_outline),
-      selectedIcon: Icon(Icons.people),
-      label: Text('Users'),
+    _NavItem(
+      icon: Icons.people_outline,
+      selectedIcon: Icons.people,
+      label: 'Users',
     ),
-    NavigationRailDestination(
-      icon: Icon(Icons.directions_boat_outlined),
-      selectedIcon: Icon(Icons.directions_boat),
-      label: Text('Yachts'),
+    _NavItem(
+      icon: Icons.directions_boat_outlined,
+      selectedIcon: Icons.directions_boat,
+      label: 'Yachts',
     ),
-    NavigationRailDestination(
-      icon: Icon(Icons.description_outlined),
-      selectedIcon: Icon(Icons.description),
-      label: Text('Reports'),
+    _NavItem(
+      icon: Icons.description_outlined,
+      selectedIcon: Icons.description,
+      label: 'Reports',
     ),
   ];
 
@@ -52,12 +52,33 @@ class _AdminShellState extends State<AdminShell> {
             selectedIndex: _selectedIndex,
             onDestinationSelected: (index) => setState(() => _selectedIndex = index),
             labelType: NavigationRailLabelType.none,
-            destinations: destinations
+            leading: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.sailing, color: Colors.white, size: 28),
+                    SizedBox(height: 8),
+                    Text(
+                      'Yamore',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            destinations: _items
                 .map(
-                  (d) => NavigationRailDestination(
-                    icon: d.icon,
-                    selectedIcon: d.selectedIcon,
-                    label: d.label,
+                  (item) => NavigationRailDestination(
+                    icon: Icon(item.icon),
+                    selectedIcon: Icon(item.selectedIcon),
+                    label: Text(item.label),
                   ),
                 )
                 .toList(),
@@ -81,9 +102,27 @@ class _AdminShellState extends State<AdminShell> {
   }
 
   Widget _buildTopBar(BuildContext context) {
+    String sectionTitle;
+    switch (_selectedIndex) {
+      case 0:
+        sectionTitle = 'Home';
+        break;
+      case 1:
+        sectionTitle = 'Users';
+        break;
+      case 2:
+        sectionTitle = 'Yachts';
+        break;
+      case 3:
+        sectionTitle = 'Reports';
+        break;
+      default:
+        sectionTitle = 'Yamore';
+    }
+
     return Container(
       height: 56,
-      color: AppTheme.navBackground,
+      color: AppTheme.navBackgroundLight,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
@@ -92,13 +131,13 @@ class _AdminShellState extends State<AdminShell> {
             onPressed: () {},
           ),
           const SizedBox(width: 8),
-          const Text(
-            'Yamore',
-            style: TextStyle(
+          Text(
+            sectionTitle,
+            style: const TextStyle(
               color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.w300,
-              letterSpacing: 0.5,
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0.3,
             ),
           ),
           const Spacer(),
@@ -163,4 +202,16 @@ class _AdminShellState extends State<AdminShell> {
         return YachtReviewScreen(authService: widget.authService);
     }
   }
+}
+
+class _NavItem {
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+
+  const _NavItem({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+  });
 }

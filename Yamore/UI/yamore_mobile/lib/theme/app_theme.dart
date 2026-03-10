@@ -19,10 +19,22 @@ class AppTheme {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      navigationRailTheme: const NavigationRailThemeData(
+      navigationRailTheme: NavigationRailThemeData(
         backgroundColor: navBackground,
-        selectedIconTheme: IconThemeData(color: Colors.white),
-        unselectedIconTheme: IconThemeData(color: Colors.white70),
+        selectedIconTheme: const IconThemeData(color: Colors.white),
+        unselectedIconTheme: const IconThemeData(color: Colors.white70),
+        selectedLabelTextStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelTextStyle: const TextStyle(
+          color: Colors.white70,
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+        ),
+        indicatorColor: Colors.white.withOpacity(0.18),
+        indicatorShape: const StadiumBorder(),
       ),
     );
   }
