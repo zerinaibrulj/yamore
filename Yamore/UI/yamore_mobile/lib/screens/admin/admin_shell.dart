@@ -58,14 +58,14 @@ class _AdminShellState extends State<AdminShell> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: const [
-                    Icon(Icons.sailing, color: Colors.white, size: 28),
-                    SizedBox(height: 8),
+                    Icon(Icons.sailing, color: Colors.white, size: 30),
+                    SizedBox(height: 10),
                     Text(
                       'Yamore',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -126,17 +126,12 @@ class _AdminShellState extends State<AdminShell> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white),
-            onPressed: () {},
-          ),
-          const SizedBox(width: 8),
           Text(
             sectionTitle,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
               letterSpacing: 0.3,
             ),
           ),
