@@ -29,6 +29,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   int? _totalCount;
   int _currentPage = 0;
   final int _pageSize = 10;
+  int? _selectedUserId;
   bool _loading = true;
   String? _error;
 
@@ -270,6 +271,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
+                showCheckboxColumn: true,
                 headingRowColor: WidgetStateProperty.all(AppTheme.primaryBlue),
                 headingTextStyle: const TextStyle(
                   color: Colors.white,
@@ -288,16 +290,18 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 rows: _users
                     .map(
                       (u) => DataRow(
+                        selected: _selectedUserId == u.userId,
                         onSelectChanged: (selected) {
-                          if (selected == true) {
-                            _openEditUserDialog(u);
-                          }
+                          setState(() {
+                            _selectedUserId =
+                                selected == true ? u.userId : null;
+                          });
                         },
                         cells: [
                           DataCell(Text(u.firstName)),
                           DataCell(Text(u.lastName)),
                           DataCell(Text(u.email ?? '—')),
-                          DataCell(Text(u.phone ?? '—')),
+                          DataCell(Text(_formatPhone(u.phone))),
                           DataCell(
                             Wrap(
                               spacing: 4,
@@ -367,42 +371,84 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              total == 0
-                  ? 'No records'
-                  : 'Showing $start–$end of $total (page ${_currentPage + 1}/$totalPages)',
-              style: const TextStyle(fontSize: 12),
-            ),
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.chevron_left),
-                  onPressed: _currentPage > 0
-                      ? () {
-                          setState(() {
-                            _currentPage--;
-                          });
-                          _loadUsers();
-                        }
-                      : null,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.chevron_right),
-                  onPressed: (_currentPage + 1) < totalPages
-                      ? () {
-                          setState(() {
-                            _currentPage++;
-                          });
-                          _loadUsers();
-                        }
-                      : null,
-                ),
-              ],
-            ),
-          ],
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    total == 0
+                        ? 'No records'
+                        : 'Showing $start–$end of $total',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  if (total > 0) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      'Page ${_currentPage + 1} of $totalPages',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              Row(
+                children: [
+                  Text(
+                    'Rows per page: $_pageSize',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  const SizedBox(width: 12),
+                  IconButton.filledTonal(
+                    style: IconButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    icon: const Icon(Icons.chevron_left),
+                    onPressed: _currentPage > 0
+                        ? () {
+                            setState(() {
+                              _currentPage--;
+                            });
+                            _loadUsers();
+                          }
+                        : null,
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton.filledTonal(
+                    style: IconButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    icon: const Icon(Icons.chevron_right),
+                    onPressed: (_currentPage + 1) < totalPages
+                        ? () {
+                            setState(() {
+                              _currentPage++;
+                            });
+                            _loadUsers();
+                          }
+                        : null,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -506,6 +552,26 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       }
     }
   }
+}
+
+String _formatPhone(String? raw) {
+  if (raw == null || raw.trim().isEmpty) return '—';
+  final cleaned = raw.replaceAll(RegExp(r'\s+'), '');
+  if (cleaned.length <= 4) return cleaned;
+
+  // Group digits from the right into blocks of 3: 123456789 -> 123 456 789
+  final buffer = StringBuffer();
+  int count = 0;
+  for (int i = cleaned.length - 1; i >= 0; i--) {
+    buffer.write(cleaned[i]);
+    count++;
+    if (count == 3 && i != 0) {
+      buffer.write(' ');
+      count = 0;
+    }
+  }
+  final reversed = buffer.toString().split('').reversed.join();
+  return reversed;
 }
 
 class _UserDialog extends StatefulWidget {

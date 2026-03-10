@@ -109,16 +109,29 @@ namespace Yamore.Services.Services
         {
             var filteredQuery = base.AddFilter(search, query);
 
-            if (!string.IsNullOrWhiteSpace(search?.FirstNameGTE))
+            // Name search: when both FirstNameGTE and LastNameGTE are provided (as in the admin UI),
+            // treat them as a single search term that matches either first OR last name.
+            if (!string.IsNullOrWhiteSpace(search?.FirstNameGTE) &&
+                !string.IsNullOrWhiteSpace(search.LastNameGTE) &&
+                string.Equals(search.FirstNameGTE!.Trim(), search.LastNameGTE!.Trim(), StringComparison.OrdinalIgnoreCase))
             {
-                var first = search.FirstNameGTE.Trim();
-                filteredQuery = filteredQuery.Where(x => x.FirstName.StartsWith(first));
+                var term = search.FirstNameGTE.Trim();
+                filteredQuery = filteredQuery.Where(x =>
+                    x.FirstName.StartsWith(term) || x.LastName.StartsWith(term));
             }
-
-            if (!string.IsNullOrWhiteSpace(search?.LastNameGTE))
+            else
             {
-                var last = search.LastNameGTE.Trim();
-                filteredQuery = filteredQuery.Where(x => x.LastName.StartsWith(last));
+                if (!string.IsNullOrWhiteSpace(search?.FirstNameGTE))
+                {
+                    var first = search.FirstNameGTE.Trim();
+                    filteredQuery = filteredQuery.Where(x => x.FirstName.StartsWith(first));
+                }
+
+                if (!string.IsNullOrWhiteSpace(search?.LastNameGTE))
+                {
+                    var last = search.LastNameGTE.Trim();
+                    filteredQuery = filteredQuery.Where(x => x.LastName.StartsWith(last));
+                }
             }
 
             if (!string.IsNullOrWhiteSpace(search?.Email))

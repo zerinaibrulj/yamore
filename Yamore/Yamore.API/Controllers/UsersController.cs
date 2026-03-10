@@ -150,9 +150,9 @@ namespace Yamore.API.Controllers
             {
                 FirstName = user.FirstName,
                 LastName = user.LastName,
-                //Email = user.Email,
+                Email = user.Email,
                 Phone = user.Phone,
-                //Username = user.Username,
+                Username = user.Username,
                 Status = true
             };
             var result = _usersService.Update(id, update);

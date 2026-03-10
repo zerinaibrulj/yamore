@@ -10,7 +10,11 @@ namespace Yamore.Model.Requests.User
 
         public string LastName { get; set; } = null!;
 
+        public string? Email { get; set; }
+
         public string? Phone { get; set; }
+
+        public string? Username { get; set; }
 
         /// <summary>
         /// Required only when a user changes their own password.
