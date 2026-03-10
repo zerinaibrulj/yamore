@@ -45,6 +45,10 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
   // selection
   int? _selectedYachtId;
 
+  // paging
+  int _currentPage = 0;
+  final int _pageSize = 10;
+
   @override
   void initState() {
     super.initState();
@@ -71,8 +75,8 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
           _priceMaxController.text.trim().isEmpty ? null : double.tryParse(_priceMaxController.text.trim());
 
       final paged = await _api.getYachtOverviewForAdmin(
-        page: 0,
-        pageSize: 50,
+        page: _currentPage,
+        pageSize: _pageSize,
         name: name,
         locationId: _selectedSearchLocationId,
         priceMin: priceMin,
@@ -178,61 +182,166 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
     if (_yachts.isEmpty) {
       return const Center(child: Text('No yachts found.'));
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.vertical,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          showCheckboxColumn: true,
-          headingRowColor: WidgetStateProperty.all(AppTheme.primaryBlue),
-          headingTextStyle: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
+
+    final total = _totalCount ?? _yachts.length;
+    final start = total == 0 ? 0 : _currentPage * _pageSize + 1;
+    final end = (_currentPage * _pageSize + _yachts.length).clamp(0, total);
+    final totalPages =
+        total == 0 ? 1 : ((total + _pageSize - 1) / _pageSize).floor();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                showCheckboxColumn: true,
+                headingRowColor:
+                    WidgetStateProperty.all(AppTheme.primaryBlue),
+                headingTextStyle: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+                columns: const [
+                  DataColumn(label: Text('Name')),
+                  DataColumn(label: Text('Location')),
+                  DataColumn(label: Text('Owner')),
+                  DataColumn(label: Text('Year')),
+                  DataColumn(label: Text('Length')),
+                  DataColumn(label: Text('Capacity')),
+                  DataColumn(label: Text('Price')),
+                  DataColumn(label: Text('')),
+                ],
+                rows: _yachts
+                    .map(
+                      (y) => DataRow(
+                        selected: _selectedYachtId == y.yachtId,
+                        onSelectChanged: (selected) {
+                          setState(() {
+                            _selectedYachtId =
+                                selected == true ? y.yachtId : null;
+                          });
+                        },
+                        cells: [
+                          DataCell(Text(y.name)),
+                          DataCell(Text(y.locationName ?? '—')),
+                          DataCell(Text(y.ownerName ?? '—')),
+                          DataCell(Text(y.yearBuilt?.toString() ?? '—')),
+                          DataCell(Text(y.length != null
+                              ? '${y.length!.toStringAsFixed(2)} m'
+                              : '—')),
+                          DataCell(Text('${y.capacity}')),
+                          DataCell(Text('€${y.pricePerDay.toStringAsFixed(0)}')),
+                          DataCell(
+                            Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit_outlined),
+                                  tooltip: 'Edit',
+                                  onPressed: () => _openEditYachtDialog(y),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline,
+                                      color: Colors.redAccent),
+                                  tooltip: 'Delete',
+                                  onPressed: () => _deleteYacht(y),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
           ),
-          columns: const [
-            DataColumn(label: Text('Name')),
-            DataColumn(label: Text('Location')),
-            DataColumn(label: Text('Owner')),
-            DataColumn(label: Text('Year')),
-            DataColumn(label: Text('Length')),
-            DataColumn(label: Text('Capacity')),
-            DataColumn(label: Text('Price')),
-            DataColumn(label: Text('')),
-          ],
-          rows: _yachts
-              .map(
-                (y) => DataRow(
-                  selected: _selectedYachtId == y.yachtId,
-                  onSelectChanged: (selected) {
-                    if (selected == true) {
-                      setState(() {
-                        _selectedYachtId = y.yachtId;
-                      });
-                      _openEditYachtDialog(y);
-                    }
-                  },
-                  cells: [
-                    DataCell(Text(y.name)),
-                    DataCell(Text(y.locationName ?? '—')),
-                    DataCell(Text(y.ownerName ?? '—')),
-                    DataCell(Text(y.yearBuilt?.toString() ?? '—')),
-                    DataCell(Text(y.length != null ? '${y.length!.toStringAsFixed(2)} m' : '—')),
-                    DataCell(Text('${y.capacity}')),
-                    DataCell(Text('€${y.pricePerDay.toStringAsFixed(0)}')),
-                    DataCell(
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                        tooltip: 'Delete',
-                        onPressed: () => _deleteYacht(y),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    total == 0
+                        ? 'No records'
+                        : 'Showing $start–$end of $total',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  if (total > 0) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      'Page ${_currentPage + 1} of $totalPages',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
                       ),
                     ),
                   ],
-                ),
-              )
-              .toList(),
+                ],
+              ),
+              Row(
+                children: [
+                  Text(
+                    'Rows per page: $_pageSize',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  const SizedBox(width: 12),
+                  IconButton.filledTonal(
+                    style: IconButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    icon: const Icon(Icons.chevron_left),
+                    onPressed: _currentPage > 0
+                        ? () {
+                            setState(() {
+                              _currentPage--;
+                            });
+                            _loadYachts();
+                          }
+                        : null,
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton.filledTonal(
+                    style: IconButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    icon: const Icon(Icons.chevron_right),
+                    onPressed: (_currentPage + 1) < totalPages
+                        ? () {
+                            setState(() {
+                              _currentPage++;
+                            });
+                            _loadYachts();
+                          }
+                        : null,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -305,7 +414,10 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
             ),
             const SizedBox(width: 16),
             FilledButton.icon(
-              onPressed: _loadYachts,
+              onPressed: () {
+                _currentPage = 0;
+                _loadYachts();
+              },
               icon: const Icon(Icons.filter_list),
               label: const Text('Apply'),
             ),
@@ -317,6 +429,7 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
                 _priceMaxController.clear();
                 setState(() {
                   _selectedSearchLocationId = null;
+                  _currentPage = 0;
                 });
                 _loadYachts();
               },
@@ -341,6 +454,13 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
     );
     if (created == true) {
       await _loadYachts();
+      if (mounted) {
+        await _showSuccessDialog(
+          context,
+          title: 'Yacht created',
+          message: 'The new yacht has been added successfully.',
+        );
+      }
     }
   }
 
@@ -360,6 +480,13 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
       );
       if (updated == true) {
         await _loadYachts();
+        if (mounted) {
+          await _showSuccessDialog(
+            context,
+            title: 'Yacht updated',
+            message: 'The yacht has been updated successfully.',
+          );
+        }
       }
     } on ApiException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -391,6 +518,13 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
     try {
       await _api.deleteYacht(y.yachtId);
       await _loadYachts();
+      if (mounted) {
+        await _showSuccessDialog(
+          context,
+          title: 'Yacht deleted',
+          message: 'The yacht has been deleted successfully.',
+        );
+      }
     } on ApiException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Delete failed: ${e.body}')),
@@ -703,4 +837,68 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
       ],
     );
   }
+}
+
+Future<void> _showSuccessDialog(
+  BuildContext context, {
+  required String title,
+  required String message,
+}) async {
+  return showDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    builder: (context) {
+      return Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 360, vertical: 240),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color(0xFF4CAF50),
+                    ),
+                    padding: const EdgeInsets.all(8),
+                    child: const Icon(
+                      Icons.check,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                message,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 20),
+              Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  child: const Text('OK'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
 }
