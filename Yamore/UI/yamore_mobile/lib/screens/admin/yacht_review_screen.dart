@@ -677,18 +677,26 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
           key: _formKey,
           autovalidateMode: AutovalidateMode.onUserInteraction,
           child: SizedBox(
-            width: 500,
+            width: 520,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextFormField(
                   controller: _name,
-                  decoration: const InputDecoration(labelText: 'Name'),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                  decoration: const InputDecoration(
+                    labelText: 'Name',
+                    prefixIcon: Icon(Icons.directions_boat_outlined),
+                  ),
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Required' : null,
                 ),
+                const SizedBox(height: 10),
                 DropdownButtonFormField<AppUser>(
                   value: _selectedOwner,
-                  decoration: const InputDecoration(labelText: 'Owner'),
+                  decoration: const InputDecoration(
+                    labelText: 'Owner',
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
                   items: widget.owners
                       .map(
                         (o) => DropdownMenuItem<AppUser>(
@@ -705,91 +713,152 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                   },
                   validator: (v) => v == null ? 'Select owner' : null,
                 ),
-                DropdownButtonFormField<int>(
-                  value: int.tryParse(_year.text),
-                  decoration: const InputDecoration(labelText: 'Year built'),
-                  items: List<int>.generate(
-                    40,
-                    (i) => DateTime.now().year - i,
-                  )
-                      .map(
-                        (y) => DropdownMenuItem<int>(
-                          value: y,
-                          child: Text(y.toString()),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: DropdownButtonFormField<int>(
+                        value: int.tryParse(_year.text),
+                        decoration: const InputDecoration(
+                          labelText: 'Year',
+                          prefixIcon: Icon(Icons.calendar_today_outlined),
                         ),
-                      )
-                      .toList(),
-                  onChanged: (val) {
-                    _year.text = (val ?? DateTime.now().year).toString();
-                  },
-                  validator: (v) => v == null ? 'Select year' : null,
-                ),
-                TextFormField(
-                  controller: _length,
-                  decoration: const InputDecoration(labelText: 'Length (m)'),
-                  keyboardType: TextInputType.number,
-                  validator: (v) => double.tryParse(v ?? '') == null ? 'Enter valid length' : null,
-                ),
-                DropdownButtonFormField<int>(
-                  value: int.tryParse(_capacity.text),
-                  decoration: const InputDecoration(labelText: 'Capacity (people)'),
-                  items: List<int>.generate(20, (i) => i + 1)
-                      .map(
-                        (c) => DropdownMenuItem<int>(
-                          value: c,
-                          child: Text(c.toString()),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (val) {
-                    _capacity.text = (val ?? 1).toString();
-                  },
-                  validator: (v) => v == null ? 'Select capacity' : null,
-                ),
-                DropdownButtonFormField<int>(
-                  value: int.tryParse(_cabins.text),
-                  decoration: const InputDecoration(labelText: 'Cabins'),
-                  items: List<int>.generate(10, (i) => i + 1)
-                      .map(
-                        (c) => DropdownMenuItem<int>(
-                          value: c,
-                          child: Text(c.toString()),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (val) {
-                    _cabins.text = (val ?? 1).toString();
-                  },
-                  validator: (v) => v == null ? 'Select cabins' : null,
-                ),
-                DropdownButtonFormField<int>(
-                  value: _bathrooms.text.isEmpty ? null : int.tryParse(_bathrooms.text),
-                  decoration: const InputDecoration(labelText: 'Bathrooms'),
-                  items: [
-                    const DropdownMenuItem<int>(
-                      value: null,
-                      child: Text('None'),
+                        items: List<int>.generate(
+                          40,
+                          (i) => DateTime.now().year - i,
+                        )
+                            .map(
+                              (y) => DropdownMenuItem<int>(
+                                value: y,
+                                child: Text(y.toString()),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) {
+                          _year.text =
+                              (val ?? DateTime.now().year).toString();
+                        },
+                        validator: (v) => v == null ? 'Year' : null,
+                      ),
                     ),
-                    ...List<int>.generate(8, (i) => i + 1).map(
-                      (b) => DropdownMenuItem<int>(
-                        value: b,
-                        child: Text(b.toString()),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: TextFormField(
+                        controller: _length,
+                        decoration: const InputDecoration(
+                          labelText: 'Length (m)',
+                          prefixIcon: Icon(Icons.straighten),
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: (v) => double.tryParse(v ?? '') == null
+                            ? 'Length'
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: DropdownButtonFormField<int>(
+                        value: int.tryParse(_capacity.text),
+                        decoration: const InputDecoration(
+                          labelText: 'Capacity',
+                          prefixIcon: Icon(Icons.people_outline),
+                        ),
+                        items: List<int>.generate(20, (i) => i + 1)
+                            .map(
+                              (c) => DropdownMenuItem<int>(
+                                value: c,
+                                child: Text(c.toString()),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) {
+                          _capacity.text = (val ?? 1).toString();
+                        },
+                        validator: (v) => v == null ? 'Capacity' : null,
                       ),
                     ),
                   ],
-                  onChanged: (val) {
-                    _bathrooms.text = val?.toString() ?? '';
-                  },
                 ),
-                TextFormField(
-                  controller: _price,
-                  decoration: const InputDecoration(labelText: 'Price per day (€)'),
-                  keyboardType: TextInputType.number,
-                  validator: (v) => double.tryParse(v ?? '') == null ? 'Enter valid price' : null,
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: DropdownButtonFormField<int>(
+                        value: int.tryParse(_cabins.text),
+                        decoration: const InputDecoration(
+                          labelText: 'Cabins',
+                          prefixIcon: Icon(Icons.king_bed_outlined),
+                        ),
+                        items: List<int>.generate(10, (i) => i + 1)
+                            .map(
+                              (c) => DropdownMenuItem<int>(
+                                value: c,
+                                child: Text(c.toString()),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) {
+                          _cabins.text = (val ?? 1).toString();
+                        },
+                        validator: (v) => v == null ? 'Cabins' : null,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: DropdownButtonFormField<int>(
+                        value: _bathrooms.text.isEmpty
+                            ? null
+                            : int.tryParse(_bathrooms.text),
+                        decoration: const InputDecoration(
+                          labelText: 'Bathrooms',
+                          prefixIcon: Icon(Icons.bathtub_outlined),
+                        ),
+                        items: [
+                          const DropdownMenuItem<int>(
+                            value: null,
+                            child: Text('None'),
+                          ),
+                          ...List<int>.generate(8, (i) => i + 1).map(
+                            (b) => DropdownMenuItem<int>(
+                              value: b,
+                              child: Text(b.toString()),
+                            ),
+                          ),
+                        ],
+                        onChanged: (val) {
+                          _bathrooms.text = val?.toString() ?? '';
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: TextFormField(
+                        controller: _price,
+                        decoration: const InputDecoration(
+                          labelText: 'Price (€ / day)',
+                          prefixIcon: Icon(Icons.euro_symbol),
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: (v) => double.tryParse(v ?? '') == null
+                            ? 'Price'
+                            : null,
+                      ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 10),
                 DropdownButtonFormField<int>(
                   value: int.tryParse(_locationId.text),
-                  decoration: const InputDecoration(labelText: 'Location'),
+                  decoration: const InputDecoration(
+                    labelText: 'Location',
+                    prefixIcon: Icon(Icons.location_on_outlined),
+                  ),
                   items: widget.cities
                       .map(
                         (c) => DropdownMenuItem<int>(
@@ -801,11 +870,15 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                   onChanged: (val) {
                     _locationId.text = (val ?? 0).toString();
                   },
-                  validator: (v) => v == null ? 'Select location' : null,
+                  validator: (v) => v == null ? 'Location' : null,
                 ),
+                const SizedBox(height: 10),
                 DropdownButtonFormField<int>(
                   value: int.tryParse(_categoryId.text),
-                  decoration: const InputDecoration(labelText: 'Category'),
+                  decoration: const InputDecoration(
+                    labelText: 'Category',
+                    prefixIcon: Icon(Icons.category_outlined),
+                  ),
                   items: widget.categories
                       .map(
                         (c) => DropdownMenuItem<int>(
@@ -817,11 +890,15 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                   onChanged: (val) {
                     _categoryId.text = (val ?? 0).toString();
                   },
-                  validator: (v) => v == null ? 'Select category' : null,
+                  validator: (v) => v == null ? 'Category' : null,
                 ),
+                const SizedBox(height: 10),
                 TextFormField(
                   controller: _description,
-                  decoration: const InputDecoration(labelText: 'Description (optional)'),
+                  decoration: const InputDecoration(
+                    labelText: 'Description (optional)',
+                    prefixIcon: Icon(Icons.notes_outlined),
+                  ),
                   maxLines: 2,
                 ),
               ],

@@ -728,7 +728,10 @@ class _UserDialogState extends State<_UserDialog> {
                   Expanded(
                     child: TextField(
                       controller: _firstNameController,
-                      decoration: const InputDecoration(labelText: 'First name'),
+                      decoration: const InputDecoration(
+                        labelText: 'First name',
+                        prefixIcon: Icon(Icons.person_outline),
+                      ),
                       onChanged: (_) => setState(() {}),
                     ),
                   ),
@@ -736,7 +739,10 @@ class _UserDialogState extends State<_UserDialog> {
                   Expanded(
                     child: TextField(
                       controller: _lastNameController,
-                      decoration: const InputDecoration(labelText: 'Last name'),
+                      decoration: const InputDecoration(
+                        labelText: 'Last name',
+                        prefixIcon: Icon(Icons.person),
+                      ),
                       onChanged: (_) => setState(() {}),
                     ),
                   ),
@@ -745,7 +751,10 @@ class _UserDialogState extends State<_UserDialog> {
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: _selectedRole,
-                decoration: const InputDecoration(labelText: 'Role'),
+                decoration: const InputDecoration(
+                  labelText: 'Role',
+                  prefixIcon: Icon(Icons.badge_outlined),
+                ),
                 items: const [
                   DropdownMenuItem(
                     value: 'User',
@@ -773,6 +782,7 @@ class _UserDialogState extends State<_UserDialog> {
                 controller: _emailController,
                 decoration: InputDecoration(
                   labelText: 'Email',
+                  prefixIcon: const Icon(Icons.email_outlined),
                   suffixIcon: _buildValidationIcon(
                     _isEmailValid,
                     _emailController.text,
@@ -789,6 +799,7 @@ class _UserDialogState extends State<_UserDialog> {
                       controller: _phoneController,
                       decoration: InputDecoration(
                         labelText: 'Phone',
+                        prefixIcon: const Icon(Icons.phone_outlined),
                         suffixIcon: _buildValidationIcon(
                           _isPhoneValid,
                           _phoneController.text,
@@ -805,6 +816,7 @@ class _UserDialogState extends State<_UserDialog> {
                       enabled: !isEdit,
                       decoration: InputDecoration(
                         labelText: 'Username',
+                        prefixIcon: const Icon(Icons.account_circle_outlined),
                         suffixIcon: _buildValidationIcon(
                           _isUsernameValid,
                           _usernameController.text,
@@ -821,6 +833,7 @@ class _UserDialogState extends State<_UserDialog> {
                 obscureText: true,
                 decoration: InputDecoration(
                   labelText: isEdit ? 'New password (optional)' : 'Password',
+                  prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: _buildValidationIcon(
                     _isPasswordValid,
                     _passwordController.text,
