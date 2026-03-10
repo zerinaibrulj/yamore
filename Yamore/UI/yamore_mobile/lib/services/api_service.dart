@@ -205,6 +205,81 @@ class ApiService {
     );
   }
 
+  Future<AppUser> createUser({
+    required String firstName,
+    required String lastName,
+    String? email,
+    String? phone,
+    required String username,
+    required String password,
+    bool status = true,
+  }) async {
+    final uri = Uri.parse('$baseUrl/Users');
+    final body = <String, dynamic>{
+      'FirstName': firstName,
+      'LastName': lastName,
+      'Email': email,
+      'Phone': phone,
+      'Username': username,
+      'Password': password,
+      'PasswordConfirmation': password,
+      'Status': status,
+    };
+    final response = await http.post(
+      uri,
+      headers: _headers,
+      body: jsonEncode(body),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return AppUser.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<AppUser> updateUser({
+    required int userId,
+    required String firstName,
+    required String lastName,
+    String? email,
+    String? phone,
+    bool? status,
+    String? password,
+  }) async {
+    final uri = Uri.parse('$baseUrl/Users/$userId');
+    final body = <String, dynamic>{
+      'FirstName': firstName,
+      'LastName': lastName,
+      'Phone': phone,
+      'Status': status,
+    };
+    if (password != null && password.isNotEmpty) {
+      body['Password'] = password;
+      body['PasswordConfirmation'] = password;
+    }
+    // Email and username are omitted from update for now to keep semantics simple.
+    final response = await http.put(
+      uri,
+      headers: _headers,
+      body: jsonEncode(body),
+    );
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return AppUser.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<void> deleteUser(int id) async {
+    final uri = Uri.parse('$baseUrl/Users/$id');
+    final response = await http.delete(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
   Future<void> suspendUser(int id) async {
     final uri = Uri.parse('$baseUrl/Users/$id/suspend');
     final response = await http.put(uri, headers: _headers);

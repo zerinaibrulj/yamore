@@ -27,6 +27,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
 
   List<AppUser> _users = [];
   int? _totalCount;
+  int _currentPage = 0;
+  final int _pageSize = 10;
   bool _loading = true;
   String? _error;
 
@@ -72,8 +74,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       }
 
       final paged = await _api.getUsers(
-        page: 0,
-        pageSize: 100,
+        page: _currentPage,
+        pageSize: _pageSize,
         name: name,
         roleName: roleName,
         status: status,
@@ -203,7 +205,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             ),
             const SizedBox(width: 16),
             FilledButton.icon(
-              onPressed: _loadUsers,
+              onPressed: () {
+                _currentPage = 0;
+                _loadUsers();
+              },
               icon: const Icon(Icons.filter_list),
               label: const Text('Apply'),
             ),
@@ -214,6 +219,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 setState(() {
                   _roleFilter = 'All';
                   _statusFilter = 'All';
+                  _currentPage = 0;
                 });
                 _loadUsers();
               },
@@ -249,102 +255,156 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       return const Center(child: Text('No users found.'));
     }
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.vertical,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          headingRowColor: WidgetStateProperty.all(AppTheme.primaryBlue),
-          headingTextStyle: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-          columns: const [
-            DataColumn(label: Text('First Name')),
-            DataColumn(label: Text('Last Name')),
-            DataColumn(label: Text('Email')),
-            DataColumn(label: Text('Phone')),
-            DataColumn(label: Text('Roles')),
-            DataColumn(label: Text('Status')),
-            DataColumn(label: Text('')),
-          ],
-          rows: _users
-              .map(
-                (u) => DataRow(
-                  onSelectChanged: (selected) {
-                    if (selected == true) {
-                      _openEditUserDialog(u);
-                    }
-                  },
-                  cells: [
-                    DataCell(Text(u.firstName)),
-                    DataCell(Text(u.lastName)),
-                    DataCell(Text(u.email ?? '—')),
-                    const DataCell(Text('')), // phone not in AppUser yet
-                    DataCell(
-                      Wrap(
-                        spacing: 4,
-                        runSpacing: -8,
-                        children: u.roles
-                            .map(
-                              (r) => Chip(
-                                label: Text(
-                                  r,
-                                  style: const TextStyle(fontSize: 11),
-                                ),
-                                visualDensity: VisualDensity.compact,
-                                materialTapTargetSize:
-                                    MaterialTapTargetSize.shrinkWrap,
-                              ),
-                            )
-                            .toList(),
-                      ),
-                    ),
-                    DataCell(
-                      Text(
-                        (u.status ?? true) ? 'Active' : 'Suspended',
-                        style: TextStyle(
-                          color:
-                              (u.status ?? true) ? Colors.green : Colors.redAccent,
-                        ),
-                      ),
-                    ),
-                    DataCell(
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit_outlined),
-                            tooltip: 'Edit',
-                            onPressed: () => _openEditUserDialog(u),
-                          ),
-                          IconButton(
-                            icon: Icon(
-                              (u.status ?? true)
-                                  ? Icons.block
-                                  : Icons.check_circle_outline,
-                              color:
-                                  (u.status ?? true) ? Colors.orange : Colors.green,
+    final total = _totalCount ?? _users.length;
+    final start = total == 0 ? 0 : _currentPage * _pageSize + 1;
+    final end = (_currentPage * _pageSize + _users.length).clamp(0, total);
+    final totalPages =
+        total == 0 ? 1 : ((total + _pageSize - 1) / _pageSize).floor();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                headingRowColor: WidgetStateProperty.all(AppTheme.primaryBlue),
+                headingTextStyle: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+                columns: const [
+                  DataColumn(label: Text('First Name')),
+                  DataColumn(label: Text('Last Name')),
+                  DataColumn(label: Text('Email')),
+                  DataColumn(label: Text('Phone')),
+                  DataColumn(label: Text('Roles')),
+                  DataColumn(label: Text('Status')),
+                  DataColumn(label: Text('')),
+                ],
+                rows: _users
+                    .map(
+                      (u) => DataRow(
+                        onSelectChanged: (selected) {
+                          if (selected == true) {
+                            _openEditUserDialog(u);
+                          }
+                        },
+                        cells: [
+                          DataCell(Text(u.firstName)),
+                          DataCell(Text(u.lastName)),
+                          DataCell(Text(u.email ?? '—')),
+                          DataCell(Text(u.phone ?? '—')),
+                          DataCell(
+                            Wrap(
+                              spacing: 4,
+                              runSpacing: -8,
+                              children: u.roles
+                                  .map(
+                                    (r) => Chip(
+                                      label: Text(
+                                        r,
+                                        style: const TextStyle(fontSize: 11),
+                                      ),
+                                      visualDensity: VisualDensity.compact,
+                                      materialTapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                  )
+                                  .toList(),
                             ),
-                            tooltip:
-                                (u.status ?? true) ? 'Suspend user' : 'Activate user',
-                            onPressed: () => _toggleStatus(u),
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline,
-                                color: Colors.redAccent),
-                            tooltip: 'Delete',
-                            onPressed: () => _deleteUser(u),
+                          DataCell(
+                            Text(
+                              (u.status ?? true) ? 'Active' : 'Suspended',
+                              style: TextStyle(
+                                color: (u.status ?? true)
+                                    ? Colors.green
+                                    : Colors.redAccent,
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit_outlined),
+                                  tooltip: 'Edit',
+                                  onPressed: () => _openEditUserDialog(u),
+                                ),
+                                IconButton(
+                                  icon: Icon(
+                                    (u.status ?? true)
+                                        ? Icons.block
+                                        : Icons.check_circle_outline,
+                                    color: (u.status ?? true)
+                                        ? Colors.orange
+                                        : Colors.green,
+                                  ),
+                                  tooltip: (u.status ?? true)
+                                      ? 'Suspend user'
+                                      : 'Activate user',
+                                  onPressed: () => _toggleStatus(u),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline,
+                                      color: Colors.redAccent),
+                                  tooltip: 'Delete',
+                                  onPressed: () => _deleteUser(u),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-              )
-              .toList(),
+                    )
+                    .toList(),
+              ),
+            ),
+          ),
         ),
-      ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              total == 0
+                  ? 'No records'
+                  : 'Showing $start–$end of $total (page ${_currentPage + 1}/$totalPages)',
+              style: const TextStyle(fontSize: 12),
+            ),
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.chevron_left),
+                  onPressed: _currentPage > 0
+                      ? () {
+                          setState(() {
+                            _currentPage--;
+                          });
+                          _loadUsers();
+                        }
+                      : null,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.chevron_right),
+                  onPressed: (_currentPage + 1) < totalPages
+                      ? () {
+                          setState(() {
+                            _currentPage++;
+                          });
+                          _loadUsers();
+                        }
+                      : null,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -364,24 +424,271 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     }
   }
 
-  void _openAddUserDialog() {
-    // TODO: implement Add User dialog (next pass)
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Add User – dialog coming next.')),
+  Future<void> _openAddUserDialog() async {
+    final created = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return _UserDialog(
+          onSave: (firstName, lastName, email, phone, username, password, status) async {
+            await _api.createUser(
+              firstName: firstName,
+              lastName: lastName,
+              email: email,
+              phone: phone,
+              username: username,
+              password: password,
+              status: status,
+            );
+          },
+        );
+      },
     );
+    if (created == true) {
+      await _loadUsers();
+    }
   }
 
-  void _openEditUserDialog(AppUser user) {
-    // TODO: implement Edit User dialog (next pass)
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Edit User ${user.displayName} – dialog coming next.')),
+  Future<void> _openEditUserDialog(AppUser user) async {
+    final updated = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return _UserDialog(
+          existingUser: user,
+          onSave: (firstName, lastName, email, phone, username, password, status) async {
+            await _api.updateUser(
+              userId: user.userId,
+              firstName: firstName,
+              lastName: lastName,
+              email: email,
+              phone: phone,
+              status: status,
+              password: password.isEmpty ? null : password,
+            );
+          },
+        );
+      },
     );
+    if (updated == true) {
+      await _loadUsers();
+    }
   }
 
-  void _deleteUser(AppUser user) {
-    // TODO: implement Delete User call (next pass)
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Delete User ${user.displayName} – API call coming next.')),
+  Future<void> _deleteUser(AppUser user) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete user'),
+        content: Text(
+            'Are you sure you want to delete ${user.displayName}? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      try {
+        await _api.deleteUser(user.userId);
+        await _loadUsers();
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete user: $e')),
+        );
+      }
+    }
+  }
+}
+
+class _UserDialog extends StatefulWidget {
+  final AppUser? existingUser;
+  final Future<void> Function(String firstName, String lastName, String? email,
+      String? phone, String username, String password, bool status) onSave;
+
+  const _UserDialog({
+    this.existingUser,
+    required this.onSave,
+  });
+
+  @override
+  State<_UserDialog> createState() => _UserDialogState();
+}
+
+class _UserDialogState extends State<_UserDialog> {
+  late final TextEditingController _firstNameController =
+      TextEditingController(text: widget.existingUser?.firstName ?? '');
+  late final TextEditingController _lastNameController =
+      TextEditingController(text: widget.existingUser?.lastName ?? '');
+  late final TextEditingController _emailController =
+      TextEditingController(text: widget.existingUser?.email ?? '');
+  late final TextEditingController _phoneController =
+      TextEditingController(text: widget.existingUser?.phone ?? '');
+  late final TextEditingController _usernameController =
+      TextEditingController(text: widget.existingUser?.username ?? '');
+  final TextEditingController _passwordController = TextEditingController();
+
+  bool _status = true;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _status = widget.existingUser?.status ?? true;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEdit = widget.existingUser != null;
+    return AlertDialog(
+      title: Text(isEdit ? 'Edit user' : 'Add user'),
+      content: SingleChildScrollView(
+        child: SizedBox(
+          width: 420,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _firstNameController,
+                      decoration: const InputDecoration(labelText: 'First name'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _lastNameController,
+                      decoration: const InputDecoration(labelText: 'Last name'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _emailController,
+                decoration: const InputDecoration(labelText: 'Email'),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _phoneController,
+                      decoration: const InputDecoration(labelText: 'Phone'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _usernameController,
+                      enabled: !isEdit,
+                      decoration: const InputDecoration(labelText: 'Username'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: isEdit ? 'New password (optional)' : 'Password',
+                ),
+              ),
+              const SizedBox(height: 12),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Active'),
+                value: _status,
+                onChanged: (val) {
+                  setState(() {
+                    _status = val;
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _saving
+              ? null
+              : () async {
+                  final firstName = _firstNameController.text.trim();
+                  final lastName = _lastNameController.text.trim();
+                  final username = _usernameController.text.trim();
+                  final password = _passwordController.text;
+
+                  if (firstName.isEmpty || lastName.isEmpty || username.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content:
+                              Text('First name, last name and username are required.')),
+                    );
+                    return;
+                  }
+                  if (!isEdit && password.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Password is required when creating a user.')),
+                    );
+                    return;
+                  }
+
+                  setState(() {
+                    _saving = true;
+                  });
+                  try {
+                    await widget.onSave(
+                      firstName,
+                      lastName,
+                      _emailController.text.trim().isEmpty
+                          ? null
+                          : _emailController.text.trim(),
+                      _phoneController.text.trim().isEmpty
+                          ? null
+                          : _phoneController.text.trim(),
+                      username,
+                      password,
+                      _status,
+                    );
+                    if (context.mounted) {
+                      Navigator.of(context).pop(true);
+                    }
+                  } catch (e) {
+                    setState(() {
+                      _saving = false;
+                    });
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed to save user: $e')),
+                      );
+                    }
+                  }
+                },
+          child: _saving
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(isEdit ? 'Save changes' : 'Create user'),
+        ),
+      ],
     );
   }
 }

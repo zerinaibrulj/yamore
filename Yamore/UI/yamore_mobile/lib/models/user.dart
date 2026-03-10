@@ -3,6 +3,7 @@ class AppUser {
   final String firstName;
   final String lastName;
   final String? email;
+  final String? phone;
   final String username;
   final bool? status;
   final List<String> roles;
@@ -12,6 +13,7 @@ class AppUser {
     required this.firstName,
     required this.lastName,
     this.email,
+    this.phone,
     required this.username,
     this.status,
     required this.roles,
@@ -57,6 +59,7 @@ class AppUser {
       firstName: (_key(json, 'firstName', 'FirstName') as String?) ?? '',
       lastName: (_key(json, 'lastName', 'LastName') as String?) ?? '',
       email: _key(json, 'email', 'Email') as String?,
+      phone: _key(json, 'phone', 'Phone') as String?,
       username: (_key(json, 'username', 'Username') as String?) ?? '',
       status: _key(json, 'status', 'Status') as bool?,
       roles: roles,
