@@ -18,6 +18,11 @@ using Yamore.Services.YachtStateMachine;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure Mapster mapping to avoid cycles between User and UserRole.
+TypeAdapterConfig<Yamore.Services.Database.UserRole, Yamore.Model.UserRole>
+    .NewConfig()
+    .Ignore(dest => dest.User);
+
 // READ allowed origins from configuration (appsettings or environment)
 var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
 

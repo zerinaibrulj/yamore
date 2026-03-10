@@ -114,5 +114,49 @@ namespace Yamore.API.Controllers
             // Wrap in an object so the client can reuse the standard { resultList: [...] } shape.
             return new { resultList = owners };
         }
+
+        /// <summary>Suspends (Status=false) the specified user.</summary>
+        [HttpPut("{id}/suspend")]
+        [Authorize(Roles = "Admin")]
+        public ActionResult<Model.User> Suspend(int id)
+        {
+            var user = _usersService.GetById(id);
+            if (user == null)
+                return NotFound();
+
+            var update = new UserUpdateRequest
+            {
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                //Email = user.Email,
+                Phone = user.Phone,
+                //Username = user.Username,
+                Status = false
+            };
+            var result = _usersService.Update(id, update);
+            return Ok(result);
+        }
+
+        /// <summary>Activates (Status=true) the specified user.</summary>
+        [HttpPut("{id}/activate")]
+        [Authorize(Roles = "Admin")]
+        public ActionResult<Model.User> Activate(int id)
+        {
+            var user = _usersService.GetById(id);
+            if (user == null)
+                return NotFound();
+
+            var update = new UserUpdateRequest
+            {
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                //Email = user.Email,
+                Phone = user.Phone,
+                //Username = user.Username,
+                Status = true
+            };
+            var result = _usersService.Update(id, update);
+            return Ok(result);
+        }
     }
 }

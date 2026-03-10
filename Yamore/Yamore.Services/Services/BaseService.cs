@@ -29,7 +29,7 @@ namespace Yamore.Services.Services
 
 
 
-        public PagedResponse<TModel> GetPaged(TSearch search)
+        public virtual PagedResponse<TModel> GetPaged(TSearch search)
         {
             List<TModel> result = new List<TModel>();
             var query = Context.Set<TDbEntity>().AsQueryable();

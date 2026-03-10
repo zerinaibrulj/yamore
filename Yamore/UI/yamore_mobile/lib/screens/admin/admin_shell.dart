@@ -3,6 +3,7 @@ import '../../theme/app_theme.dart';
 import '../../services/auth_service.dart';
 import '../login/login_screen.dart';
 import 'admin_home_screen.dart';
+import 'admin_users_screen.dart';
 import 'yacht_review_screen.dart';
 
 class AdminShell extends StatefulWidget {
@@ -153,7 +154,7 @@ class _AdminShellState extends State<AdminShell> {
       case 0:
         return AdminHomeScreen(authService: widget.authService);
       case 1:
-        return const Center(child: Text('Users', style: TextStyle(fontSize: 18)));
+        return AdminUsersScreen(authService: widget.authService);
       case 2:
         return YachtReviewScreen(authService: widget.authService);
       case 3:

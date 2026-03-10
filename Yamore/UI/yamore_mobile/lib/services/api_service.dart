@@ -6,6 +6,7 @@ import '../models/city.dart';
 import '../models/yacht_category.dart';
 import '../models/user.dart';
 import '../models/statistics.dart';
+import '../models/paged_users.dart';
 
 class ApiService {
   final String baseUrl;
@@ -169,6 +170,55 @@ class ApiService {
     return StatisticsDtoModel.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
+  }
+
+  Future<PagedUsers> getUsers({
+    int? page,
+    int? pageSize,
+    String? name,
+    String? roleName,
+    bool? status,
+  }) async {
+    final query = <String, String>{};
+    if (page != null) query['Page'] = page.toString();
+    if (pageSize != null) query['PageSize'] = pageSize.toString();
+    if (name != null && name.isNotEmpty) {
+      query['FirstNameGTE'] = name;
+      query['LastNameGTE'] = name;
+    }
+    if (roleName != null && roleName.isNotEmpty) {
+      query['RoleName'] = roleName;
+    }
+    if (status != null) {
+      query['Status'] = status.toString();
+    }
+    query['IsUserRoleIncluded'] = 'true';
+
+    final uri = Uri.parse('$baseUrl/Users')
+        .replace(queryParameters: query.isNotEmpty ? query : null);
+    final response = await http.get(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return PagedUsers.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<void> suspendUser(int id) async {
+    final uri = Uri.parse('$baseUrl/Users/$id/suspend');
+    final response = await http.put(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  Future<void> activateUser(int id) async {
+    final uri = Uri.parse('$baseUrl/Users/$id/activate');
+    final response = await http.put(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
   }
 }
 

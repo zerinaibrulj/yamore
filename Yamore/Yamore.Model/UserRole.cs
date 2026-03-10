@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json.Serialization;
 
 namespace Yamore.Model
 {
@@ -10,7 +11,11 @@ namespace Yamore.Model
         public int UserId { get; set; }
         public int RoleId { get; set; }
         public DateTime DateModification { get; set; }
-        public virtual User User { get; set; } = null!;   //making circular reference
+
+        // Break JSON serialization cycles; Mapster is configured in the API project.
+        [JsonIgnore]
+        public virtual User User { get; set; } = null!;
+
         public virtual Role Role { get; set; } = null!;
     }
 }

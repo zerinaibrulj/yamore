@@ -23,7 +23,87 @@ namespace Yamore.Services.Services
             : base(context, mapper)                                                                 //proslijedit cemo ono sto je potrebno baznoj klasi a to su context i mapper
         {
 
-        }       
+        }
+
+        /// <summary>
+        /// Custom implementation of GetPaged to avoid Mapster mapping cycles for User ↔ UserRole.
+        /// We manually project the EF entities into lightweight model objects.
+        /// </summary>
+        public override PagedResponse<Model.User> GetPaged(UsersSearchObject search)
+        {
+            var query = Context.Users.AsQueryable();
+
+            // Apply common filters (including optional role includes/filters)
+            query = AddFilter(search, query);
+
+            var count = query.Count();
+
+            if (search?.Page.HasValue == true && search?.PageSize.HasValue == true)
+            {
+                query = query
+                    .Skip(search.Page.Value * search.PageSize.Value)
+                    .Take(search.PageSize.Value);
+            }
+
+            // Materialize and manually map to break any navigation cycles.
+            var list = query
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .ToList();
+
+            var result = new List<Model.User>();
+
+            foreach (var u in list)
+            {
+                var modelUser = new Model.User
+                {
+                    UserId = u.UserId,
+                    FirstName = u.FirstName,
+                    LastName = u.LastName,
+                    Email = u.Email,
+                    Phone = u.Phone,
+                    Username = u.Username,
+                    Status = u.Status,
+                };
+
+                // Only populate roles when requested to keep payloads small.
+                if (search?.IsUserRoleIncluded == true || !string.IsNullOrWhiteSpace(search?.RoleName))
+                {
+                    var userRoles = new List<Model.UserRole>();
+                    foreach (var ur in u.UserRoles)
+                    {
+                        var role = ur.Role != null
+                            ? new Model.Role
+                            {
+                                RoleId = ur.Role.RoleId,
+                                Name = ur.Role.Name,
+                                Description = ur.Role.Description,
+                                UserRoles = new List<Model.UserRole>() // avoid cycles
+                            }
+                            : null;
+
+                        userRoles.Add(new Model.UserRole
+                        {
+                            UserRoleId = ur.UserRoleId,
+                            UserId = ur.UserId,
+                            RoleId = ur.RoleId,
+                            DateModification = ur.DateModification,
+                            Role = role!
+                        });
+                    }
+
+                    modelUser.UserRoles = userRoles;
+                }
+
+                result.Add(modelUser);
+            }
+
+            return new PagedResponse<Model.User>
+            {
+                ResultList = result,
+                Count = count
+            };
+        }
 
         public override IQueryable<Database.User> AddFilter(UsersSearchObject search, IQueryable<Database.User> query)
         {
@@ -31,33 +111,49 @@ namespace Yamore.Services.Services
 
             if (!string.IsNullOrWhiteSpace(search?.FirstNameGTE))
             {
-                filteredQuery = filteredQuery.Where(x => x.FirstName.StartsWith(search.FirstNameGTE));
+                var first = search.FirstNameGTE.Trim();
+                filteredQuery = filteredQuery.Where(x => x.FirstName.StartsWith(first));
             }
 
             if (!string.IsNullOrWhiteSpace(search?.LastNameGTE))
             {
-                filteredQuery = filteredQuery.Where(x => x.LastName.StartsWith(search.LastNameGTE));
+                var last = search.LastNameGTE.Trim();
+                filteredQuery = filteredQuery.Where(x => x.LastName.StartsWith(last));
             }
 
             if (!string.IsNullOrWhiteSpace(search?.Email))
             {
-                filteredQuery = filteredQuery.Where(x => x.Email == search.Email);
+                var email = search.Email.Trim();
+                filteredQuery = filteredQuery.Where(x => x.Email == email);
             }
 
             if (!string.IsNullOrWhiteSpace(search?.Username))
             {
-                filteredQuery = filteredQuery.Where(x => x.Username == search.Username);
+                var username = search.Username.Trim();
+                filteredQuery = filteredQuery.Where(x => x.Username == username);
             }
 
-            if (search?.IsUserRoleIncluded == true)
+            if (search?.Status != null)
             {
-                filteredQuery = filteredQuery.Include(ur => ur.UserRoles).ThenInclude(r => r.Role);
+                filteredQuery = filteredQuery.Where(x => x.Status == search.Status);
+            }
+
+            if (search?.IsUserRoleIncluded == true || !string.IsNullOrWhiteSpace(search?.RoleName))
+            {
+                filteredQuery = filteredQuery.Include(u => u.UserRoles).ThenInclude(ur => ur.Role);
+            }
+
+            if (!string.IsNullOrWhiteSpace(search?.RoleName))
+            {
+                var roleName = search.RoleName.Trim();
+                filteredQuery = filteredQuery.Where(u =>
+                    u.UserRoles.Any(ur => ur.Role != null && ur.Role.Name == roleName));
             }
 
             if (!string.IsNullOrWhiteSpace(search?.OrderBy))
             {
                 var item = search.OrderBy.Split(' ');
-                if(item.Length>2 || item.Length == 0)
+                if (item.Length > 2 || item.Length == 0)
                 {
                     throw new ApplicationException("You can only sort by one field!");
                 }
@@ -70,7 +166,6 @@ namespace Yamore.Services.Services
                     filteredQuery = filteredQuery.OrderBy($"{item[0]} {item[1]}");
                 }
             }
-
 
             return filteredQuery;
         }
