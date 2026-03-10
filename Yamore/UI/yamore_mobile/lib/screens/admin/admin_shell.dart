@@ -35,11 +35,6 @@ class _AdminShellState extends State<AdminShell> {
       label: 'Yachts',
     ),
     _NavItem(
-      icon: Icons.description_outlined,
-      selectedIcon: Icons.description,
-      label: 'Reports',
-    ),
-    _NavItem(
       icon: Icons.settings_outlined,
       selectedIcon: Icons.settings,
       label: 'Settings',
@@ -119,9 +114,6 @@ class _AdminShellState extends State<AdminShell> {
         sectionTitle = 'Yachts';
         break;
       case 3:
-        sectionTitle = 'Reports';
-        break;
-      case 4:
         sectionTitle = 'Settings';
         break;
       default:
@@ -185,8 +177,6 @@ class _AdminShellState extends State<AdminShell> {
       case 2:
         return YachtReviewScreen(authService: widget.authService);
       case 3:
-        return const Center(child: Text('Reports', style: TextStyle(fontSize: 18)));
-      case 4:
         return const Center(
           child: Text(
             'Settings\n\nHere you can configure admin preferences and global options in the future.',

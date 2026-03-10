@@ -35,6 +35,8 @@ dependencies:
   shared_preferences: ^2.2.3
   fl_chart: ^0.69.0
   window_size: ^0.1.0
+  printing: ^5.14.2
+  pdf: ^3.11.3
 
 dev_dependencies:
   flutter_test:

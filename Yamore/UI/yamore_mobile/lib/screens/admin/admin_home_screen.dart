@@ -1,5 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
@@ -84,12 +86,22 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Dashboard',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: AppTheme.primaryBlue,
-                  fontWeight: FontWeight.w600,
-                ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Dashboard',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: AppTheme.primaryBlue,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+              FilledButton.icon(
+                onPressed: () => _exportReport(stats),
+                icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
+                label: const Text('Export report'),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           _buildKpiRow(context, stats),
@@ -122,6 +134,14 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           label: 'Active yachts',
           value: stats.yachtsCount.toString(),
           color: AppTheme.primaryBlue,
+          textTheme: textTheme,
+        ),
+        const SizedBox(width: 12),
+        _buildKpiCard(
+          icon: Icons.people_outline,
+          label: 'Active users',
+          value: stats.activeUsersCount.toString(),
+          color: Colors.deepPurple,
           textTheme: textTheme,
         ),
         const SizedBox(width: 12),
@@ -414,6 +434,127 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _exportReport(StatisticsDtoModel stats) async {
+    await Printing.layoutPdf(
+      onLayout: (format) async {
+        final doc = pw.Document();
+
+        doc.addPage(
+          pw.MultiPage(
+            margin: const pw.EdgeInsets.all(24),
+            build: (context) => [
+              pw.Header(
+                level: 0,
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      'Yamore – Admin report',
+                      style: pw.TextStyle(
+                        fontSize: 20,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'Year ${DateTime.now().year}',
+                      style: const pw.TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 12),
+              pw.Text(
+                'Overview',
+                style: pw.TextStyle(
+                  fontSize: 16,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 8),
+              pw.Bullet(
+                  text:
+                      'Active yachts: ${stats.yachtsCount}, active users: ${stats.activeUsersCount}.'),
+              pw.Bullet(
+                  text:
+                      'Total bookings: ${stats.totalBookings}, total revenue: €${stats.totalRevenue.toStringAsFixed(0)}.'),
+              pw.Bullet(
+                  text:
+                      'Reported reviews: ${stats.reportedReviewsCount}.'),
+              pw.SizedBox(height: 16),
+              pw.Text(
+                'Revenue by month',
+                style: pw.TextStyle(
+                  fontSize: 14,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 8),
+              if (stats.revenueByMonth.isEmpty)
+                pw.Text('No data yet.')
+              else
+                pw.Table.fromTextArray(
+                  headers: const ['Month', 'Revenue', 'Bookings'],
+                  data: stats.revenueByMonth
+                      .map((m) => [
+                            '${m.month}/${m.year}',
+                            '€${m.revenue.toStringAsFixed(0)}',
+                            m.bookingCount.toString(),
+                          ])
+                      .toList(),
+                ),
+              pw.SizedBox(height: 16),
+              pw.Text(
+                'Reservations by city',
+                style: pw.TextStyle(
+                  fontSize: 14,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 8),
+              if (stats.reservationsByCity.isEmpty)
+                pw.Text('No data yet.')
+              else
+                pw.Table.fromTextArray(
+                  headers: const ['City', 'Reservations', 'Revenue'],
+                  data: stats.reservationsByCity
+                      .map((c) => [
+                            c.cityName,
+                            c.reservationCount.toString(),
+                            '€${c.revenue.toStringAsFixed(0)}',
+                          ])
+                      .toList(),
+                ),
+              pw.SizedBox(height: 16),
+              pw.Text(
+                'Most popular yachts',
+                style: pw.TextStyle(
+                  fontSize: 14,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 8),
+              if (stats.mostPopularYachts.isEmpty)
+                pw.Text('No data yet.')
+              else
+                pw.Table.fromTextArray(
+                  headers: const ['Yacht', 'Bookings', 'Revenue'],
+                  data: stats.mostPopularYachts
+                      .map((y) => [
+                            y.yachtName,
+                            y.bookingCount.toString(),
+                            '€${y.totalRevenue.toStringAsFixed(0)}',
+                          ])
+                      .toList(),
+                ),
+            ],
+          ),
+        );
+
+        return doc.save();
+      },
     );
   }
 }
