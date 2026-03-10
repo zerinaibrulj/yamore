@@ -589,22 +589,15 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
 
 String _formatPhone(String? raw) {
   if (raw == null || raw.trim().isEmpty) return '—';
-  final cleaned = raw.replaceAll(RegExp(r'\s+'), '');
-  if (cleaned.length <= 4) return cleaned;
-
-  // Group digits from the right into blocks of 3: 123456789 -> 123 456 789
-  final buffer = StringBuffer();
-  int count = 0;
-  for (int i = cleaned.length - 1; i >= 0; i--) {
-    buffer.write(cleaned[i]);
-    count++;
-    if (count == 3 && i != 0) {
-      buffer.write(' ');
-      count = 0;
-    }
+  final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) {
+    return '${digits.substring(0, 3)}-${digits.substring(3)}';
   }
-  final reversed = buffer.toString().split('').reversed.join();
-  return reversed;
+  final first = digits.substring(0, 3);
+  final second = digits.substring(3, 6);
+  final third = digits.substring(6);
+  return '$first-$second-$third';
 }
 
 Future<void> _showSuccessDialog(
@@ -736,6 +729,7 @@ class _UserDialogState extends State<_UserDialog> {
                     child: TextField(
                       controller: _firstNameController,
                       decoration: const InputDecoration(labelText: 'First name'),
+                      onChanged: (_) => setState(() {}),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -743,6 +737,7 @@ class _UserDialogState extends State<_UserDialog> {
                     child: TextField(
                       controller: _lastNameController,
                       decoration: const InputDecoration(labelText: 'Last name'),
+                      onChanged: (_) => setState(() {}),
                     ),
                   ),
                 ],
@@ -776,7 +771,15 @@ class _UserDialogState extends State<_UserDialog> {
               const SizedBox(height: 12),
               TextField(
                 controller: _emailController,
-                decoration: const InputDecoration(labelText: 'Email'),
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  suffixIcon: _buildValidationIcon(
+                    _isEmailValid,
+                    _emailController.text,
+                  ),
+                ),
+                keyboardType: TextInputType.emailAddress,
+                onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: 12),
               Row(
@@ -784,7 +787,15 @@ class _UserDialogState extends State<_UserDialog> {
                   Expanded(
                     child: TextField(
                       controller: _phoneController,
-                      decoration: const InputDecoration(labelText: 'Phone'),
+                      decoration: InputDecoration(
+                        labelText: 'Phone',
+                        suffixIcon: _buildValidationIcon(
+                          _isPhoneValid,
+                          _phoneController.text,
+                        ),
+                      ),
+                      keyboardType: TextInputType.phone,
+                      onChanged: (_) => setState(() {}),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -792,7 +803,14 @@ class _UserDialogState extends State<_UserDialog> {
                     child: TextField(
                       controller: _usernameController,
                       enabled: !isEdit,
-                      decoration: const InputDecoration(labelText: 'Username'),
+                      decoration: InputDecoration(
+                        labelText: 'Username',
+                        suffixIcon: _buildValidationIcon(
+                          _isUsernameValid,
+                          _usernameController.text,
+                        ),
+                      ),
+                      onChanged: (_) => setState(() {}),
                     ),
                   ),
                 ],
@@ -803,7 +821,12 @@ class _UserDialogState extends State<_UserDialog> {
                 obscureText: true,
                 decoration: InputDecoration(
                   labelText: isEdit ? 'New password (optional)' : 'Password',
+                  suffixIcon: _buildValidationIcon(
+                    _isPasswordValid,
+                    _passwordController.text,
+                  ),
                 ),
+                onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: 12),
               SwitchListTile(
@@ -891,6 +914,48 @@ class _UserDialogState extends State<_UserDialog> {
               : Text(isEdit ? 'Save changes' : 'Create user'),
         ),
       ],
+    );
+  }
+  
+  bool get _isEmailValid {
+    final value = _emailController.text.trim();
+    if (value.isEmpty) return false;
+    final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+    return emailRegex.hasMatch(value) && value.length <= 100;
+  }
+
+  bool get _isPasswordValid {
+    final value = _passwordController.text;
+    if (value.isEmpty) return false;
+    if (value.length < 8 || value.length > 128) return false;
+    final hasLower = RegExp(r'[a-z]').hasMatch(value);
+    final hasUpper = RegExp(r'[A-Z]').hasMatch(value);
+    final hasDigit = RegExp(r'[0-9]').hasMatch(value);
+    final hasSpecial = RegExp(r'[^a-zA-Z0-9]').hasMatch(value);
+    return hasLower && hasUpper && hasDigit && hasSpecial;
+  }
+
+  bool get _isUsernameValid {
+    final value = _usernameController.text.trim();
+    if (value.isEmpty) return false;
+    final usernameRegex = RegExp(r'^[a-zA-Z0-9._-]{3,32}$');
+    return usernameRegex.hasMatch(value);
+  }
+
+  bool get _isPhoneValid {
+    final value = _phoneController.text.trim();
+    if (value.isEmpty) return false;
+    final phoneRegex = RegExp(r'^\+?[0-9\s\-()]{7,20}$');
+    return phoneRegex.hasMatch(value);
+  }
+
+  Widget? _buildValidationIcon(bool isValid, String value) {
+    if (value.trim().isEmpty) return null;
+    if (!isValid) return null;
+    return const Icon(
+      Icons.check_circle,
+      color: Colors.green,
+      size: 18,
     );
   }
 }

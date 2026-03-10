@@ -675,6 +675,7 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
       content: SingleChildScrollView(
         child: Form(
           key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           child: SizedBox(
             width: 500,
             child: Column(
