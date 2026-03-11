@@ -105,6 +105,77 @@ namespace Yamore.Services.Services
             };
         }
 
+        public override Model.User GetById(int id)
+        {
+            var entity = Context.Users
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .FirstOrDefault(u => u.UserId == id);
+
+            if (entity == null)
+                return null;
+
+            return MapUserSafe(entity);
+        }
+
+        public override Model.User Update(int id, UserUpdateRequest request)
+        {
+            var entity = Context.Users.Find(id);
+            if (entity == null)
+                throw new KeyNotFoundException($"User with id {id} not found.");
+
+            Mapper.Map(request, entity);
+            BeforeUpdate(request, entity);
+
+            Context.SaveChanges();
+
+            Context.Entry(entity).Collection(u => u.UserRoles).Load();
+            foreach (var ur in entity.UserRoles)
+                Context.Entry(ur).Reference(r => r.Role).Load();
+
+            return MapUserSafe(entity);
+        }
+
+        private static Model.User MapUserSafe(Database.User u)
+        {
+            var modelUser = new Model.User
+            {
+                UserId = u.UserId,
+                FirstName = u.FirstName,
+                LastName = u.LastName,
+                Email = u.Email,
+                Phone = u.Phone,
+                Username = u.Username,
+                Status = u.Status,
+            };
+
+            var userRoles = new List<Model.UserRole>();
+            foreach (var ur in u.UserRoles)
+            {
+                var role = ur.Role != null
+                    ? new Model.Role
+                    {
+                        RoleId = ur.Role.RoleId,
+                        Name = ur.Role.Name,
+                        Description = ur.Role.Description,
+                        UserRoles = new List<Model.UserRole>()
+                    }
+                    : null;
+
+                userRoles.Add(new Model.UserRole
+                {
+                    UserRoleId = ur.UserRoleId,
+                    UserId = ur.UserId,
+                    RoleId = ur.RoleId,
+                    DateModification = ur.DateModification,
+                    Role = role!
+                });
+            }
+
+            modelUser.UserRoles = userRoles;
+            return modelUser;
+        }
+
         public override IQueryable<Database.User> AddFilter(UsersSearchObject search, IQueryable<Database.User> query)
         {
             var filteredQuery = base.AddFilter(search, query);

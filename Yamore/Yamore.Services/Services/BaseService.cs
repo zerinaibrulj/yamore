@@ -1,4 +1,4 @@
-﻿using MapsterMapper;
+using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -67,7 +67,7 @@ namespace Yamore.Services.Services
 
 
 
-        public TModel GetById(int id)
+        public virtual TModel GetById(int id)
         {
             var entity = Context.Set<TDbEntity>().Find(id);
 

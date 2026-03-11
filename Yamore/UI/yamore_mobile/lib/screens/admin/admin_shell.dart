@@ -5,6 +5,7 @@ import '../login/login_screen.dart';
 import 'admin_home_screen.dart';
 import 'admin_users_screen.dart';
 import 'yacht_review_screen.dart';
+import 'admin_settings_screen.dart';
 
 class AdminShell extends StatefulWidget {
   final AuthService authService;
@@ -177,13 +178,7 @@ class _AdminShellState extends State<AdminShell> {
       case 2:
         return YachtReviewScreen(authService: widget.authService);
       case 3:
-        return const Center(
-          child: Text(
-            'Settings\n\nHere you can configure admin preferences and global options in the future.',
-            style: TextStyle(fontSize: 16),
-            textAlign: TextAlign.center,
-          ),
-        );
+        return AdminSettingsScreen(authService: widget.authService);
       default:
         return YachtReviewScreen(authService: widget.authService);
     }

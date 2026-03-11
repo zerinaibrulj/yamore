@@ -90,6 +90,14 @@ class AuthService {
     }
   }
 
+  void updateCurrentUser(AppUser user) {
+    _currentUser = user;
+  }
+
+  void updatePassword(String newPassword) {
+    _password = newPassword;
+  }
+
   void logout() {
     _currentUser = null;
     _username = null;

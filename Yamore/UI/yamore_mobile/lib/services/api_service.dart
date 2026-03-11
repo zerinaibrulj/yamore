@@ -302,6 +302,94 @@ class ApiService {
       throw ApiException(response.statusCode, response.body);
     }
   }
+
+  Future<AppUser> updateProfile({
+    required int userId,
+    required String firstName,
+    required String lastName,
+    String? email,
+    String? phone,
+  }) async {
+    final uri = Uri.parse('$baseUrl/Users/$userId');
+    final body = <String, dynamic>{
+      'FirstName': firstName,
+      'LastName': lastName,
+      'Phone': phone,
+    };
+    if (email != null && email.isNotEmpty) {
+      body['Email'] = email;
+    }
+    final response = await http.put(
+      uri,
+      headers: _headers,
+      body: jsonEncode(body),
+    );
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return AppUser.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<AppUser> changePassword({
+    required int userId,
+    String? oldPassword,
+    required String newPassword,
+  }) async {
+    final uri = Uri.parse('$baseUrl/Users/$userId');
+    final user = await getUserById(userId);
+    final body = <String, dynamic>{
+      'FirstName': user.firstName,
+      'LastName': user.lastName,
+      'Phone': user.phone,
+      'Password': newPassword,
+      'PasswordConfirmation': newPassword,
+    };
+    if (oldPassword != null && oldPassword.isNotEmpty) {
+      body['OldPassword'] = oldPassword;
+    }
+    if (user.email != null && user.email!.isNotEmpty) {
+      body['Email'] = user.email;
+    }
+    final response = await http.put(
+      uri,
+      headers: _headers,
+      body: jsonEncode(body),
+    );
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return AppUser.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<AppUser> getUserById(int id) async {
+    final uri = Uri.parse('$baseUrl/Users/$id');
+    final response = await http.get(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return AppUser.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<Duration> testConnection() async {
+    final stopwatch = Stopwatch()..start();
+    final uri = Uri.parse('$baseUrl/Yachts/admin/overview')
+        .replace(queryParameters: {'Page': '0', 'PageSize': '1'});
+    final response = await http.get(uri, headers: _headers).timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => throw ApiException(0, 'Connection timed out after 10 seconds.'),
+    );
+    stopwatch.stop();
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return stopwatch.elapsed;
+  }
 }
 
 class ApiException implements Exception {
