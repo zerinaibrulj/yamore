@@ -10,13 +10,13 @@ void main() {
   // Center the window and give it a reasonable default size on desktop.
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     window_size.setWindowTitle('Yamore Admin');
-    window_size.setWindowMinSize(const Size(1000, 700));
-    window_size.setWindowMaxSize(const Size(1920, 1200));
+    window_size.setWindowMinSize(const Size(1100, 750));
+    window_size.setWindowMaxSize(const Size(1930, 1080));
     window_size.getScreenList().then((screens) {
       if (screens.isNotEmpty) {
         final screen = screens.first;
-        final width = 1200.0;
-        final height = 800.0;
+        final width = 1420.0;
+        final height = 900.0;
         final left = screen.frame.left + (screen.frame.width - width) / 2;
         final top = screen.frame.top + (screen.frame.height - height) / 2;
         window_size.setWindowFrame(
