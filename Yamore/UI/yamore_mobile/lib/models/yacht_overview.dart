@@ -9,6 +9,7 @@ class YachtOverview {
   final int capacity;
   final double pricePerDay;
   final String? stateMachine;
+  final int? thumbnailImageId;
 
   YachtOverview({
     required this.yachtId,
@@ -21,6 +22,7 @@ class YachtOverview {
     required this.capacity,
     required this.pricePerDay,
     this.stateMachine,
+    this.thumbnailImageId,
   });
 
   factory YachtOverview.fromJson(Map<String, dynamic> json) {
@@ -35,6 +37,7 @@ class YachtOverview {
       capacity: json['capacity'] as int? ?? 0,
       pricePerDay: (json['pricePerDay'] as num?)?.toDouble() ?? 0,
       stateMachine: json['stateMachine'] as String?,
+      thumbnailImageId: json['thumbnailImageId'] as int?,
     );
   }
 }

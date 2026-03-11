@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../theme/app_theme.dart';
 import '../../models/yacht_overview.dart';
 import '../../models/yacht_detail.dart';
+import '../../models/yacht_image.dart';
 import '../../models/city.dart';
 import '../../models/yacht_category.dart';
 import '../../models/user.dart';
@@ -208,6 +210,7 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
                 ),
                 columns: const [
                   DataColumn(label: Text('No.')),
+                  DataColumn(label: Text('')),
                   DataColumn(label: Text('Name')),
                   DataColumn(label: Text('Location')),
                   DataColumn(label: Text('Owner')),
@@ -236,6 +239,29 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
                         },
                         cells: [
                           DataCell(Text('$displayIndex.')),
+                          DataCell(
+                            y.thumbnailImageId != null
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Image.network(
+                                      _api.yachtImageUrl(y.thumbnailImageId!),
+                                      width: 40,
+                                      height: 40,
+                                      fit: BoxFit.cover,
+                                      headers: _api.authHeaders,
+                                      errorBuilder: (_, __, ___) => const Icon(
+                                        Icons.image_not_supported_outlined,
+                                        size: 24,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.image_outlined,
+                                    size: 24,
+                                    color: Colors.grey,
+                                  ),
+                          ),
                           DataCell(Text(y.name)),
                           DataCell(Text(y.locationName ?? '—')),
                           DataCell(Text(y.ownerName ?? '—')),
@@ -582,6 +608,10 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
   bool _saving = false;
   AppUser? _selectedOwner;
 
+  List<YachtImageModel> _images = [];
+  bool _imagesLoading = false;
+  bool _imageUploading = false;
+
   @override
   void initState() {
     super.initState();
@@ -611,6 +641,68 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
       }
       _ownerId.text = _selectedOwner!.userId.toString();
     }
+
+    if (y?.yachtId != null) {
+      _loadImages();
+    }
+  }
+
+  Future<void> _loadImages() async {
+    setState(() => _imagesLoading = true);
+    try {
+      final imgs = await widget.api.getYachtImages(widget.initial!.yachtId!);
+      if (mounted) setState(() => _images = imgs);
+    } catch (_) {}
+    if (mounted) setState(() => _imagesLoading = false);
+  }
+
+  Future<void> _pickAndUploadImage() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+    );
+    if (result == null || result.files.isEmpty) return;
+    final path = result.files.single.path;
+    if (path == null) return;
+
+    setState(() => _imageUploading = true);
+    final countBefore = _images.length;
+    try {
+      await widget.api.uploadYachtImage(widget.initial!.yachtId!, path);
+    } catch (_) {
+      // The POST may fail on the client side even if the server saved the
+      // image (Windows desktop http quirk). We reload and check below.
+    }
+    await _loadImages();
+    if (mounted) {
+      if (_images.length > countBefore) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Image uploaded successfully.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Upload failed. Please try again.')),
+        );
+      }
+      setState(() => _imageUploading = false);
+    }
+  }
+
+  Future<void> _deleteImage(YachtImageModel img) async {
+    try {
+      await widget.api.deleteYachtImage(img.yachtImageId);
+      await _loadImages();
+    } catch (_) {}
+  }
+
+  Future<void> _setThumbnail(YachtImageModel img) async {
+    try {
+      await widget.api.setYachtImageThumbnail(img.yachtImageId);
+      await _loadImages();
+    } catch (_) {}
   }
 
   @override
@@ -627,6 +719,88 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
     _categoryId.dispose();
     _description.dispose();
     super.dispose();
+  }
+
+  Widget _buildImageTile(YachtImageModel img) {
+    final url = widget.api.yachtImageUrl(img.yachtImageId);
+    return Stack(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.network(
+            url,
+            width: 150,
+            height: 130,
+            fit: BoxFit.cover,
+            headers: widget.api.authHeaders,
+            errorBuilder: (_, __, ___) => Container(
+              width: 150,
+              height: 130,
+              color: Colors.grey.shade200,
+              child: const Icon(Icons.broken_image, size: 32, color: Colors.grey),
+            ),
+          ),
+        ),
+        if (img.isThumbnail)
+          Positioned(
+            top: 4,
+            left: 4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryBlue,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text(
+                'Cover',
+                style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        Positioned(
+          top: 4,
+          right: 4,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (!img.isThumbnail)
+                _miniButton(
+                  icon: Icons.star_outline,
+                  tooltip: 'Set as cover',
+                  onTap: () => _setThumbnail(img),
+                ),
+              const SizedBox(width: 2),
+              _miniButton(
+                icon: Icons.delete_outline,
+                tooltip: 'Delete',
+                color: Colors.red,
+                onTap: () => _deleteImage(img),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _miniButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+    Color color = Colors.white,
+  }) {
+    return Material(
+      color: Colors.black54,
+      borderRadius: BorderRadius.circular(4),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(4),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(4),
+          child: Icon(icon, size: 16, color: color),
+        ),
+      ),
+    );
   }
 
   Future<void> _save() async {
@@ -901,6 +1075,66 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                   ),
                   maxLines: 2,
                 ),
+
+                if (widget.initial?.yachtId != null) ...[
+                  const SizedBox(height: 18),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.photo_library_outlined, size: 20),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Images',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const Spacer(),
+                      OutlinedButton.icon(
+                        onPressed: _imageUploading ? null : _pickAndUploadImage,
+                        icon: _imageUploading
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.add_photo_alternate_outlined, size: 18),
+                        label: Text(_imageUploading ? 'Uploading...' : 'Add Image'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  if (_imagesLoading)
+                    const Center(child: CircularProgressIndicator())
+                  else if (_images.isEmpty)
+                    Container(
+                      height: 80,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'No images yet. Click "Add Image" to upload.',
+                        style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                      ),
+                    )
+                  else
+                    SizedBox(
+                      height: 130,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _images.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 10),
+                        itemBuilder: (context, index) {
+                          final img = _images[index];
+                          return _buildImageTile(img);
+                        },
+                      ),
+                    ),
+                ],
               ],
             ),
           ),

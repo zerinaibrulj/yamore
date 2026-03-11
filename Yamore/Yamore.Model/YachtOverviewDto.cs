@@ -15,5 +15,6 @@ namespace Yamore.Model
         public int Capacity { get; set; }
         public decimal PricePerDay { get; set; }
         public string? StateMachine { get; set; }
+        public int? ThumbnailImageId { get; set; }
     }
 }

@@ -37,6 +37,7 @@ dependencies:
   window_size: ^0.1.0
   printing: ^5.14.2
   pdf: ^3.11.3
+  file_picker: ^10.3.10
 
 dev_dependencies:
   flutter_test:

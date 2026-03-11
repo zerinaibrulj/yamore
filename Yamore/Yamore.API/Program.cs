@@ -85,6 +85,7 @@ builder.Services.AddTransient<IYachtAvailabilityService, YachtAvailabilityServic
 builder.Services.AddTransient<IServiceCategoryService, ServiceCategoryService>();
 builder.Services.AddTransient<IYachtDocumentService, YachtDocumentService>();
 builder.Services.AddTransient<IStatisticsService, StatisticsService>();
+builder.Services.AddTransient<IYachtImageService, YachtImageService>();
 
 
 

@@ -211,6 +211,12 @@ namespace Yamore.Services.Services
                 query = query.Skip(search.Page.Value * search.PageSize.Value).Take(search.PageSize.Value);
 
             var list = query.ToList();
+            var yachtIds = list.Select(y => y.YachtId).ToList();
+            var thumbnails = Context.YachtImages
+                .Where(i => yachtIds.Contains(i.YachtId) && i.IsThumbnail)
+                .Select(i => new { i.YachtId, i.YachtImageId })
+                .ToDictionary(x => x.YachtId, x => x.YachtImageId);
+
             var result = list.Select(y => new YachtOverviewDto
             {
                 YachtId = y.YachtId,
@@ -222,7 +228,8 @@ namespace Yamore.Services.Services
                 Length = y.Length,
                 Capacity = y.Capacity,
                 PricePerDay = y.PricePerDay,
-                StateMachine = y.StateMachine
+                StateMachine = y.StateMachine,
+                ThumbnailImageId = thumbnails.TryGetValue(y.YachtId, out var tid) ? tid : null
             }).ToList();
 
             return new PagedResponse<YachtOverviewDto> { Count = count, ResultList = result };

@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../models/yacht_overview.dart';
 import '../models/yacht_detail.dart';
+import '../models/yacht_image.dart';
 import '../models/city.dart';
 import '../models/yacht_category.dart';
 import '../models/user.dart';
@@ -18,6 +20,15 @@ class ApiService {
     this.username,
     this.password,
   });
+
+  Map<String, String> get authHeaders {
+    final headers = <String, String>{};
+    if (username != null && password != null && username!.isNotEmpty) {
+      final credentials = base64Encode(utf8.encode('$username:$password'));
+      headers['Authorization'] = 'Basic $credentials';
+    }
+    return headers;
+  }
 
   Map<String, String> get _headers {
     final headers = <String, String>{
@@ -389,6 +400,65 @@ class ApiService {
       throw ApiException(response.statusCode, response.body);
     }
     return stopwatch.elapsed;
+  }
+
+  // ── Yacht Images ──
+
+  String yachtImageUrl(int imageId) => '$baseUrl/YachtImages/$imageId';
+
+  Future<List<YachtImageModel>> getYachtImages(int yachtId) async {
+    final uri = Uri.parse('$baseUrl/YachtImages/byYacht/$yachtId');
+    final response = await http.get(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((e) => YachtImageModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<YachtImageModel> uploadYachtImage(int yachtId, String filePath) async {
+    final file = File(filePath);
+    final bytes = await file.readAsBytes();
+    final base64Data = base64Encode(bytes);
+    final ext = filePath.split('.').last.toLowerCase();
+    final contentType = ext == 'png' ? 'image/png'
+        : ext == 'webp' ? 'image/webp'
+        : 'image/jpeg';
+
+    final uri = Uri.parse('$baseUrl/YachtImages/upload/$yachtId');
+    final response = await http.post(
+      uri,
+      headers: _headers,
+      body: jsonEncode({
+        'ImageDataBase64': base64Data,
+        'ContentType': contentType,
+        'FileName': filePath.split(Platform.pathSeparator).last,
+      }),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return YachtImageModel.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<void> deleteYachtImage(int imageId) async {
+    final uri = Uri.parse('$baseUrl/YachtImages/$imageId');
+    final response = await http.delete(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  Future<void> setYachtImageThumbnail(int imageId) async {
+    final uri = Uri.parse('$baseUrl/YachtImages/$imageId/thumbnail');
+    final response = await http.put(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
   }
 }
 
