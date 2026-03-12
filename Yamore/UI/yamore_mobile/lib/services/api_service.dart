@@ -158,6 +158,38 @@ class ApiService {
         .toList();
   }
 
+  Future<void> insertYachtCategory({required String name}) async {
+    final uri = Uri.parse('$baseUrl/YachtCategory');
+    final response = await http.post(
+      uri,
+      headers: _headers,
+      body: jsonEncode({'Name': name}),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  Future<void> updateYachtCategory(int id, {required String name}) async {
+    final uri = Uri.parse('$baseUrl/YachtCategory/$id');
+    final response = await http.put(
+      uri,
+      headers: _headers,
+      body: jsonEncode({'Name': name}),
+    );
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  Future<void> deleteYachtCategory(int id) async {
+    final uri = Uri.parse('$baseUrl/YachtCategory/$id');
+    final response = await http.delete(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
   /// All users who have the YachtOwner/Owner role, sorted by display name.
   Future<List<AppUser>> getOwners() async {
     final uri = Uri.parse('$baseUrl/Users/owners');

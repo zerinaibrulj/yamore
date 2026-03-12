@@ -725,47 +725,81 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
   }
 
   Future<void> _addAvailability() async {
-    DateTimeRange? range = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 730)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: AppTheme.primaryBlue,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (range == null) return;
-
+    DateTimeRange? range;
     bool isBlocked = true;
     final noteCtrl = TextEditingController();
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setLocalState) {
             return AlertDialog(
-              title: const Text('Add Availability Period'),
+              title: Row(
+                children: const [
+                  Icon(Icons.event_available_outlined, size: 22),
+                  SizedBox(width: 8),
+                  Text('Add Availability Period'),
+                ],
+              ),
               content: SizedBox(
-                width: 380,
+                width: 400,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '${_fmtDate(range!.start)} – ${_fmtDate(range!.end)}',
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final picked = await showDateRangePicker(
+                          context: ctx,
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime.now().add(const Duration(days: 730)),
+                          builder: (context, child) {
+                            return Theme(
+                              data: Theme.of(context).copyWith(
+                                colorScheme: Theme.of(context).colorScheme.copyWith(
+                                  primary: AppTheme.primaryBlue,
+                                ),
+                                dialogTheme: const DialogThemeData(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.all(Radius.circular(16)),
+                                  ),
+                                ),
+                              ),
+                              child: Center(
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(maxWidth: 500, maxHeight: 550),
+                                  child: child!,
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                        if (picked != null) {
+                          setLocalState(() => range = picked);
+                        }
+                      },
+                      icon: const Icon(Icons.calendar_month_outlined, size: 18),
+                      label: Text(
+                        range == null
+                            ? 'Select date range'
+                            : '${_fmtDate(range!.start)} – ${_fmtDate(range!.end)}',
+                        style: TextStyle(
+                          fontWeight: range != null ? FontWeight.w600 : FontWeight.w400,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 44),
+                        alignment: Alignment.centerLeft,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     SwitchListTile(
                       title: const Text('Block period (unavailable)'),
                       subtitle: Text(
-                        isBlocked ? 'Yacht will be unavailable during this period' : 'Yacht will be available during this period',
+                        isBlocked
+                            ? 'Yacht will be unavailable during this period'
+                            : 'Yacht will be available during this period',
                         style: const TextStyle(fontSize: 12),
                       ),
                       value: isBlocked,
@@ -790,9 +824,12 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                   onPressed: () => Navigator.of(ctx).pop(false),
                   child: const Text('Cancel'),
                 ),
-                FilledButton(
-                  onPressed: () => Navigator.of(ctx).pop(true),
-                  child: const Text('Add'),
+                FilledButton.icon(
+                  onPressed: range == null
+                      ? null
+                      : () => Navigator.of(ctx).pop(true),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Add'),
                 ),
               ],
             );
@@ -800,12 +837,12 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
         );
       },
     );
-    if (confirmed == true) {
+    if (confirmed == true && range != null) {
       try {
         await widget.api.insertYachtAvailability(
           yachtId: widget.initial!.yachtId!,
-          startDate: range.start,
-          endDate: range.end,
+          startDate: range!.start,
+          endDate: range!.end,
           isBlocked: isBlocked,
           note: noteCtrl.text.trim().isEmpty ? null : noteCtrl.text.trim(),
         );

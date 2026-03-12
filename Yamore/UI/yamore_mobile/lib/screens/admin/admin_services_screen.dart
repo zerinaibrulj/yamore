@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../models/service_category.dart';
 import '../../models/service_model.dart';
+import '../../models/yacht_category.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 
@@ -43,13 +44,22 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
   // Cached categories for service dropdown
   List<ServiceCategory> _allCategories = [];
 
+  // Yacht Categories state
+  List<YachtCategoryModel> _yachtCategories = [];
+  int? _ycTotalCount;
+  bool _ycLoading = true;
+  String? _ycError;
+  int _ycPage = 0;
+  final int _ycPageSize = 10;
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _loadCategories();
     _loadServices();
     _loadAllCategories();
+    _loadYachtCategories();
   }
 
   @override
@@ -367,6 +377,163 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
     }
   }
 
+  // ── Yacht Categories ──
+
+  Future<void> _loadYachtCategories() async {
+    setState(() {
+      _ycLoading = true;
+      _ycError = null;
+    });
+    try {
+      final all = await _api.getYachtCategories();
+      if (mounted) {
+        final start = _ycPage * _ycPageSize;
+        final end = (start + _ycPageSize).clamp(0, all.length);
+        setState(() {
+          _ycTotalCount = all.length;
+          _yachtCategories = start < all.length ? all.sublist(start, end) : [];
+          _ycLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _ycError = 'Failed to load yacht categories: $e';
+          _ycLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _addYachtCategory() async {
+    final nameCtrl = TextEditingController();
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Yacht Category'),
+        content: SizedBox(
+          width: 360,
+          child: TextField(
+            controller: nameCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Category name',
+              border: OutlineInputBorder(),
+            ),
+            autofocus: true,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (nameCtrl.text.trim().isNotEmpty) {
+                Navigator.of(context).pop(true);
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (saved == true) {
+      try {
+        await _api.insertYachtCategory(name: nameCtrl.text.trim());
+        await _loadYachtCategories();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to add yacht category: $e')),
+          );
+        }
+      }
+    }
+    nameCtrl.dispose();
+  }
+
+  Future<void> _editYachtCategory(YachtCategoryModel cat) async {
+    final nameCtrl = TextEditingController(text: cat.name);
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Yacht Category'),
+        content: SizedBox(
+          width: 360,
+          child: TextField(
+            controller: nameCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Category name',
+              border: OutlineInputBorder(),
+            ),
+            autofocus: true,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (nameCtrl.text.trim().isNotEmpty) {
+                Navigator.of(context).pop(true);
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (saved == true) {
+      try {
+        await _api.updateYachtCategory(cat.categoryId, name: nameCtrl.text.trim());
+        await _loadYachtCategories();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to update yacht category: $e')),
+          );
+        }
+      }
+    }
+    nameCtrl.dispose();
+  }
+
+  Future<void> _deleteYachtCategory(YachtCategoryModel cat) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete yacht category'),
+        content: Text('Are you sure you want to delete "${cat.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      try {
+        await _api.deleteYachtCategory(cat.categoryId);
+        await _loadYachtCategories();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete yacht category: $e')),
+          );
+        }
+      }
+    }
+  }
+
   String _categoryName(int? id) {
     if (id == null) return '—';
     final match = _allCategories.where((c) => c.serviceCategoryId == id);
@@ -394,6 +561,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
                   _loadCategories();
                   _loadServices();
                   _loadAllCategories();
+                  _loadYachtCategories();
                 },
                 icon: const Icon(Icons.refresh),
                 tooltip: 'Refresh',
@@ -404,8 +572,9 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
           TabBar(
             controller: _tabController,
             tabs: const [
-              Tab(text: 'Categories'),
+              Tab(text: 'Service Categories'),
               Tab(text: 'Services'),
+              Tab(text: 'Yacht Categories'),
             ],
             labelColor: AppTheme.primaryBlue,
             indicatorColor: AppTheme.primaryBlue,
@@ -416,6 +585,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
               children: [
                 _buildCategoriesTab(),
                 _buildServicesTab(),
+                _buildYachtCategoriesTab(),
               ],
             ),
           ),
@@ -642,6 +812,109 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
           onNext: () {
             setState(() => _svcPage++);
             _loadServices();
+          },
+        ),
+      ],
+    );
+  }
+
+  // ── Yacht Categories Tab ──
+
+  Widget _buildYachtCategoriesTab() {
+    return Column(
+      children: [
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            const Spacer(),
+            FilledButton.icon(
+              onPressed: _addYachtCategory,
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Add Yacht Category'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Expanded(child: _buildYachtCategoryBody()),
+      ],
+    );
+  }
+
+  Widget _buildYachtCategoryBody() {
+    if (_ycLoading) return const Center(child: CircularProgressIndicator());
+    if (_ycError != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(_ycError!, style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 16),
+            FilledButton(onPressed: _loadYachtCategories, child: const Text('Retry')),
+          ],
+        ),
+      );
+    }
+    if (_yachtCategories.isEmpty) return const Center(child: Text('No yacht categories found.'));
+
+    final total = _ycTotalCount ?? _yachtCategories.length;
+    final start = total == 0 ? 0 : _ycPage * _ycPageSize + 1;
+    final end = (_ycPage * _ycPageSize + _yachtCategories.length).clamp(0, total);
+    final totalPages = total == 0 ? 1 : ((total + _ycPageSize - 1) / _ycPageSize).floor();
+
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            child: DataTable(
+              showCheckboxColumn: false,
+              headingRowColor: WidgetStateProperty.all(AppTheme.primaryBlue),
+              headingTextStyle: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+              columns: const [
+                DataColumn(label: Text('No.')),
+                DataColumn(label: Text('Name')),
+                DataColumn(label: Text('')),
+              ],
+              rows: _yachtCategories.asMap().entries.map((entry) {
+                final index = entry.key;
+                final c = entry.value;
+                return DataRow(cells: [
+                  DataCell(Text('${_ycPage * _ycPageSize + index + 1}.')),
+                  DataCell(Text(c.name)),
+                  DataCell(Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, size: 20),
+                        tooltip: 'Edit',
+                        onPressed: () => _editYachtCategory(c),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
+                        tooltip: 'Delete',
+                        onPressed: () => _deleteYachtCategory(c),
+                      ),
+                    ],
+                  )),
+                ]);
+              }).toList(),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildPagination(
+          start, end, total, totalPages,
+          page: _ycPage,
+          pageSize: _ycPageSize,
+          onPrev: () {
+            setState(() => _ycPage--);
+            _loadYachtCategories();
+          },
+          onNext: () {
+            setState(() => _ycPage++);
+            _loadYachtCategories();
           },
         ),
       ],
