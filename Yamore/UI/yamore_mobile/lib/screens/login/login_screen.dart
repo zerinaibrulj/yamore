@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../config.dart';
 import '../../theme/app_theme.dart';
 import '../../models/user.dart';
 import '../../services/auth_service.dart';
@@ -18,7 +19,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _authService = AuthService(baseUrl: 'http://localhost:5096');
+  final _authService = AuthService(baseUrl: AppConfig.apiBaseUrl);
 
   bool _obscurePassword = true;
   bool _rememberMe = false;

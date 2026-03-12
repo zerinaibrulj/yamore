@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../config.dart';
 import '../../theme/app_theme.dart';
 import '../../services/auth_service.dart';
 
@@ -20,7 +21,7 @@ class _RegisterScreenState extends State<RegisterScreen>
   final _usernameCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _confirmPasswordCtrl = TextEditingController();
-  final _authService = AuthService(baseUrl: 'http://localhost:5096');
+  final _authService = AuthService(baseUrl: AppConfig.apiBaseUrl);
 
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
