@@ -363,6 +363,12 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                   onPressed: () => _toggleStatus(u),
                                 ),
                                 IconButton(
+                                  icon: const Icon(Icons.warning_amber_outlined,
+                                      color: Colors.amber),
+                                  tooltip: 'Send warning',
+                                  onPressed: () => _sendWarning(u),
+                                ),
+                                IconButton(
                                   icon: const Icon(Icons.delete_outline,
                                       color: Colors.redAccent),
                                   tooltip: 'Delete',
@@ -543,6 +549,86 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         );
       }
     }
+  }
+
+  Future<void> _sendWarning(AppUser user) async {
+    final messageController = TextEditingController();
+    final sent = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: const [
+            Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 24),
+            SizedBox(width: 8),
+            Text('Send Warning'),
+          ],
+        ),
+        content: SizedBox(
+          width: 420,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Send a warning notification to ${user.displayName}.',
+                style: const TextStyle(fontSize: 13, color: Colors.black54),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: messageController,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  labelText: 'Warning message',
+                  hintText: 'Enter the warning message to send...',
+                  border: OutlineInputBorder(),
+                  alignLabelWithHint: true,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              if (messageController.text.trim().isNotEmpty) {
+                Navigator.of(context).pop(true);
+              }
+            },
+            icon: const Icon(Icons.send, size: 18),
+            label: const Text('Send'),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.amber.shade700,
+            ),
+          ),
+        ],
+      ),
+    );
+    if (sent == true && messageController.text.trim().isNotEmpty) {
+      try {
+        await _api.sendNotification(
+          userId: user.userId,
+          message: messageController.text.trim(),
+        );
+        if (mounted) {
+          await _showSuccessDialog(
+            context,
+            title: 'Warning sent',
+            message: 'The warning has been sent to ${user.displayName}.',
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to send warning: $e')),
+          );
+        }
+      }
+    }
+    messageController.dispose();
   }
 
   Future<void> _deleteUser(AppUser user) async {

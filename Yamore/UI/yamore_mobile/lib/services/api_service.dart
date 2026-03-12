@@ -4,11 +4,15 @@ import 'package:http/http.dart' as http;
 import '../models/yacht_overview.dart';
 import '../models/yacht_detail.dart';
 import '../models/yacht_image.dart';
+import '../models/yacht_availability.dart';
 import '../models/city.dart';
 import '../models/yacht_category.dart';
 import '../models/user.dart';
 import '../models/statistics.dart';
 import '../models/paged_users.dart';
+import '../models/review.dart';
+import '../models/service_category.dart';
+import '../models/service_model.dart';
 
 class ApiService {
   final String baseUrl;
@@ -456,6 +460,271 @@ class ApiService {
   Future<void> setYachtImageThumbnail(int imageId) async {
     final uri = Uri.parse('$baseUrl/YachtImages/$imageId/thumbnail');
     final response = await http.put(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  // ── Notifications ──
+
+  Future<void> sendNotification({required int userId, required String message}) async {
+    final uri = Uri.parse('$baseUrl/Notification');
+    final response = await http.post(
+      uri,
+      headers: _headers,
+      body: jsonEncode({
+        'UserId': userId,
+        'Message': message,
+        'CreatedAt': DateTime.now().toUtc().toIso8601String(),
+        'IsRead': false,
+      }),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  // ── Reviews ──
+
+  Future<PagedReviews> getReviews({
+    int? page,
+    int? pageSize,
+    int? yachtId,
+    int? userId,
+    bool? isReported,
+  }) async {
+    final query = <String, String>{};
+    if (page != null) query['Page'] = page.toString();
+    if (pageSize != null) query['PageSize'] = pageSize.toString();
+    if (yachtId != null) query['YachtId'] = yachtId.toString();
+    if (userId != null) query['UserId'] = userId.toString();
+    if (isReported != null) query['IsReported'] = isReported.toString();
+    final uri = Uri.parse('$baseUrl/Review')
+        .replace(queryParameters: query.isNotEmpty ? query : null);
+    final response = await http.get(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return PagedReviews.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<void> deleteReview(int id) async {
+    final uri = Uri.parse('$baseUrl/Review/$id');
+    final response = await http.delete(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  Future<void> reportReview(int id) async {
+    final uri = Uri.parse('$baseUrl/Review/$id/report');
+    final response = await http.put(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  Future<void> respondToReview(int id, String ownerResponse) async {
+    final uri = Uri.parse('$baseUrl/Review/$id/respond');
+    final response = await http.put(
+      uri,
+      headers: _headers,
+      body: jsonEncode({'OwnerResponse': ownerResponse}),
+    );
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  // ── Yacht Availability ──
+
+  Future<PagedYachtAvailabilities> getYachtAvailabilities({
+    required int yachtId,
+    int? page,
+    int? pageSize,
+  }) async {
+    final query = <String, String>{
+      'YachtId': yachtId.toString(),
+    };
+    if (page != null) query['Page'] = page.toString();
+    if (pageSize != null) query['PageSize'] = pageSize.toString();
+    final uri = Uri.parse('$baseUrl/YachtAvailability')
+        .replace(queryParameters: query);
+    final response = await http.get(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return PagedYachtAvailabilities.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<void> insertYachtAvailability({
+    required int yachtId,
+    required DateTime startDate,
+    required DateTime endDate,
+    required bool isBlocked,
+    String? note,
+  }) async {
+    final uri = Uri.parse('$baseUrl/YachtAvailability');
+    final response = await http.post(
+      uri,
+      headers: _headers,
+      body: jsonEncode({
+        'YachtId': yachtId,
+        'StartDate': startDate.toUtc().toIso8601String(),
+        'EndDate': endDate.toUtc().toIso8601String(),
+        'IsBlocked': isBlocked,
+        'Note': note,
+      }),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  Future<void> deleteYachtAvailability(int id) async {
+    final uri = Uri.parse('$baseUrl/YachtAvailability/$id');
+    final response = await http.delete(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  // ── Service Categories ──
+
+  Future<PagedServiceCategories> getServiceCategories({
+    int? page,
+    int? pageSize,
+    String? name,
+  }) async {
+    final query = <String, String>{};
+    if (page != null) query['Page'] = page.toString();
+    if (pageSize != null) query['PageSize'] = pageSize.toString();
+    if (name != null && name.isNotEmpty) query['Name'] = name;
+    final uri = Uri.parse('$baseUrl/ServiceCategory')
+        .replace(queryParameters: query.isNotEmpty ? query : null);
+    final response = await http.get(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return PagedServiceCategories.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<void> insertServiceCategory({
+    required String name,
+    String? description,
+  }) async {
+    final uri = Uri.parse('$baseUrl/ServiceCategory');
+    final response = await http.post(
+      uri,
+      headers: _headers,
+      body: jsonEncode({
+        'Name': name,
+        'Description': description,
+      }),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  Future<void> updateServiceCategory(int id, {String? name, String? description}) async {
+    final uri = Uri.parse('$baseUrl/ServiceCategory/$id');
+    final response = await http.put(
+      uri,
+      headers: _headers,
+      body: jsonEncode({
+        'Name': name,
+        'Description': description,
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  Future<void> deleteServiceCategory(int id) async {
+    final uri = Uri.parse('$baseUrl/ServiceCategory/$id');
+    final response = await http.delete(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  // ── Services ──
+
+  Future<PagedServices> getServices({
+    int? page,
+    int? pageSize,
+    String? nameGTE,
+  }) async {
+    final query = <String, String>{};
+    if (page != null) query['Page'] = page.toString();
+    if (pageSize != null) query['PageSize'] = pageSize.toString();
+    if (nameGTE != null && nameGTE.isNotEmpty) query['NameGTE'] = nameGTE;
+    final uri = Uri.parse('$baseUrl/Service')
+        .replace(queryParameters: query.isNotEmpty ? query : null);
+    final response = await http.get(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return PagedServices.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<void> insertService({
+    required String name,
+    String? description,
+    double? price,
+    int? serviceCategoryId,
+  }) async {
+    final uri = Uri.parse('$baseUrl/Service');
+    final response = await http.post(
+      uri,
+      headers: _headers,
+      body: jsonEncode({
+        'Name': name,
+        'Description': description,
+        'Price': price,
+        'ServiceCategoryId': serviceCategoryId,
+      }),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  Future<void> updateService(int id, {
+    required String name,
+    String? description,
+    double? price,
+    int? serviceCategoryId,
+  }) async {
+    final uri = Uri.parse('$baseUrl/Service/$id');
+    final response = await http.put(
+      uri,
+      headers: _headers,
+      body: jsonEncode({
+        'Name': name,
+        'Description': description,
+        'Price': price,
+        'ServiceCategoryId': serviceCategoryId,
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  Future<void> deleteService(int id) async {
+    final uri = Uri.parse('$baseUrl/Service/$id');
+    final response = await http.delete(uri, headers: _headers);
     if (response.statusCode != 200) {
       throw ApiException(response.statusCode, response.body);
     }

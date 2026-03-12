@@ -4,6 +4,7 @@ import '../../theme/app_theme.dart';
 import '../../models/yacht_overview.dart';
 import '../../models/yacht_detail.dart';
 import '../../models/yacht_image.dart';
+import '../../models/yacht_availability.dart';
 import '../../models/city.dart';
 import '../../models/yacht_category.dart';
 import '../../models/user.dart';
@@ -612,6 +613,9 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
   bool _imagesLoading = false;
   bool _imageUploading = false;
 
+  List<YachtAvailability> _availabilities = [];
+  bool _availLoading = false;
+
   @override
   void initState() {
     super.initState();
@@ -644,6 +648,7 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
 
     if (y?.yachtId != null) {
       _loadImages();
+      _loadAvailabilities();
     }
   }
 
@@ -703,6 +708,128 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
       await widget.api.setYachtImageThumbnail(img.yachtImageId);
       await _loadImages();
     } catch (_) {}
+  }
+
+  // ── Availability ──
+
+  Future<void> _loadAvailabilities() async {
+    setState(() => _availLoading = true);
+    try {
+      final result = await widget.api.getYachtAvailabilities(
+        yachtId: widget.initial!.yachtId!,
+        pageSize: 50,
+      );
+      if (mounted) setState(() => _availabilities = result.resultList);
+    } catch (_) {}
+    if (mounted) setState(() => _availLoading = false);
+  }
+
+  Future<void> _addAvailability() async {
+    DateTimeRange? range = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 730)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: AppTheme.primaryBlue,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (range == null) return;
+
+    bool isBlocked = true;
+    final noteCtrl = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setLocalState) {
+            return AlertDialog(
+              title: const Text('Add Availability Period'),
+              content: SizedBox(
+                width: 380,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${_fmtDate(range!.start)} – ${_fmtDate(range!.end)}',
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                    ),
+                    const SizedBox(height: 16),
+                    SwitchListTile(
+                      title: const Text('Block period (unavailable)'),
+                      subtitle: Text(
+                        isBlocked ? 'Yacht will be unavailable during this period' : 'Yacht will be available during this period',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      value: isBlocked,
+                      onChanged: (v) => setLocalState(() => isBlocked = v),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: noteCtrl,
+                      maxLines: 2,
+                      decoration: const InputDecoration(
+                        labelText: 'Note (optional)',
+                        border: OutlineInputBorder(),
+                        alignLabelWithHint: true,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: const Text('Add'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    if (confirmed == true) {
+      try {
+        await widget.api.insertYachtAvailability(
+          yachtId: widget.initial!.yachtId!,
+          startDate: range.start,
+          endDate: range.end,
+          isBlocked: isBlocked,
+          note: noteCtrl.text.trim().isEmpty ? null : noteCtrl.text.trim(),
+        );
+        await _loadAvailabilities();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to add availability: $e')),
+          );
+        }
+      }
+    }
+    noteCtrl.dispose();
+  }
+
+  Future<void> _deleteAvailability(YachtAvailability a) async {
+    try {
+      await widget.api.deleteYachtAvailability(a.yachtAvailabilityId);
+      await _loadAvailabilities();
+    } catch (_) {}
+  }
+
+  String _fmtDate(DateTime dt) {
+    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
   }
 
   @override
@@ -1134,6 +1261,68 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                         },
                       ),
                     ),
+
+                  // ── Availability Section ──
+                  const SizedBox(height: 18),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.event_available_outlined, size: 20),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Availability',
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                      ),
+                      const Spacer(),
+                      OutlinedButton.icon(
+                        onPressed: _addAvailability,
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('Add Period'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  if (_availLoading)
+                    const Center(child: CircularProgressIndicator())
+                  else if (_availabilities.isEmpty)
+                    Container(
+                      height: 60,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'No availability periods set.',
+                        style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                      ),
+                    )
+                  else
+                    ...(_availabilities.map((a) => Card(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      child: ListTile(
+                        dense: true,
+                        leading: Icon(
+                          a.isBlocked ? Icons.block : Icons.check_circle_outline,
+                          color: a.isBlocked ? Colors.red : Colors.green,
+                          size: 22,
+                        ),
+                        title: Text(
+                          '${_fmtDate(a.startDate)} – ${_fmtDate(a.endDate)}',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                        ),
+                        subtitle: Text(
+                          '${a.isBlocked ? 'Blocked' : 'Available'}${a.note != null && a.note!.isNotEmpty ? ' · ${a.note}' : ''}',
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
+                          tooltip: 'Remove',
+                          onPressed: () => _deleteAvailability(a),
+                        ),
+                      ),
+                    ))),
                 ],
               ],
             ),

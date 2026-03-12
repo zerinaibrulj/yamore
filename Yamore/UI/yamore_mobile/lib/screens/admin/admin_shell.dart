@@ -5,6 +5,8 @@ import '../login/login_screen.dart';
 import 'admin_home_screen.dart';
 import 'admin_users_screen.dart';
 import 'yacht_review_screen.dart';
+import 'admin_reviews_screen.dart';
+import 'admin_services_screen.dart';
 import 'admin_settings_screen.dart';
 
 class AdminShell extends StatefulWidget {
@@ -34,6 +36,16 @@ class _AdminShellState extends State<AdminShell> {
       icon: Icons.directions_boat_outlined,
       selectedIcon: Icons.directions_boat,
       label: 'Yachts',
+    ),
+    _NavItem(
+      icon: Icons.rate_review_outlined,
+      selectedIcon: Icons.rate_review,
+      label: 'Reviews',
+    ),
+    _NavItem(
+      icon: Icons.room_service_outlined,
+      selectedIcon: Icons.room_service,
+      label: 'Services',
     ),
     _NavItem(
       icon: Icons.settings_outlined,
@@ -115,6 +127,12 @@ class _AdminShellState extends State<AdminShell> {
         sectionTitle = 'Yachts';
         break;
       case 3:
+        sectionTitle = 'Reviews';
+        break;
+      case 4:
+        sectionTitle = 'Services';
+        break;
+      case 5:
         sectionTitle = 'Settings';
         break;
       default:
@@ -178,9 +196,13 @@ class _AdminShellState extends State<AdminShell> {
       case 2:
         return YachtReviewScreen(authService: widget.authService);
       case 3:
+        return AdminReviewsScreen(authService: widget.authService);
+      case 4:
+        return AdminServicesScreen(authService: widget.authService);
+      case 5:
         return AdminSettingsScreen(authService: widget.authService);
       default:
-        return YachtReviewScreen(authService: widget.authService);
+        return AdminHomeScreen(authService: widget.authService);
     }
   }
 }
