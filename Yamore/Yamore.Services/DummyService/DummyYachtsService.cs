@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -56,6 +56,11 @@ namespace Yamore.Services.DummyService
         }
 
         public PagedResponse<YachtOverviewDto> GetOverviewForAdmin(YachtsSearchObject search)
+        {
+            throw new NotImplementedException();
+        }
+
+        public PagedResponse<YachtOverviewDto> GetOverviewForOwner(int ownerId, YachtsSearchObject search)
         {
             throw new NotImplementedException();
         }

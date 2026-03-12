@@ -16,5 +16,8 @@ namespace Yamore.Services.Interfaces
 
         /// <summary>Admin overview of yachts with owner and location (city) names.</summary>
         PagedResponse<YachtOverviewDto> GetOverviewForAdmin(YachtsSearchObject search);
+
+        /// <summary>Owner overview: returns yachts belonging to the given owner.</summary>
+        PagedResponse<YachtOverviewDto> GetOverviewForOwner(int ownerId, YachtsSearchObject search);
     }
 }

@@ -6,7 +6,10 @@ import '../login/login_screen.dart';
 import 'mobile_home_tab.dart';
 import 'mobile_bookings_tab.dart';
 import 'mobile_profile_tab.dart';
-import 'mobile_my_yachts_tab.dart';
+import 'owner_reservations_tab.dart';
+import 'owner_yachts_tab.dart';
+import 'owner_services_tab.dart';
+import 'owner_settings_tab.dart';
 
 class MobileShell extends StatefulWidget {
   final AppUser user;
@@ -32,10 +35,10 @@ class _MobileShellState extends State<MobileShell> {
     super.initState();
     if (widget.user.isYachtOwner) {
       _tabs = [
-        const _TabItem(icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Home'),
-        const _TabItem(icon: Icons.directions_boat_outlined, activeIcon: Icons.directions_boat, label: 'My Yachts'),
-        const _TabItem(icon: Icons.calendar_today_outlined, activeIcon: Icons.calendar_today, label: 'Bookings'),
-        const _TabItem(icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile'),
+        const _TabItem(icon: Icons.calendar_month_outlined, activeIcon: Icons.calendar_month, label: 'Reservations'),
+        const _TabItem(icon: Icons.directions_boat_outlined, activeIcon: Icons.directions_boat, label: 'Yachts'),
+        const _TabItem(icon: Icons.room_service_outlined, activeIcon: Icons.room_service, label: 'Services'),
+        const _TabItem(icon: Icons.settings_outlined, activeIcon: Icons.settings, label: 'Settings'),
       ];
     } else {
       _tabs = [
@@ -50,15 +53,15 @@ class _MobileShellState extends State<MobileShell> {
     if (widget.user.isYachtOwner) {
       switch (_selectedIndex) {
         case 0:
-          return MobileHomeTab(authService: widget.authService, user: widget.user);
+          return OwnerReservationsTab(authService: widget.authService, user: widget.user);
         case 1:
-          return MobileMyYachtsTab(authService: widget.authService);
+          return OwnerYachtsTab(authService: widget.authService, user: widget.user);
         case 2:
-          return MobileBookingsTab(authService: widget.authService, user: widget.user);
+          return OwnerServicesTab(authService: widget.authService);
         case 3:
-          return MobileProfileTab(authService: widget.authService, user: widget.user, onLogout: _logout);
+          return OwnerSettingsTab(authService: widget.authService, user: widget.user);
         default:
-          return MobileHomeTab(authService: widget.authService, user: widget.user);
+          return OwnerReservationsTab(authService: widget.authService, user: widget.user);
       }
     } else {
       switch (_selectedIndex) {

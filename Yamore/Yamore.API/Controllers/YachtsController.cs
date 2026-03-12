@@ -61,5 +61,15 @@ namespace Yamore.API.Controllers
         {
             return _yachtsService.GetOverviewForAdmin(search ?? new YachtsSearchObject());
         }
+
+        [HttpGet("owner/my")]
+        [Authorize(Roles = "YachtOwner")]
+        public ActionResult<PagedResponse<YachtOverviewDto>> GetMyYachts([FromQuery] YachtsSearchObject search)
+        {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdStr, out var ownerId))
+                return Unauthorized();
+            return Ok(_yachtsService.GetOverviewForOwner(ownerId, search ?? new YachtsSearchObject()));
+        }
     }
 }

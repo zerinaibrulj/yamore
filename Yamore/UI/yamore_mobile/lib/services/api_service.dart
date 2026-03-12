@@ -13,6 +13,7 @@ import '../models/paged_users.dart';
 import '../models/review.dart';
 import '../models/service_category.dart';
 import '../models/service_model.dart';
+import '../models/reservation.dart';
 
 class ApiService {
   final String baseUrl;
@@ -62,6 +63,24 @@ class ApiService {
     if (priceMin != null) query['PricePerDayMin'] = priceMin.toString();
     if (priceMax != null) query['PricePerDayMax'] = priceMax.toString();
     final uri = Uri.parse('$baseUrl/Yachts/admin/overview')
+        .replace(queryParameters: query.isNotEmpty ? query : null);
+    final response = await http.get(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return PagedYachtOverview.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<PagedYachtOverview> getMyYachts({
+    int? page,
+    int? pageSize,
+  }) async {
+    final query = <String, String>{};
+    if (page != null) query['Page'] = page.toString();
+    if (pageSize != null) query['PageSize'] = pageSize.toString();
+    final uri = Uri.parse('$baseUrl/Yachts/owner/my')
         .replace(queryParameters: query.isNotEmpty ? query : null);
     final response = await http.get(uri, headers: _headers);
     if (response.statusCode != 200) {
@@ -757,6 +776,40 @@ class ApiService {
   Future<void> deleteService(int id) async {
     final uri = Uri.parse('$baseUrl/Service/$id');
     final response = await http.delete(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  // ── Reservations ──
+
+  Future<PagedReservations> getReservations({
+    int? page,
+    int? pageSize,
+    int? userId,
+    int? yachtId,
+    String? status,
+  }) async {
+    final query = <String, String>{};
+    if (page != null) query['Page'] = page.toString();
+    if (pageSize != null) query['PageSize'] = pageSize.toString();
+    if (userId != null) query['UserId'] = userId.toString();
+    if (yachtId != null) query['YachtId'] = yachtId.toString();
+    if (status != null && status.isNotEmpty) query['Status'] = status;
+    final uri = Uri.parse('$baseUrl/Reservation')
+        .replace(queryParameters: query.isNotEmpty ? query : null);
+    final response = await http.get(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return PagedReservations.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<void> cancelReservation(int id) async {
+    final uri = Uri.parse('$baseUrl/Reservation/$id/cancel');
+    final response = await http.put(uri, headers: _headers);
     if (response.statusCode != 200) {
       throw ApiException(response.statusCode, response.body);
     }
