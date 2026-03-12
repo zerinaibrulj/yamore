@@ -90,6 +90,51 @@ class AuthService {
     }
   }
 
+  /// Registers a new user account. On success, automatically logs in.
+  Future<AppUser> register({
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String phone,
+    required String username,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    final uri = Uri.parse('$baseUrl/Users/register');
+    final response = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({
+        'FirstName': firstName,
+        'LastName': lastName,
+        'Email': email,
+        'Phone': phone,
+        'Username': username,
+        'Password': password,
+        'PasswordConfirmation': passwordConfirmation,
+        'Status': true,
+      }),
+    ).timeout(
+      const Duration(seconds: 30),
+      onTimeout: () => throw AuthException(
+        'The server is taking too long to respond. Check that the API is running at $baseUrl.',
+      ),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      final body = response.body.trim();
+      if (body.contains('Username') && body.contains('already')) {
+        throw AuthException('This username is already taken. Please choose another.');
+      }
+      throw AuthException('Registration failed: ${response.statusCode} $body');
+    }
+
+    return login(username, password);
+  }
+
   void updateCurrentUser(AppUser user) {
     _currentUser = user;
   }

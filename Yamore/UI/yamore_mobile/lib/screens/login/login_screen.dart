@@ -4,7 +4,8 @@ import '../../theme/app_theme.dart';
 import '../../models/user.dart';
 import '../../services/auth_service.dart';
 import '../admin/admin_shell.dart';
-import '../mobile_home_placeholder_screen.dart';
+import '../mobile/mobile_shell.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -80,19 +81,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       if (!mounted) return;
       setState(() => _isLoading = false);
 
-      if (user.isAdmin) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => AdminShell(authService: _authService),
-          ),
-        );
-      } else {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => MobileHomePlaceholderScreen(user: user, authService: _authService),
-          ),
-        );
-      }
+      _navigateByRole(user, _authService);
     } on AuthException catch (e) {
       if (mounted) {
         setState(() {
@@ -109,6 +98,35 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       }
       debugPrint('Login error: $e');
       debugPrint(stack.toString());
+    }
+  }
+
+  void _navigateByRole(AppUser user, AuthService auth) {
+    if (user.isAdmin) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => AdminShell(authService: auth),
+        ),
+      );
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => MobileShell(user: user, authService: auth),
+        ),
+      );
+    }
+  }
+
+  Future<void> _openRegister() async {
+    final result = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(builder: (_) => const RegisterScreen()),
+    );
+    if (result != null && result['user'] != null && result['authService'] != null) {
+      final user = result['user'] as AppUser;
+      final auth = result['authService'] as AuthService;
+      if (mounted) {
+        _navigateByRole(user, auth);
+      }
     }
   }
 
@@ -336,7 +354,21 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                   )
                                 : const Text('Sign in'),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                "Don't have an account?",
+                                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                              ),
+                              TextButton(
+                                onPressed: _isLoading ? null : _openRegister,
+                                child: const Text('Sign Up'),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
                         ],
                       ),
                     ),
