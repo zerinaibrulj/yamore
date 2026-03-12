@@ -1,9 +1,10 @@
-﻿using MapsterMapper;
+using MapsterMapper;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Yamore.Model.Requests.Yachts;
 using Yamore.Services.Database;
 
 namespace Yamore.Services.YachtStateMachine
@@ -13,6 +14,17 @@ namespace Yamore.Services.YachtStateMachine
         public ActiveYachtState(_220245Context context, IMapper mapper, IServiceProvider serviceProvider) 
             : base(context, mapper, serviceProvider)
         {
+        }
+
+        public override Model.Yacht Update(int id, YachtsUpdateRequest request)
+        {
+            var set = Context.Set<Database.Yacht>();
+            var entity = set.Find(id);
+
+            Mapper.Map(request, entity);
+            Context.SaveChanges();
+
+            return Mapper.Map<Model.Yacht>(entity);
         }
 
         public override Model.Yacht Hide(int id)
@@ -29,7 +41,7 @@ namespace Yamore.Services.YachtStateMachine
 
         public override List<string> AllowedActions(Yacht entity)
         {
-            return new List<string> { nameof(Hide) };
+            return new List<string> { nameof(Update), nameof(Hide) };
         }
     }
 }
