@@ -94,6 +94,30 @@ class _OwnerServicesTabState extends State<OwnerServicesTab> {
               ],
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.blue.shade100),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, size: 18, color: AppTheme.primaryBlue),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'To assign services to a specific yacht, go to Yachts → Edit → Services Offered.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
           Expanded(child: _buildBody()),
         ],
       ),

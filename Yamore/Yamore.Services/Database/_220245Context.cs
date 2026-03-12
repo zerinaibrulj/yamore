@@ -48,6 +48,7 @@ public partial class _220245Context : DbContext
     public virtual DbSet<ServiceCategory> ServiceCategories { get; set; }
     public virtual DbSet<YachtDocument> YachtDocuments { get; set; }
     public virtual DbSet<YachtImage> YachtImages { get; set; }
+    public virtual DbSet<YachtService> YachtServices { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -250,6 +251,20 @@ public partial class _220245Context : DbContext
             entity.Property(e => e.DateAdded).HasDefaultValueSql("(getdate())");
             entity.HasOne(d => d.Yacht).WithMany(p => p.YachtImages)
                 .HasForeignKey(d => d.YachtId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<YachtService>(entity =>
+        {
+            entity.HasKey(e => e.YachtServiceId);
+            entity.HasIndex(e => new { e.YachtId, e.ServiceId }).IsUnique();
+
+            entity.HasOne(d => d.Yacht).WithMany(p => p.YachtServices)
+                .HasForeignKey(d => d.YachtId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(d => d.Service).WithMany(p => p.YachtServices)
+                .HasForeignKey(d => d.ServiceId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

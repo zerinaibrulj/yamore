@@ -644,6 +644,50 @@ class ApiService {
     }
   }
 
+  // ── Yacht Services (many-to-many) ──
+
+  Future<List<int>> getYachtServiceIds(int yachtId) async {
+    final uri = Uri.parse('$baseUrl/YachtService')
+        .replace(queryParameters: {'YachtId': yachtId.toString(), 'PageSize': '200'});
+    final response = await http.get(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final list = (json['resultList'] ?? json['ResultList'] ?? []) as List;
+    return list.map((e) => e['serviceId'] as int).toList();
+  }
+
+  Future<void> assignYachtService({required int yachtId, required int serviceId}) async {
+    final uri = Uri.parse('$baseUrl/YachtService');
+    final response = await http.post(
+      uri,
+      headers: _headers,
+      body: jsonEncode({'YachtId': yachtId, 'ServiceId': serviceId}),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  Future<void> removeYachtService({required int yachtId, required int serviceId}) async {
+    final uri = Uri.parse('$baseUrl/YachtService')
+        .replace(queryParameters: {'YachtId': yachtId.toString(), 'ServiceId': serviceId.toString(), 'PageSize': '1'});
+    final response = await http.get(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final list = (json['resultList'] ?? json['ResultList'] ?? []) as List;
+    if (list.isEmpty) return;
+    final ysId = list.first['yachtServiceId'] as int;
+    final delUri = Uri.parse('$baseUrl/YachtService/$ysId');
+    final delResp = await http.delete(delUri, headers: _headers);
+    if (delResp.statusCode != 200) {
+      throw ApiException(delResp.statusCode, delResp.body);
+    }
+  }
+
   // ── Service Categories ──
 
   Future<PagedServiceCategories> getServiceCategories({

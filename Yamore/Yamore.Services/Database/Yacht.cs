@@ -49,4 +49,6 @@ public partial class Yacht
     public virtual ICollection<YachtDocument> YachtDocuments { get; set; } = new List<YachtDocument>();
 
     public virtual ICollection<YachtImage> YachtImages { get; set; } = new List<YachtImage>();
+
+    public virtual ICollection<YachtService> YachtServices { get; set; } = new List<YachtService>();
 }

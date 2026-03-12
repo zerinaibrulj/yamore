@@ -18,4 +18,6 @@ public partial class Service
     public virtual ServiceCategory? ServiceCategory { get; set; }
 
     public virtual ICollection<ReservationService> ReservationServices { get; set; } = new List<ReservationService>();
+
+    public virtual ICollection<YachtService> YachtServices { get; set; } = new List<YachtService>();
 }

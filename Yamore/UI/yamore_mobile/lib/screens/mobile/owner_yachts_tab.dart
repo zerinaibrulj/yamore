@@ -5,6 +5,8 @@ import '../../models/yacht_overview.dart';
 import '../../models/yacht_detail.dart';
 import '../../models/yacht_image.dart';
 import '../../models/yacht_availability.dart';
+import '../../models/service_model.dart';
+import '../../models/service_category.dart';
 import '../../models/city.dart';
 import '../../models/yacht_category.dart';
 import '../../models/user.dart';
@@ -597,12 +599,12 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
 
   late final TextEditingController _name;
   late final TextEditingController _length;
-  late final TextEditingController _capacity;
-  late final TextEditingController _cabins;
-  late final TextEditingController _bathrooms;
   late final TextEditingController _price;
   late final TextEditingController _description;
   int? _yearBuilt;
+  int? _capacity;
+  int? _cabins;
+  int? _bathrooms;
   int? _locationId;
   int? _categoryId;
   bool _saving = false;
@@ -614,6 +616,10 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
   List<YachtAvailability> _availabilities = [];
   bool _availLoading = false;
 
+  List<ServiceModel> _allServices = [];
+  Set<int> _assignedServiceIds = {};
+  bool _servicesLoading = false;
+
   bool get _isEdit => widget.existing != null;
 
   @override
@@ -623,11 +629,9 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
     _name = TextEditingController(text: y?.name ?? '');
     _yearBuilt = y?.yearBuilt;
     _length = TextEditingController(text: y != null ? y.length.toString() : '');
-    _capacity =
-        TextEditingController(text: y != null ? y.capacity.toString() : '');
-    _cabins =
-        TextEditingController(text: y != null ? y.cabins.toString() : '');
-    _bathrooms = TextEditingController(text: y?.bathrooms?.toString() ?? '');
+    _capacity = y?.capacity;
+    _cabins = y?.cabins;
+    _bathrooms = y?.bathrooms;
     _price =
         TextEditingController(text: y != null ? y.pricePerDay.toString() : '');
     _description = TextEditingController(text: y?.description ?? '');
@@ -637,6 +641,7 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
     if (_isEdit) {
       _loadImages();
       _loadAvailabilities();
+      _loadServices();
     }
   }
 
@@ -644,9 +649,6 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
   void dispose() {
     _name.dispose();
     _length.dispose();
-    _capacity.dispose();
-    _cabins.dispose();
-    _bathrooms.dispose();
     _price.dispose();
     _description.dispose();
     super.dispose();
@@ -862,6 +864,44 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
   String _fmtDate(DateTime dt) =>
       '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
 
+  // ── Services ──
+
+  Future<void> _loadServices() async {
+    setState(() => _servicesLoading = true);
+    try {
+      final results = await Future.wait([
+        widget.api.getServices(pageSize: 200),
+        widget.api.getYachtServiceIds(widget.existing!.yachtId!),
+      ]);
+      if (mounted) {
+        setState(() {
+          _allServices = (results[0] as PagedServices).resultList;
+          _assignedServiceIds = (results[1] as List<int>).toSet();
+        });
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _servicesLoading = false);
+  }
+
+  Future<void> _toggleService(int serviceId, bool assign) async {
+    final yachtId = widget.existing!.yachtId!;
+    try {
+      if (assign) {
+        await widget.api.assignYachtService(yachtId: yachtId, serviceId: serviceId);
+        if (mounted) setState(() => _assignedServiceIds.add(serviceId));
+      } else {
+        await widget.api.removeYachtService(yachtId: yachtId, serviceId: serviceId);
+        if (mounted) setState(() => _assignedServiceIds.remove(serviceId));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed: $e')),
+        );
+      }
+    }
+  }
+
   // ── Save ──
 
   Future<void> _save() async {
@@ -876,10 +916,9 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
           _description.text.trim().isEmpty ? null : _description.text.trim(),
       yearBuilt: _yearBuilt!,
       length: double.parse(_length.text),
-      capacity: int.parse(_capacity.text),
-      cabins: int.parse(_cabins.text),
-      bathrooms:
-          _bathrooms.text.isEmpty ? null : int.tryParse(_bathrooms.text),
+      capacity: _capacity!,
+      cabins: _cabins!,
+      bathrooms: _bathrooms,
       pricePerDay: double.parse(_price.text),
       locationId: _locationId!,
       categoryId: _categoryId!,
@@ -1012,33 +1051,47 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                 const SizedBox(height: 14),
                 Row(children: [
                   Expanded(
-                    child: TextFormField(
-                      controller: _capacity,
+                    child: DropdownButtonFormField<int>(
+                      value: _capacity,
                       decoration:
                           _inputDeco('Capacity', icon: Icons.people_outline),
-                      keyboardType: TextInputType.number,
-                      validator: (v) =>
-                          int.tryParse(v ?? '') == null ? 'Capacity' : null,
+                      items: List.generate(30, (i) => i + 1)
+                          .map((n) => DropdownMenuItem(
+                              value: n,
+                              child: Text('$n guest${n > 1 ? 's' : ''}')))
+                          .toList(),
+                      onChanged: (v) => setState(() => _capacity = v),
+                      validator: (v) => v == null ? 'Capacity' : null,
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: TextFormField(
-                      controller: _cabins,
+                    child: DropdownButtonFormField<int>(
+                      value: _cabins,
                       decoration: _inputDeco('Cabins',
                           icon: Icons.king_bed_outlined),
-                      keyboardType: TextInputType.number,
-                      validator: (v) =>
-                          int.tryParse(v ?? '') == null ? 'Cabins' : null,
+                      items: List.generate(15, (i) => i + 1)
+                          .map((n) => DropdownMenuItem(
+                              value: n,
+                              child: Text('$n cabin${n > 1 ? 's' : ''}')))
+                          .toList(),
+                      onChanged: (v) => setState(() => _cabins = v),
+                      validator: (v) => v == null ? 'Cabins' : null,
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: TextFormField(
-                      controller: _bathrooms,
+                    child: DropdownButtonFormField<int>(
+                      value: _bathrooms,
                       decoration: _inputDeco('Bathrooms',
                           icon: Icons.bathtub_outlined),
-                      keyboardType: TextInputType.number,
+                      items: [
+                        const DropdownMenuItem<int>(
+                            value: null, child: Text('N/A')),
+                        ...List.generate(10, (i) => i + 1).map((n) =>
+                            DropdownMenuItem(value: n, child: Text('$n'))),
+                      ],
+                      onChanged: (v) => setState(() => _bathrooms = v),
                     ),
                   ),
                 ]),
@@ -1245,6 +1298,91 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                         ))),
                 ]),
               ],
+
+              // ── Section: Services (edit only) ──
+              if (_isEdit) ...[
+                const SizedBox(height: 20),
+                _sectionHeader(Icons.room_service_outlined, 'Services Offered'),
+                const SizedBox(height: 12),
+                _card([
+                  Text(
+                    'Toggle the services this yacht offers. Guests will see these when booking.',
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 12),
+                  if (_servicesLoading)
+                    const Center(
+                        child: Padding(
+                            padding: EdgeInsets.all(20),
+                            child: CircularProgressIndicator()))
+                  else if (_allServices.isEmpty)
+                    Container(
+                      height: 70,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.grey.shade50,
+                      ),
+                      child: Text('No services available on the platform.',
+                          style: TextStyle(
+                              color: Colors.grey.shade500, fontSize: 13)),
+                    )
+                  else
+                    ..._allServices.map((svc) {
+                      final assigned = _assignedServiceIds.contains(svc.serviceId);
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 6),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: assigned
+                                ? AppTheme.primaryBlue.withOpacity(0.4)
+                                : Colors.grey.shade300,
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                          color: assigned
+                              ? AppTheme.primaryBlue.withOpacity(0.04)
+                              : Colors.white,
+                        ),
+                        child: SwitchListTile(
+                          dense: true,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                          secondary: Icon(
+                            _serviceIcon(svc.name),
+                            color: assigned
+                                ? AppTheme.primaryBlue
+                                : Colors.grey.shade400,
+                            size: 22,
+                          ),
+                          title: Text(
+                            svc.name,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight:
+                                  assigned ? FontWeight.w600 : FontWeight.w400,
+                              color: assigned
+                                  ? AppTheme.primaryBlue
+                                  : Colors.grey.shade700,
+                            ),
+                          ),
+                          subtitle: svc.price != null
+                              ? Text(
+                                  '€${svc.price!.toStringAsFixed(0)}/booking',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade500),
+                                )
+                              : null,
+                          value: assigned,
+                          activeColor: AppTheme.primaryBlue,
+                          onChanged: (val) =>
+                              _toggleService(svc.serviceId, val),
+                        ),
+                      );
+                    }),
+                ]),
+              ],
             ],
           ),
         ),
@@ -1253,6 +1391,25 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
   }
 
   // ── UI helpers ──
+
+  IconData _serviceIcon(String name) {
+    final n = name.toLowerCase();
+    if (n.contains('skipper') || n.contains('captain')) return Icons.person;
+    if (n.contains('cater') || n.contains('food') || n.contains('chef')) return Icons.restaurant;
+    if (n.contains('diving') || n.contains('snorkel')) return Icons.scuba_diving;
+    if (n.contains('wifi') || n.contains('internet')) return Icons.wifi;
+    if (n.contains('music') || n.contains('dj') || n.contains('entertainment')) return Icons.music_note;
+    if (n.contains('clean') || n.contains('laundry')) return Icons.cleaning_services;
+    if (n.contains('fuel') || n.contains('gas')) return Icons.local_gas_station;
+    if (n.contains('equip') || n.contains('gear')) return Icons.fitness_center;
+    if (n.contains('transfer') || n.contains('transport')) return Icons.directions_car;
+    if (n.contains('fishing')) return Icons.phishing;
+    if (n.contains('photo') || n.contains('video')) return Icons.camera_alt;
+    if (n.contains('drink') || n.contains('bar') || n.contains('beverage')) return Icons.local_bar;
+    if (n.contains('towel') || n.contains('linen')) return Icons.dry_cleaning;
+    if (n.contains('insurance') || n.contains('safety')) return Icons.health_and_safety;
+    return Icons.room_service_outlined;
+  }
 
   Widget _sectionHeader(IconData icon, String title) {
     return Row(children: [
