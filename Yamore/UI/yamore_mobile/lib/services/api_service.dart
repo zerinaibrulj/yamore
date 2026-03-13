@@ -939,6 +939,89 @@ class ApiService {
         .toList();
   }
 
+  Future<List<RouteModel>> getRoutes({
+    int? page,
+    int? pageSize,
+  }) async {
+    final query = <String, String>{};
+    if (page != null) query['Page'] = page.toString();
+    if (pageSize != null) query['PageSize'] = pageSize.toString();
+    final uri = Uri.parse('$baseUrl/Route')
+        .replace(queryParameters: query.isNotEmpty ? query : null);
+    final response = await http.get(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final list = (json['resultList'] ?? json['ResultList'] ?? []) as List;
+    return list
+        .map((e) => RouteModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<RouteModel> insertRoute({
+    required int yachtId,
+    required int startCityId,
+    required int endCityId,
+    int? estimatedDurationHours,
+    String? description,
+  }) async {
+    final uri = Uri.parse('$baseUrl/Route');
+    final response = await http.post(
+      uri,
+      headers: _headers,
+      body: jsonEncode({
+        'YachtId': yachtId,
+        'StartCityId': startCityId,
+        'EndCityId': endCityId,
+        'EstimatedDurationHours': estimatedDurationHours,
+        'Description': description,
+      }),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return RouteModel.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<RouteModel> updateRoute({
+    required int routeId,
+    required int yachtId,
+    required int startCityId,
+    required int endCityId,
+    int? estimatedDurationHours,
+    String? description,
+  }) async {
+    final uri = Uri.parse('$baseUrl/Route/$routeId');
+    final response = await http.put(
+      uri,
+      headers: _headers,
+      body: jsonEncode({
+        'YachtId': yachtId,
+        'StartCityId': startCityId,
+        'EndCityId': endCityId,
+        'EstimatedDurationHours': estimatedDurationHours,
+        'Description': description,
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return RouteModel.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<void> deleteRoute(int routeId) async {
+    final uri = Uri.parse('$baseUrl/Route/$routeId');
+    final response = await http.delete(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
   Future<List<WeatherForecastModel>> getWeatherForRoute(int routeId) async {
     final uri = Uri.parse('$baseUrl/WeatherForecast').replace(
       queryParameters: {
@@ -956,6 +1039,91 @@ class ApiService {
     return list
         .map((e) => WeatherForecastModel.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<List<WeatherForecastModel>> getWeatherForecasts({
+    int? routeId,
+    int? page,
+    int? pageSize,
+  }) async {
+    final query = <String, String>{};
+    if (page != null) query['Page'] = page.toString();
+    if (pageSize != null) query['PageSize'] = pageSize.toString();
+    if (routeId != null) query['RouteId'] = routeId.toString();
+    final uri = Uri.parse('$baseUrl/WeatherForecast')
+        .replace(queryParameters: query.isNotEmpty ? query : null);
+    final response = await http.get(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final list = (json['resultList'] ?? json['ResultList'] ?? []) as List;
+    return list
+        .map((e) => WeatherForecastModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<WeatherForecastModel> insertWeatherForecast({
+    required int routeId,
+    DateTime? forecastDate,
+    double? temperature,
+    String? condition,
+    double? windSpeed,
+  }) async {
+    final uri = Uri.parse('$baseUrl/WeatherForecast');
+    final response = await http.post(
+      uri,
+      headers: _headers,
+      body: jsonEncode({
+        'RouteId': routeId,
+        'ForecastDate': forecastDate?.toUtc().toIso8601String(),
+        'Temperature': temperature,
+        'Condition': condition,
+        'WindSpeed': windSpeed,
+      }),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return WeatherForecastModel.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<WeatherForecastModel> updateWeatherForecast({
+    required int forecastId,
+    required int routeId,
+    DateTime? forecastDate,
+    double? temperature,
+    String? condition,
+    double? windSpeed,
+  }) async {
+    final uri = Uri.parse('$baseUrl/WeatherForecast/$forecastId');
+    final response = await http.put(
+      uri,
+      headers: _headers,
+      body: jsonEncode({
+        'RouteId': routeId,
+        'ForecastDate': forecastDate?.toUtc().toIso8601String(),
+        'Temperature': temperature,
+        'Condition': condition,
+        'WindSpeed': windSpeed,
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return WeatherForecastModel.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<void> deleteWeatherForecast(int forecastId) async {
+    final uri = Uri.parse('$baseUrl/WeatherForecast/$forecastId');
+    final response = await http.delete(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
   }
 
   Future<Reservation> createReservation({

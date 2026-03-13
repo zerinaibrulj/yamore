@@ -7,6 +7,7 @@ import 'admin_users_screen.dart';
 import 'yacht_review_screen.dart';
 import 'admin_reviews_screen.dart';
 import 'admin_services_screen.dart';
+import 'admin_routes_weather_screen.dart';
 import 'admin_settings_screen.dart';
 
 class AdminShell extends StatefulWidget {
@@ -46,6 +47,11 @@ class _AdminShellState extends State<AdminShell> {
       icon: Icons.room_service_outlined,
       selectedIcon: Icons.room_service,
       label: 'Services',
+    ),
+    _NavItem(
+      icon: Icons.map_outlined,
+      selectedIcon: Icons.map,
+      label: 'Routes & Weather',
     ),
     _NavItem(
       icon: Icons.settings_outlined,
@@ -133,6 +139,9 @@ class _AdminShellState extends State<AdminShell> {
         sectionTitle = 'Services';
         break;
       case 5:
+        sectionTitle = 'Routes & Weather';
+        break;
+      case 6:
         sectionTitle = 'Settings';
         break;
       default:
@@ -200,6 +209,8 @@ class _AdminShellState extends State<AdminShell> {
       case 4:
         return AdminServicesScreen(authService: widget.authService);
       case 5:
+        return AdminRoutesWeatherScreen(authService: widget.authService);
+      case 6:
         return AdminSettingsScreen(authService: widget.authService);
       default:
         return AdminHomeScreen(authService: widget.authService);

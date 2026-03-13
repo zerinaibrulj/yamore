@@ -80,6 +80,9 @@ class _MobileBookingCalendarScreenState
         TimeOfDay(hour: 10, minute: 0),
         TimeOfDay(hour: 12, minute: 0),
         TimeOfDay(hour: 15, minute: 0),
+        TimeOfDay(hour: 18, minute: 0),
+        TimeOfDay(hour: 20, minute: 0),
+        TimeOfDay(hour: 22, minute: 0),
       ];
 
   bool _slotAvailable(DateTime start, Duration baseDuration) {
