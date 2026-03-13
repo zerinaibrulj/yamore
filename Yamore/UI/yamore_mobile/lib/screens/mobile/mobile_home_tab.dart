@@ -3,6 +3,7 @@ import '../../theme/app_theme.dart';
 import '../../models/user.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
+import '../../services/favorites_service.dart';
 import '../../models/yacht_overview.dart';
 import '../../models/city.dart';
 
@@ -35,6 +36,7 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
   DateTimeRange? _dateRange;
   int _guests = 2;
   int? _selectedCityId;
+  Set<int> _favoriteIds = {};
 
   @override
   void initState() {
@@ -51,13 +53,16 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
       final results = await Future.wait([
         _api.getYachtOverviewForAdmin(pageSize: 50),
         _api.getCities(),
+        FavoritesService.loadFavorites(widget.user.userId),
       ]);
       final overview = results[0] as PagedYachtOverview;
       final cities = results[1] as List<CityModel>;
+      final favs = results[2] as Set<int>;
       if (mounted) {
         setState(() {
           _allYachts = overview.resultList;
           _cities = cities;
+          _favoriteIds = favs;
           _buildRecommended();
           _applyFilters();
           _loading = false;
@@ -112,7 +117,13 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
                     final yacht = _filteredYachts[index];
-                    return _YachtCard(yacht: yacht, api: _api);
+                    final isFav = _favoriteIds.contains(yacht.yachtId);
+                    return _YachtCard(
+                      yacht: yacht,
+                      api: _api,
+                      isFavorite: isFav,
+                      onToggleFavorite: () => _toggleFavorite(yacht.yachtId, !isFav),
+                    );
                   },
                   childCount: _filteredYachts.length,
                 ),
@@ -245,9 +256,15 @@ extension on _MobileHomeTabState {
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (context, index) {
                 final y = _recommended[index];
+                final isFav = _favoriteIds.contains(y.yachtId);
                 return SizedBox(
-                  width: 200,
-                  child: _YachtCard(yacht: y, api: _api),
+                  width: 220,
+                  child: _YachtCard(
+                    yacht: y,
+                    api: _api,
+                    isFavorite: isFav,
+                    onToggleFavorite: () => _toggleFavorite(y.yachtId, !isFav),
+                  ),
                 );
               },
             ),
@@ -355,6 +372,29 @@ extension on _MobileHomeTabState {
       firstDate: now,
       lastDate: now.add(const Duration(days: 365)),
       initialDateRange: initial,
+      helpText: 'Select travel dates',
+      confirmText: 'Save',
+      cancelText: 'Cancel',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+                  primary: AppTheme.primaryBlue,
+                ),
+            dialogTheme: const DialogThemeData(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(Radius.circular(16)),
+              ),
+            ),
+          ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420, maxHeight: 520),
+              child: child!,
+            ),
+          ),
+        );
+      },
     );
     if (picked != null) {
       setState(() => _dateRange = picked);
@@ -394,13 +434,31 @@ extension on _MobileHomeTabState {
       _applyFilters();
     }
   }
+
+  Future<void> _toggleFavorite(int yachtId, bool makeFavorite) async {
+    setState(() {
+      if (makeFavorite) {
+        _favoriteIds.add(yachtId);
+      } else {
+        _favoriteIds.remove(yachtId);
+      }
+    });
+    await FavoritesService.saveFavorites(widget.user.userId, _favoriteIds);
+  }
 }
 
 class _YachtCard extends StatelessWidget {
   final YachtOverview yacht;
   final ApiService api;
+  final bool isFavorite;
+  final VoidCallback onToggleFavorite;
 
-  const _YachtCard({required this.yacht, required this.api});
+  const _YachtCard({
+    required this.yacht,
+    required this.api,
+    required this.isFavorite,
+    required this.onToggleFavorite,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -409,60 +467,81 @@ class _YachtCard extends StatelessWidget {
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          if (yacht.thumbnailImageId != null)
-            Image.network(
-              api.yachtImageUrl(yacht.thumbnailImageId!),
-              height: 180,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              headers: api.authHeaders,
-              errorBuilder: (_, __, ___) => _placeholderImage(),
-            )
-          else
-            _placeholderImage(),
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  yacht.name,
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 4),
-                if (yacht.locationName != null)
-                  Row(
-                    children: [
-                      Icon(Icons.location_on_outlined, size: 15, color: Colors.grey.shade600),
-                      const SizedBox(width: 4),
-                      Text(
-                        yacht.locationName!,
-                        style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-                      ),
-                    ],
-                  ),
-                const SizedBox(height: 8),
-                Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (yacht.thumbnailImageId != null)
+                Image.network(
+                  api.yachtImageUrl(yacht.thumbnailImageId!),
+                  height: 180,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  headers: api.authHeaders,
+                  errorBuilder: (_, __, ___) => _placeholderImage(),
+                )
+              else
+                _placeholderImage(),
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _chip(Icons.people_outline, '${yacht.capacity} guests'),
-                    const SizedBox(width: 8),
-                    if (yacht.yearBuilt != null)
-                      _chip(Icons.calendar_today_outlined, '${yacht.yearBuilt}'),
-                    const Spacer(),
                     Text(
-                      '€${yacht.pricePerDay.toStringAsFixed(0)}/day',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF1a237e),
+                      yacht.name,
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 4),
+                    if (yacht.locationName != null)
+                      Row(
+                        children: [
+                          Icon(Icons.location_on_outlined, size: 15, color: Colors.grey.shade600),
+                          const SizedBox(width: 4),
+                          Text(
+                            yacht.locationName!,
+                            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                          ),
+                        ],
                       ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        _chip(Icons.people_outline, '${yacht.capacity} guests'),
+                        const SizedBox(width: 8),
+                        if (yacht.yearBuilt != null)
+                          _chip(Icons.calendar_today_outlined, '${yacht.yearBuilt}'),
+                        const Spacer(),
+                        Text(
+                          '€${yacht.pricePerDay.toStringAsFixed(0)}/day',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1a237e),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
+            ],
+          ),
+          Positioned(
+            top: 8,
+            right: 8,
+            child: IconButton(
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.black54,
+                padding: const EdgeInsets.all(4),
+                minimumSize: const Size(32, 32),
+              ),
+              icon: Icon(
+                isFavorite ? Icons.favorite : Icons.favorite_border,
+                color: isFavorite ? Colors.pinkAccent : Colors.white,
+                size: 18,
+              ),
+              onPressed: onToggleFavorite,
             ),
           ),
         ],

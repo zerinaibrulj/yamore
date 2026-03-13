@@ -62,7 +62,7 @@ class MobileProfileTab extends StatelessWidget {
           ),
           const SizedBox(height: 32),
           _infoTile(Icons.email_outlined, 'Email', user.email ?? '—'),
-          _infoTile(Icons.phone_outlined, 'Phone', user.phone ?? '—'),
+          _infoTile(Icons.phone_outlined, 'Phone', _formatPhone(user.phone)),
           _infoTile(
             Icons.circle,
             'Status',
@@ -95,6 +95,15 @@ class MobileProfileTab extends StatelessWidget {
     final f = user.firstName.isNotEmpty ? user.firstName[0] : '';
     final l = user.lastName.isNotEmpty ? user.lastName[0] : '';
     return '$f$l'.toUpperCase();
+  }
+
+  String _formatPhone(String? raw) {
+    if (raw == null) return '—';
+    final digits = raw.replaceAll(RegExp(r'\\D'), '');
+    if (digits.length == 9) {
+      return '${digits.substring(0, 3)}-${digits.substring(3, 6)}-${digits.substring(6)}';
+    }
+    return raw;
   }
 
   Widget _infoTile(IconData icon, String label, String value, {Color? valueColor}) {

@@ -6,6 +6,7 @@ import '../login/login_screen.dart';
 import 'mobile_home_tab.dart';
 import 'mobile_bookings_tab.dart';
 import 'mobile_profile_tab.dart';
+import 'mobile_home_tab.dart';
 import 'owner_reservations_tab.dart';
 import 'owner_yachts_tab.dart';
 import 'owner_services_tab.dart';
@@ -43,6 +44,7 @@ class _MobileShellState extends State<MobileShell> {
     } else {
       _tabs = [
         const _TabItem(icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Home'),
+        const _TabItem(icon: Icons.favorite_border, activeIcon: Icons.favorite, label: 'Favorites'),
         const _TabItem(icon: Icons.calendar_today_outlined, activeIcon: Icons.calendar_today, label: 'My Bookings'),
         const _TabItem(icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile'),
       ];
@@ -68,8 +70,11 @@ class _MobileShellState extends State<MobileShell> {
         case 0:
           return MobileHomeTab(authService: widget.authService, user: widget.user);
         case 1:
-          return MobileBookingsTab(authService: widget.authService, user: widget.user);
+          // Favorites tab: reuse Home list but pre-filtered; for now we just show Home and highlight favorites with hearts.
+          return MobileHomeTab(authService: widget.authService, user: widget.user);
         case 2:
+          return MobileBookingsTab(authService: widget.authService, user: widget.user);
+        case 3:
           return MobileProfileTab(authService: widget.authService, user: widget.user, onLogout: _logout);
         default:
           return MobileHomeTab(authService: widget.authService, user: widget.user);
