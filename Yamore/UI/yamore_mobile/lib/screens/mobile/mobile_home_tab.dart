@@ -4,6 +4,7 @@ import '../../models/user.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
 import '../../models/yacht_overview.dart';
+import '../../models/city.dart';
 
 class MobileHomeTab extends StatefulWidget {
   final AuthService authService;
@@ -22,26 +23,43 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
     password: widget.authService.password,
   );
 
-  List<YachtOverview> _yachts = [];
+  List<YachtOverview> _allYachts = [];
+  List<YachtOverview> _filteredYachts = [];
+  List<YachtOverview> _recommended = [];
+  List<CityModel> _cities = [];
   bool _loading = true;
   String? _error;
+
+  final TextEditingController _destinationCtrl = TextEditingController();
+  final TextEditingController _searchNameCtrl = TextEditingController();
+  DateTimeRange? _dateRange;
+  int _guests = 2;
+  int? _selectedCityId;
 
   @override
   void initState() {
     super.initState();
-    _loadYachts();
+    _loadInitial();
   }
 
-  Future<void> _loadYachts() async {
+  Future<void> _loadInitial() async {
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final result = await _api.getYachtOverviewForAdmin(pageSize: 20);
+      final results = await Future.wait([
+        _api.getYachtOverviewForAdmin(pageSize: 50),
+        _api.getCities(),
+      ]);
+      final overview = results[0] as PagedYachtOverview;
+      final cities = results[1] as List<CityModel>;
       if (mounted) {
         setState(() {
-          _yachts = result.resultList;
+          _allYachts = overview.resultList;
+          _cities = cities;
+          _buildRecommended();
+          _applyFilters();
           _loading = false;
         });
       }
@@ -58,59 +76,14 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
-      onRefresh: _loadYachts,
+      onRefresh: _loadInitial,
       child: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(20, 28, 20, 20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppTheme.primaryBlue.withOpacity(0.08),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Welcome back, ${widget.user.firstName}!',
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF1a237e),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Discover yachts for your next adventure',
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: const [
-                  Icon(Icons.directions_boat, size: 20, color: Color(0xFF1a237e)),
-                  SizedBox(width: 8),
-                  Text(
-                    'Available Yachts',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          SliverToBoxAdapter(child: _buildHero()),
+          if (_recommended.isNotEmpty)
+            SliverToBoxAdapter(child: _buildRecommendedStrip()),
           const SliverToBoxAdapter(child: SizedBox(height: 12)),
+          SliverToBoxAdapter(child: _buildListHeader()),
           if (_loading)
             const SliverFillRemaining(
               child: Center(child: CircularProgressIndicator()),
@@ -123,12 +96,12 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
                   children: [
                     Text(_error!, style: const TextStyle(color: Colors.red)),
                     const SizedBox(height: 16),
-                    FilledButton(onPressed: _loadYachts, child: const Text('Retry')),
+                    FilledButton(onPressed: _loadInitial, child: const Text('Retry')),
                   ],
                 ),
               ),
             )
-          else if (_yachts.isEmpty)
+          else if (_filteredYachts.isEmpty)
             const SliverFillRemaining(
               child: Center(child: Text('No yachts available at the moment.')),
             )
@@ -138,16 +111,288 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
-                    final yacht = _yachts[index];
+                    final yacht = _filteredYachts[index];
                     return _YachtCard(yacht: yacht, api: _api);
                   },
-                  childCount: _yachts.length,
+                  childCount: _filteredYachts.length,
                 ),
               ),
             ),
         ],
       ),
     );
+  }
+}
+
+// ── UI building blocks ──
+
+extension on _MobileHomeTabState {
+  Widget _buildHero() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 18),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF102a6b), Color(0xFF1a237e)],
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Book your next boating trip',
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Find the perfect yacht in a few taps.',
+            style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13),
+          ),
+          const SizedBox(height: 18),
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            elevation: 4,
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: _destinationCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Destination',
+                      prefixIcon: Icon(Icons.search),
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (_) => _applyFilters(),
+                  ),
+                  const SizedBox(height: 10),
+                  InkWell(
+                    onTap: _pickDates,
+                    borderRadius: BorderRadius.circular(10),
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Dates',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.calendar_today_outlined),
+                      ),
+                      child: Text(
+                        _dateRange == null
+                            ? 'Flexible'
+                            : '${_dateRange!.start.day}.${_dateRange!.start.month}.${_dateRange!.start.year} – '
+                              '${_dateRange!.end.day}.${_dateRange!.end.month}.${_dateRange!.end.year}',
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  InkWell(
+                    onTap: _pickGuests,
+                    borderRadius: BorderRadius.circular(10),
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Guests',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.people_outline),
+                      ),
+                      child: Text('$_guests adult${_guests > 1 ? 's' : ''}',
+                          style: const TextStyle(fontSize: 13)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: _applyFilters,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppTheme.primaryBlue,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('Search'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecommendedStrip() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 0, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Recommended for you',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          SizedBox(
+            height: 150,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _recommended.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final y = _recommended[index];
+                return SizedBox(
+                  width: 200,
+                  child: _YachtCard(yacht: y, api: _api),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildListHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.directions_boat, size: 20, color: Color(0xFF1a237e)),
+              SizedBox(width: 8),
+              Text(
+                'Available Yachts',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _filterChip(icon: Icons.tune, label: 'Filter'),
+              const SizedBox(width: 8),
+              _filterChip(icon: Icons.swap_vert, label: 'Sort'),
+              const SizedBox(width: 8),
+              _filterChip(icon: Icons.map_outlined, label: 'Map'),
+            ],
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _searchNameCtrl,
+            decoration: const InputDecoration(
+              hintText: 'Search yacht name',
+              prefixIcon: Icon(Icons.search),
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (_) => _applyFilters(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _filterChip({required IconData icon, required String label}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: Colors.grey.shade700),
+          const SizedBox(width: 4),
+          Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+        ],
+      ),
+    );
+  }
+
+  void _buildRecommended() {
+    // For now just take the top 3 by price as \"featured\".
+    final sorted = [..._allYachts]..sort((a, b) => b.pricePerDay.compareTo(a.pricePerDay));
+    _recommended = sorted.take(3).toList();
+  }
+
+  void _applyFilters() {
+    var list = [..._allYachts];
+    final dest = _destinationCtrl.text.trim().toLowerCase();
+    final name = _searchNameCtrl.text.trim().toLowerCase();
+
+    if (dest.isNotEmpty) {
+      list = list
+          .where((y) => (y.locationName ?? '').toLowerCase().contains(dest))
+          .toList();
+    }
+    if (name.isNotEmpty) {
+      list = list.where((y) => y.name.toLowerCase().contains(name)).toList();
+    }
+    // Capacity filter based on guests
+    list = list.where((y) => y.capacity >= _guests).toList();
+
+    setState(() {
+      _filteredYachts = list;
+    });
+  }
+
+  Future<void> _pickDates() async {
+    final now = DateTime.now();
+    final initial = _dateRange ??
+        DateTimeRange(
+          start: now.add(const Duration(days: 1)),
+          end: now.add(const Duration(days: 4)),
+        );
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365)),
+      initialDateRange: initial,
+    );
+    if (picked != null) {
+      setState(() => _dateRange = picked);
+      // We keep date range for future server-side filtering if needed
+    }
+  }
+
+  Future<void> _pickGuests() async {
+    final options = [1, 2, 4, 6, 8, 10, 12];
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(12),
+              child: Text(
+                'How many guests?',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+            ...options.map((g) => ListTile(
+                  title: Text('$g guest${g > 1 ? 's' : ''}'),
+                  onTap: () => Navigator.of(ctx).pop(g),
+                )),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (selected != null) {
+      setState(() => _guests = selected);
+      _applyFilters();
+    }
   }
 }
 

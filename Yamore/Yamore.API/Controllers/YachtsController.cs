@@ -56,7 +56,7 @@ namespace Yamore.API.Controllers
         }
 
         [HttpGet("admin/overview")]
-        [Authorize(Roles = "Admin")]
+        [Authorize] // Any authenticated user (Admin, YachtOwner, end user) can see yacht overview
         public PagedResponse<YachtOverviewDto> GetOverviewForAdmin([FromQuery] YachtsSearchObject search)
         {
             return _yachtsService.GetOverviewForAdmin(search ?? new YachtsSearchObject());

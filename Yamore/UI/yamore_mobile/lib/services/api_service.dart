@@ -52,16 +52,24 @@ class ApiService {
     int? pageSize,
     String? name,
     int? locationId,
+    int? capacityMin,
     double? priceMin,
     double? priceMax,
+    DateTime? availableFrom,
+    DateTime? availableTo,
   }) async {
     final query = <String, String>{};
     if (page != null) query['Page'] = page.toString();
     if (pageSize != null) query['PageSize'] = pageSize.toString();
     if (name != null && name.isNotEmpty) query['NameGTE'] = name;
     if (locationId != null) query['LocationId'] = locationId.toString();
+    if (capacityMin != null) query['CapacityMin'] = capacityMin.toString();
     if (priceMin != null) query['PricePerDayMin'] = priceMin.toString();
     if (priceMax != null) query['PricePerDayMax'] = priceMax.toString();
+    if (availableFrom != null && availableTo != null) {
+      query['AvailableFrom'] = availableFrom.toIso8601String();
+      query['AvailableTo'] = availableTo.toIso8601String();
+    }
     final uri = Uri.parse('$baseUrl/Yachts/admin/overview')
         .replace(queryParameters: query.isNotEmpty ? query : null);
     final response = await http.get(uri, headers: _headers);
