@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/user.dart';
 import '../../models/yacht_overview.dart';
 import '../../services/api_service.dart';
+import '../../models/service_model.dart';
 import '../../theme/app_theme.dart';
 
 class MobileBookingReviewScreen extends StatefulWidget {
@@ -32,6 +33,48 @@ class MobileBookingReviewScreen extends StatefulWidget {
 
 class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
   bool _saving = false;
+  List<ServiceModel> _extras = [];
+  Set<int> _selectedServiceIds = {};
+  bool _loadingExtras = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExtras();
+  }
+
+  Future<void> _loadExtras() async {
+    setState(() {
+      _loadingExtras = true;
+    });
+    try {
+      final ids =
+          await widget.api.getYachtServiceIds(widget.overview.yachtId);
+      if (ids.isEmpty) {
+        if (!mounted) return;
+        setState(() {
+          _extras = [];
+          _loadingExtras = false;
+        });
+        return;
+      }
+      final all = await widget.api.getServices(pageSize: 200);
+      final filtered = all.resultList
+          .where((s) => ids.contains(s.serviceId))
+          .toList();
+      if (!mounted) return;
+      setState(() {
+        _extras = filtered;
+        _loadingExtras = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _extras = [];
+        _loadingExtras = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,6 +129,8 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
             const SizedBox(height: 12),
             _buildDetailsRow(start, end, durationDays),
             const SizedBox(height: 16),
+            _buildExtrasSection(),
+            const SizedBox(height: 16),
             Align(
               alignment: Alignment.center,
               child: Text(
@@ -127,6 +172,83 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildExtrasSection() {
+    if (_loadingExtras) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(12),
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+    if (_extras.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Special requests',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            ..._extras.map((s) {
+              final selected = _selectedServiceIds.contains(s.serviceId);
+              final icon = _serviceIcon(s.name);
+              return CheckboxListTile(
+                value: selected,
+                onChanged: (v) {
+                  setState(() {
+                    if (v == true) {
+                      _selectedServiceIds.add(s.serviceId);
+                    } else {
+                      _selectedServiceIds.remove(s.serviceId);
+                    }
+                  });
+                },
+                dense: true,
+                controlAffinity: ListTileControlAffinity.leading,
+                secondary: Icon(icon, size: 20),
+                title: Text(s.name),
+                subtitle: s.description != null && s.description!.isNotEmpty
+                    ? Text(
+                        s.description!,
+                        style: const TextStyle(fontSize: 12),
+                      )
+                    : null,
+              );
+            }),
+            const SizedBox(height: 6),
+            Text(
+              "We'll do our best to fulfill your requests.",
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _serviceIcon(String name) {
+    final n = name.toLowerCase();
+    if (n.contains('drink') || n.contains('welcome'))
+      return Icons.local_bar;
+    if (n.contains('food') || n.contains('meal'))
+      return Icons.restaurant;
+    if (n.contains('music'))
+      return Icons.music_note;
+    if (n.contains('pet'))
+      return Icons.pets;
+    if (n.contains('safety') || n.contains('life jacket'))
+      return Icons.health_and_safety;
+    return Icons.check_circle_outline;
   }
 
   Widget _buildContactCard(AppUser user) {
@@ -294,7 +416,7 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
     final start = widget.startDateTime;
     final end = _computeEndDate(start, widget.durationKey);
     try {
-      await widget.api.createReservation(
+      final reservation = await widget.api.createReservation(
         userId: widget.user.userId,
         yachtId: widget.overview.yachtId,
         startDate: start,
@@ -302,6 +424,13 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
         totalPrice: totalPrice,
         status: 'Pending',
       );
+      // Attach selected extra services
+      for (final sid in _selectedServiceIds) {
+        await widget.api.addServiceToReservation(
+          reservationId: reservation.reservationId,
+          serviceId: sid,
+        );
+      }
       if (!mounted) return;
       setState(() => _saving = false);
       await showDialog<void>(

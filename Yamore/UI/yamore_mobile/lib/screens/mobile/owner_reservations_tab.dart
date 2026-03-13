@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../models/reservation.dart';
 import '../../models/user.dart';
+import '../../models/yacht_detail.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 
@@ -27,6 +28,9 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
   String? _error;
   String _filterStatus = 'All';
 
+  final Map<int, YachtDetail> _yachtCache = {};
+  final Map<int, AppUser> _guestCache = {};
+
   static const _statuses = ['All', 'Pending', 'Confirmed', 'Cancelled'];
 
   @override
@@ -45,9 +49,34 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
         pageSize: 50,
         status: _filterStatus == 'All' ? null : _filterStatus,
       );
+      final list = result.resultList;
+
+      // Preload yacht and guest details for nicer display.
+      final yachtIds = list.map((r) => r.yachtId).toSet();
+      final userIds = list.map((r) => r.userId).toSet();
+
+      await Future.wait([
+        ...yachtIds
+            .where((id) => !_yachtCache.containsKey(id))
+            .map((id) async {
+          try {
+            final d = await _api.getYachtById(id);
+            _yachtCache[id] = d;
+          } catch (_) {}
+        }),
+        ...userIds
+            .where((id) => !_guestCache.containsKey(id))
+            .map((id) async {
+          try {
+            final u = await _api.getUserById(id);
+            _guestCache[id] = u;
+          } catch (_) {}
+        }),
+      ]);
+
       if (mounted) {
         setState(() {
-          _reservations = result.resultList;
+          _reservations = list;
           _loading = false;
         });
       }
@@ -205,6 +234,8 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
       itemCount: _reservations.length,
       itemBuilder: (context, index) {
         final r = _reservations[index];
+        final yacht = _yachtCache[r.yachtId];
+        final guest = _guestCache[r.userId];
         final color = _statusColor(r.status);
         return Card(
           margin: const EdgeInsets.only(bottom: 10),
@@ -231,8 +262,16 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
                   ],
                 ),
                 const Divider(height: 18),
-                _infoRow(Icons.directions_boat_outlined, 'Yacht ID', r.yachtId.toString()),
-                _infoRow(Icons.person_outline, 'Guest ID', r.userId.toString()),
+                _infoRow(
+                  Icons.directions_boat_outlined,
+                  'Yacht',
+                  yacht?.name ?? 'Yacht #${r.yachtId}',
+                ),
+                _infoRow(
+                  Icons.person_outline,
+                  'Guest',
+                  guest?.displayName ?? 'User #${r.userId}',
+                ),
                 _infoRow(Icons.date_range, 'Period', '${_fmtDate(r.startDate)} – ${_fmtDate(r.endDate)}'),
                 _infoRow(Icons.timelapse, 'Duration', '${r.durationDays} day${r.durationDays == 1 ? '' : 's'}'),
                 if (r.totalPrice != null)

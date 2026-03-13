@@ -1163,6 +1163,26 @@ class ApiService {
       throw ApiException(response.statusCode, response.body);
     }
   }
+
+  // ── Reservation Services (extras) ──
+
+  Future<void> addServiceToReservation({
+    required int reservationId,
+    required int serviceId,
+  }) async {
+    final uri = Uri.parse('$baseUrl/ReservationService');
+    final response = await http.post(
+      uri,
+      headers: _headers,
+      body: jsonEncode({
+        'ReservationId': reservationId,
+        'ServiceId': serviceId,
+      }),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
 }
 
 class ApiException implements Exception {

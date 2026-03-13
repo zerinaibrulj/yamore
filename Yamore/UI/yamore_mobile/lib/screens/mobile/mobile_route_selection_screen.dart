@@ -4,6 +4,7 @@ import '../../models/user.dart';
 import '../../models/yacht_overview.dart';
 import '../../models/route.dart';
 import '../../models/weather_forecast.dart';
+import '../../models/city.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import 'mobile_booking_payment_screen.dart';
@@ -36,6 +37,7 @@ class _MobileRouteSelectionScreenState
   bool _loading = true;
   String? _error;
   List<RouteModel> _routes = [];
+  List<CityModel> _cities = [];
   RouteModel? _selectedRoute;
 
   @override
@@ -50,10 +52,16 @@ class _MobileRouteSelectionScreenState
       _error = null;
     });
     try {
-      final routes = await widget.api.getRoutesForYacht(widget.overview.yachtId);
+      final results = await Future.wait([
+        widget.api.getRoutesForYacht(widget.overview.yachtId),
+        widget.api.getCities(),
+      ]);
+      final routes = results[0] as List<RouteModel>;
+      final cities = results[1] as List<CityModel>;
       if (!mounted) return;
       setState(() {
         _routes = routes;
+        _cities = cities;
         if (routes.isNotEmpty) {
           _selectedRoute = routes.first;
         }
@@ -167,16 +175,20 @@ class _MobileRouteSelectionScreenState
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 12),
-            DropdownButtonFormField<RouteModel>(
+            DropdownButtonFormField<RouteModel?>(
               value: _selectedRoute,
-              items: _routes
-                  .map(
-                    (r) => DropdownMenuItem<RouteModel>(
-                      value: r,
-                      child: Text(r.description ?? 'Route #${r.routeId}'),
-                    ),
-                  )
-                  .toList(),
+              items: [
+                const DropdownMenuItem<RouteModel?>(
+                  value: null,
+                  child: Text('None (no specific route)'),
+                ),
+                ..._routes.map(
+                  (r) => DropdownMenuItem<RouteModel?>(
+                    value: r,
+                    child: Text(_routeLabel(r)),
+                  ),
+                ),
+              ],
               onChanged: (r) => setState(() => _selectedRoute = r),
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
@@ -188,6 +200,20 @@ class _MobileRouteSelectionScreenState
         ),
       ),
     );
+  }
+
+  String _routeLabel(RouteModel r) {
+    if (r.description != null && r.description!.trim().isNotEmpty) {
+      return r.description!.trim();
+    }
+    final startCity =
+        _cities.firstWhere((c) => c.cityId == r.startCityId, orElse: () => CityModel.empty());
+    final endCity =
+        _cities.firstWhere((c) => c.cityId == r.endCityId, orElse: () => CityModel.empty());
+    if (startCity.cityId != -1 && endCity.cityId != -1) {
+      return '${startCity.name} → ${endCity.name}';
+    }
+    return 'Route #${r.routeId}';
   }
 
   Future<void> _showWeather() async {
@@ -208,28 +234,52 @@ class _MobileRouteSelectionScreenState
         builder: (ctx) => AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(
-            route.description ?? 'Route #${route.routeId}',
-          ),
+          title: Text(_routeLabel(route)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (f.forecastDate != null)
-                Text(
-                  '${f.forecastDate!.day.toString().padLeft(2, '0')}.'
-                  '${f.forecastDate!.month.toString().padLeft(2, '0')}.'
-                  '${f.forecastDate!.year} ${f.forecastDate!.hour.toString().padLeft(2, '0')}:'
-                  '${f.forecastDate!.minute.toString().padLeft(2, '0')}h',
-                  style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w600),
+                Row(
+                  children: [
+                    const Icon(Icons.calendar_today_outlined, size: 18),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${f.forecastDate!.day.toString().padLeft(2, '0')}.'
+                      '${f.forecastDate!.month.toString().padLeft(2, '0')}.'
+                      '${f.forecastDate!.year} '
+                      '${f.forecastDate!.hour.toString().padLeft(2, '0')}:'
+                      '${f.forecastDate!.minute.toString().padLeft(2, '0')}h',
+                      style: const TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                  ],
                 ),
               const SizedBox(height: 8),
               if (f.windSpeed != null)
-                Text('Wind: ${f.windSpeed} km/h'),
+                Row(
+                  children: [
+                    const Icon(Icons.air, size: 18),
+                    const SizedBox(width: 6),
+                    Text('Wind: ${f.windSpeed} km/h'),
+                  ],
+                ),
               if (f.temperature != null)
-                Text('Temperature: ${f.temperature}°C'),
-              if (f.condition != null) Text('Condition: ${f.condition}'),
+                Row(
+                  children: [
+                    const Icon(Icons.thermostat, size: 18),
+                    const SizedBox(width: 6),
+                    Text('Temperature: ${f.temperature}°C'),
+                  ],
+                ),
+              if (f.condition != null)
+                Row(
+                  children: [
+                    const Icon(Icons.wb_sunny_outlined, size: 18),
+                    const SizedBox(width: 6),
+                    Text('Condition: ${f.condition}'),
+                  ],
+                ),
             ],
           ),
           actions: [
