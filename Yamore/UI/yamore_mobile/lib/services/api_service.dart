@@ -14,6 +14,8 @@ import '../models/review.dart';
 import '../models/service_category.dart';
 import '../models/service_model.dart';
 import '../models/reservation.dart';
+import '../models/route.dart';
+import '../models/weather_forecast.dart';
 
 class ApiService {
   final String baseUrl;
@@ -912,6 +914,76 @@ class ApiService {
       throw ApiException(response.statusCode, response.body);
     }
     return PagedReservations.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  // ── Routes & Weather ──
+
+  Future<List<RouteModel>> getRoutesForYacht(int yachtId) async {
+    final uri = Uri.parse('$baseUrl/Route').replace(
+      queryParameters: {
+        'Page': '0',
+        'PageSize': '100',
+        'YachtId': yachtId.toString(),
+      },
+    );
+    final response = await http.get(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final list = (json['resultList'] ?? json['ResultList'] ?? []) as List;
+    return list
+        .map((e) => RouteModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<WeatherForecastModel>> getWeatherForRoute(int routeId) async {
+    final uri = Uri.parse('$baseUrl/WeatherForecast').replace(
+      queryParameters: {
+        'Page': '0',
+        'PageSize': '10',
+        'RouteId': routeId.toString(),
+      },
+    );
+    final response = await http.get(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final list = (json['resultList'] ?? json['ResultList'] ?? []) as List;
+    return list
+        .map((e) => WeatherForecastModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<Reservation> createReservation({
+    required int userId,
+    required int yachtId,
+    required DateTime startDate,
+    required DateTime endDate,
+    double? totalPrice,
+    String status = 'Pending',
+  }) async {
+    final uri = Uri.parse('$baseUrl/Reservation');
+    final response = await http.post(
+      uri,
+      headers: _headers,
+      body: jsonEncode({
+        'UserId': userId,
+        'YachtId': yachtId,
+        'StartDate': startDate.toUtc().toIso8601String(),
+        'EndDate': endDate.toUtc().toIso8601String(),
+        'TotalPrice': totalPrice,
+        'Status': status,
+        'CreatedAt': DateTime.now().toUtc().toIso8601String(),
+      }),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return Reservation.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
   }

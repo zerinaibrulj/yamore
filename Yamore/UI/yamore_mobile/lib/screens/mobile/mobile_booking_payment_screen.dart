@@ -1,0 +1,236 @@
+import 'package:flutter/material.dart';
+
+import '../../models/user.dart';
+import '../../models/yacht_overview.dart';
+import '../../services/api_service.dart';
+import '../../theme/app_theme.dart';
+import 'mobile_booking_review_screen.dart';
+
+class MobileBookingPaymentScreen extends StatefulWidget {
+  final ApiService api;
+  final AppUser user;
+  final YachtOverview overview;
+  final DateTime startDateTime;
+  final String durationKey;
+  final bool skipperIncluded;
+
+  const MobileBookingPaymentScreen({
+    super.key,
+    required this.api,
+    required this.user,
+    required this.overview,
+    required this.startDateTime,
+    required this.durationKey,
+    required this.skipperIncluded,
+  });
+
+  @override
+  State<MobileBookingPaymentScreen> createState() =>
+      _MobileBookingPaymentScreenState();
+}
+
+class _MobileBookingPaymentScreenState
+    extends State<MobileBookingPaymentScreen> {
+  String _paymentMethod = 'card';
+  bool _saving = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: AppTheme.primaryBlue,
+        foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text('Payment'),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSummaryCard(),
+            const SizedBox(height: 16),
+            _buildPaymentCard(),
+          ],
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: SizedBox(
+            height: 48,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF8BC34A),
+              ),
+              onPressed: _saving ? null : _goNext,
+              child: const Text(
+                'NEXT STEP',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryCard() {
+    final start = widget.startDateTime;
+    final end = _computeEndDate(start, widget.durationKey);
+    final duration = end.difference(start).inDays.clamp(1, 365);
+    final basePrice = widget.overview.pricePerDay * duration;
+    // For now skipper does not change DB data, only shown in summary.
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Booking summary',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${start.day}.${start.month}.${start.year} '
+              '– ${end.day}.${end.month}.${end.year}',
+              style: const TextStyle(fontSize: 13),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Duration: $duration night${duration == 1 ? '' : 's'}',
+              style: const TextStyle(fontSize: 13),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Skipper: ${widget.skipperIncluded ? 'Included' : 'No skipper'}',
+              style: const TextStyle(fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            const Divider(),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Text(
+                  'Total price',
+                  style: TextStyle(fontSize: 14),
+                ),
+                const Spacer(),
+                Text(
+                  '€${basePrice.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.primaryBlue,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentCard() {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Please select your preferred payment method',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            RadioListTile<String>(
+              value: 'card',
+              groupValue: _paymentMethod,
+              dense: true,
+              title: Row(
+                children: const [
+                  Icon(Icons.credit_card, size: 20),
+                  SizedBox(width: 8),
+                  Text('Credit/Debit Card'),
+                ],
+              ),
+              onChanged: (v) => setState(() => _paymentMethod = v!),
+            ),
+            RadioListTile<String>(
+              value: 'paypal',
+              groupValue: _paymentMethod,
+              dense: true,
+              title: Row(
+                children: const [
+                  Icon(Icons.phone_iphone, size: 20),
+                  SizedBox(width: 8),
+                  Text('PayPal / Stripe'),
+                ],
+              ),
+              onChanged: (v) => setState(() => _paymentMethod = v!),
+            ),
+            RadioListTile<String>(
+              value: 'cash',
+              groupValue: _paymentMethod,
+              dense: true,
+              title: Row(
+                children: const [
+                  Icon(Icons.attach_money, size: 20),
+                  SizedBox(width: 8),
+                  Text('Cash'),
+                ],
+              ),
+              onChanged: (v) => setState(() => _paymentMethod = v!),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  DateTime _computeEndDate(DateTime start, String durationKey) {
+    switch (durationKey) {
+      case 'half':
+        return start.add(const Duration(hours: 4));
+      case 'full':
+        return start.add(const Duration(days: 1));
+      case '2d':
+        return start.add(const Duration(days: 2));
+      case '3d':
+        return start.add(const Duration(days: 3));
+      case 'weekend':
+        return start.add(const Duration(days: 3));
+      case 'week':
+        return start.add(const Duration(days: 7));
+      default:
+        return start.add(const Duration(days: 1));
+    }
+  }
+
+  void _goNext() {
+    if (_saving) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => MobileBookingReviewScreen(
+          api: widget.api,
+          user: widget.user,
+          overview: widget.overview,
+          startDateTime: widget.startDateTime,
+          durationKey: widget.durationKey,
+          skipperIncluded: widget.skipperIncluded,
+          paymentMethod: _paymentMethod,
+        ),
+      ),
+    );
+  }
+}
+

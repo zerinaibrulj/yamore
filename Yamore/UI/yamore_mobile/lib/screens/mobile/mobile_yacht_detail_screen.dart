@@ -7,6 +7,7 @@ import '../../models/reservation.dart';
 import '../../models/user.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
+import 'mobile_booking_calendar_screen.dart';
 
 class MobileYachtDetailScreen extends StatefulWidget {
   final ApiService api;
@@ -281,7 +282,15 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
                 backgroundColor: const Color(0xFF4CAF50),
               ),
               onPressed: () {
-                // Booking flow can be wired here.
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => MobileBookingCalendarScreen(
+                      api: widget.api,
+                      user: widget.user,
+                      overview: widget.overview,
+                    ),
+                  ),
+                );
               },
               child: const Text(
                 'Book Now',
