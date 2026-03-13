@@ -17,5 +17,7 @@ namespace Yamore.Model
         public string? StateMachine { get; set; }
         public int? ThumbnailImageId { get; set; }
         public int CategoryId { get; set; }
+        public double? AverageRating { get; set; }
+        public int ReviewCount { get; set; }
     }
 }

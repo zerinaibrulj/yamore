@@ -11,6 +11,8 @@ class YachtOverview {
   final String? stateMachine;
   final int? thumbnailImageId;
   final int categoryId;
+  final double? averageRating;
+  final int reviewCount;
 
   YachtOverview({
     required this.yachtId,
@@ -25,6 +27,8 @@ class YachtOverview {
     this.stateMachine,
     this.thumbnailImageId,
     required this.categoryId,
+    this.averageRating,
+    this.reviewCount = 0,
   });
 
   factory YachtOverview.fromJson(Map<String, dynamic> json) {
@@ -41,6 +45,11 @@ class YachtOverview {
       stateMachine: json['stateMachine'] as String?,
       thumbnailImageId: json['thumbnailImageId'] as int?,
       categoryId: json['categoryId'] as int? ?? 0,
+      averageRating: (json['averageRating'] ?? json['AverageRating']) == null
+          ? null
+          : (json['averageRating'] ?? json['AverageRating'] as num).toDouble(),
+      reviewCount:
+          (json['reviewCount'] ?? json['ReviewCount']) as int? ?? 0,
     );
   }
 }

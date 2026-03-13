@@ -202,6 +202,7 @@ namespace Yamore.Services.Services
             var query = Context.Yachts
                 .Include(y => y.Owner)
                 .Include(y => y.Location)
+                .Include(y => y.Reviews)
                 .AsQueryable();
 
             query = AddFilter(search, query);
@@ -230,7 +231,11 @@ namespace Yamore.Services.Services
                 PricePerDay = y.PricePerDay,
                 StateMachine = y.StateMachine,
                 ThumbnailImageId = thumbnails.TryGetValue(y.YachtId, out var tid) ? tid : null,
-                CategoryId = y.CategoryId
+                CategoryId = y.CategoryId,
+                AverageRating = y.Reviews.Any(r => r.Rating.HasValue)
+                    ? y.Reviews.Where(r => r.Rating.HasValue).Average(r => (double)r.Rating!)
+                    : (double?)null,
+                ReviewCount = y.Reviews.Count(r => r.Rating.HasValue)
             }).ToList();
 
             return new PagedResponse<YachtOverviewDto> { Count = count, ResultList = result };
@@ -241,6 +246,7 @@ namespace Yamore.Services.Services
             var query = Context.Yachts
                 .Include(y => y.Owner)
                 .Include(y => y.Location)
+                .Include(y => y.Reviews)
                 .Where(y => y.OwnerId == ownerId)
                 .AsQueryable();
 
@@ -269,7 +275,11 @@ namespace Yamore.Services.Services
                 Capacity = y.Capacity,
                 PricePerDay = y.PricePerDay,
                 StateMachine = y.StateMachine,
-                ThumbnailImageId = thumbnails.TryGetValue(y.YachtId, out var tid) ? tid : null
+                ThumbnailImageId = thumbnails.TryGetValue(y.YachtId, out var tid) ? tid : null,
+                AverageRating = y.Reviews.Any(r => r.Rating.HasValue)
+                    ? y.Reviews.Where(r => r.Rating.HasValue).Average(r => (double)r.Rating!)
+                    : (double?)null,
+                ReviewCount = y.Reviews.Count(r => r.Rating.HasValue)
             }).ToList();
 
             return new PagedResponse<YachtOverviewDto> { Count = count, ResultList = result };
