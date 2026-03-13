@@ -569,6 +569,63 @@ class ApiService {
     );
   }
 
+  Future<Review> createReview({
+    required int reservationId,
+    required int userId,
+    required int yachtId,
+    required int rating,
+    String? comment,
+  }) async {
+    final uri = Uri.parse('$baseUrl/Review');
+    final response = await http.post(
+      uri,
+      headers: _headers,
+      body: jsonEncode({
+        'ReservationId': reservationId,
+        'UserId': userId,
+        'YachtId': yachtId,
+        'Rating': rating,
+        'Comment': comment,
+        'DatePosted': DateTime.now().toUtc().toIso8601String(),
+      }),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return Review.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<Review> updateReview({
+    required int reviewId,
+    required int reservationId,
+    required int userId,
+    required int yachtId,
+    required int rating,
+    String? comment,
+  }) async {
+    final uri = Uri.parse('$baseUrl/Review/$reviewId');
+    final response = await http.put(
+      uri,
+      headers: _headers,
+      body: jsonEncode({
+        'ReservationId': reservationId,
+        'UserId': userId,
+        'YachtId': yachtId,
+        'Rating': rating,
+        'Comment': comment,
+        'DatePosted': DateTime.now().toUtc().toIso8601String(),
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return Review.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
   Future<void> deleteReview(int id) async {
     final uri = Uri.parse('$baseUrl/Review/$id');
     final response = await http.delete(uri, headers: _headers);

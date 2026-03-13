@@ -8,6 +8,7 @@ namespace Yamore.Model
         public int YachtId { get; set; }
         public string Name { get; set; } = null!;
         public string? LocationName { get; set; }
+        public string? CountryName { get; set; }
         public string? OwnerName { get; set; }
         public int? OwnerId { get; set; }
         public int? YearBuilt { get; set; }

@@ -202,6 +202,7 @@ namespace Yamore.Services.Services
             var query = Context.Yachts
                 .Include(y => y.Owner)
                 .Include(y => y.Location)
+                    .ThenInclude(c => c.Country)
                 .Include(y => y.Reviews)
                 .AsQueryable();
 
@@ -223,6 +224,7 @@ namespace Yamore.Services.Services
                 YachtId = y.YachtId,
                 Name = y.Name,
                 LocationName = y.Location?.Name,
+                CountryName = y.Location?.Country?.Name,
                 OwnerName = y.Owner != null ? $"{y.Owner.FirstName} {y.Owner.LastName}".Trim() : null,
                 OwnerId = y.OwnerId,
                 YearBuilt = y.YearBuilt,
@@ -246,6 +248,7 @@ namespace Yamore.Services.Services
             var query = Context.Yachts
                 .Include(y => y.Owner)
                 .Include(y => y.Location)
+                    .ThenInclude(c => c.Country)
                 .Include(y => y.Reviews)
                 .Where(y => y.OwnerId == ownerId)
                 .AsQueryable();
@@ -268,6 +271,7 @@ namespace Yamore.Services.Services
                 YachtId = y.YachtId,
                 Name = y.Name,
                 LocationName = y.Location?.Name,
+                CountryName = y.Location?.Country?.Name,
                 OwnerName = y.Owner != null ? $"{y.Owner.FirstName} {y.Owner.LastName}".Trim() : null,
                 OwnerId = y.OwnerId,
                 YearBuilt = y.YearBuilt,

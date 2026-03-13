@@ -2,6 +2,7 @@ class YachtOverview {
   final int yachtId;
   final String name;
   final String? locationName;
+  final String? countryName;
   final String? ownerName;
   final int? ownerId;
   final int? yearBuilt;
@@ -18,6 +19,7 @@ class YachtOverview {
     required this.yachtId,
     required this.name,
     this.locationName,
+    this.countryName,
     this.ownerName,
     this.ownerId,
     this.yearBuilt,
@@ -36,6 +38,7 @@ class YachtOverview {
       yachtId: json['yachtId'] as int,
       name: json['name'] as String? ?? '',
       locationName: json['locationName'] as String?,
+      countryName: json['countryName'] as String? ?? json['CountryName'] as String?,
       ownerName: json['ownerName'] as String?,
       ownerId: json['ownerId'] as int?,
       yearBuilt: json['yearBuilt'] as int?,

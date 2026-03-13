@@ -28,7 +28,10 @@ class MobileYachtDetailScreen extends StatefulWidget {
 class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
   YachtDetail? _detail;
   List<Review> _reviews = [];
+  List<Reservation> _completedReservations = [];
+  Review? _myReview;
   bool _loading = true;
+  bool _savingReview = false;
   String? _error;
 
   @override
@@ -60,9 +63,17 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
       ]);
       if (!mounted) return;
       final pagedReviews = results[1] as PagedReviews;
+      final pagedReservations = results[2] as PagedReservations;
+      final allReviews = pagedReviews.resultList;
+      final myReview = allReviews
+          .where((r) => r.userId == widget.user.userId)
+          .cast<Review?>()
+          .firstWhere((_) => true, orElse: () => null);
       setState(() {
         _detail = results[0] as YachtDetail;
-        _reviews = pagedReviews.resultList;
+        _reviews = allReviews;
+        _completedReservations = pagedReservations.resultList;
+        _myReview = myReview;
         _loading = false;
       });
     } catch (e) {
@@ -84,6 +95,148 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
 
   int get _reviewCount =>
       _reviews.where((r) => r.rating != null && r.rating! > 0).length;
+
+  bool get _canReview => _completedReservations.isNotEmpty;
+
+  Future<void> _openReviewSheet() async {
+    if (!_canReview) return;
+    final existing = _myReview;
+    int tempRating = existing?.rating ?? 5;
+    final commentCtrl =
+        TextEditingController(text: existing?.comment ?? '');
+
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 16,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+            ),
+            child: StatefulBuilder(
+              builder: (ctx, setLocal) => Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'Your review',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w700),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'How was your experience with this yacht?',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: List.generate(5, (index) {
+                      final starValue = index + 1;
+                      final filled = starValue <= tempRating;
+                      return IconButton(
+                        onPressed: () =>
+                            setLocal(() => tempRating = starValue),
+                        icon: Icon(
+                          filled ? Icons.star : Icons.star_border,
+                          color: const Color(0xFFFFC107),
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: commentCtrl,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      labelText: 'Comment (optional)',
+                      border: OutlineInputBorder(),
+                      alignLabelWithHint: true,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      child: const Text('Submit review'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      await _saveReview(tempRating, commentCtrl.text.trim());
+    }
+    commentCtrl.dispose();
+  }
+
+  Future<void> _saveReview(int rating, String? comment) async {
+    if (!_canReview || rating <= 0) return;
+    final reservationId =
+        _myReview?.reservationId ?? _completedReservations.first.reservationId;
+    setState(() => _savingReview = true);
+    try {
+      Review updated;
+      if (_myReview == null) {
+        updated = await widget.api.createReview(
+          reservationId: reservationId,
+          userId: widget.user.userId,
+          yachtId: widget.overview.yachtId,
+          rating: rating,
+          comment: comment?.isEmpty == true ? null : comment,
+        );
+        _reviews = [..._reviews, updated];
+      } else {
+        updated = await widget.api.updateReview(
+          reviewId: _myReview!.reviewId,
+          reservationId: reservationId,
+          userId: widget.user.userId,
+          yachtId: widget.overview.yachtId,
+          rating: rating,
+          comment: comment?.isEmpty == true ? null : comment,
+        );
+        _reviews = _reviews
+            .map((r) => r.reviewId == updated.reviewId ? updated : r)
+            .toList();
+      }
+      setState(() {
+        _myReview = updated;
+        _savingReview = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Review saved.')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _savingReview = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to save review: $e')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -207,7 +360,9 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
                     size: 16, color: Colors.grey),
                 const SizedBox(width: 4),
                 Text(
-                  overview.locationName!,
+                  overview.countryName != null
+                      ? '${overview.locationName!}, ${overview.countryName!}'
+                      : overview.locationName!,
                   style: TextStyle(
                     fontSize: 13,
                     color: Colors.grey.shade700,
@@ -219,6 +374,7 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
           _buildSpecsRow(),
           const SizedBox(height: 16),
           _buildPriceSection(),
+          _buildDescriptionSection(),
           const SizedBox(height: 24),
           _buildReviewsSection(avg, count),
         ],
@@ -232,6 +388,10 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
     final lengthFeet = overview.length != null ? overview.length! * 3.28084 : null;
     return Row(
       children: [
+        if (overview.yearBuilt != null) ...[
+          _infoChip(Icons.calendar_today_outlined, '${overview.yearBuilt}'),
+          const SizedBox(width: 8),
+        ],
         _infoChip(Icons.king_bed_outlined,
             d?.cabins != null ? '${d!.cabins} cabins' : 'Cabins'),
         const SizedBox(width: 8),
@@ -245,6 +405,28 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
             Icons.straighten,
             '${lengthFeet.toStringAsFixed(0)} ft',
           ),
+      ],
+    );
+  }
+
+  Widget _buildDescriptionSection() {
+    final desc = _detail?.description;
+    if (desc == null || desc.trim().isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 20),
+        const Text(
+          'About this yacht',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          desc,
+          style: TextStyle(fontSize: 13, color: Colors.grey.shade800, height: 1.4),
+        ),
       ],
     );
   }
@@ -293,7 +475,15 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
             ),
             const Spacer(),
-            if (count > 0)
+            if (_canReview)
+              TextButton(
+                onPressed: _openReviewSheet,
+                child: Text(
+                  _myReview == null ? 'Write a review' : 'Edit your review',
+                  style: const TextStyle(fontSize: 13),
+                ),
+              )
+            else if (count > 0)
               Text(
                 '$count review${count == 1 ? '' : 's'}',
                 style: TextStyle(
