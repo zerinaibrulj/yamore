@@ -2,24 +2,76 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../models/user.dart';
 import '../../services/auth_service.dart';
+import '../../services/api_service.dart';
 import '../login/login_screen.dart';
 
-class OwnerSettingsTab extends StatelessWidget {
+class OwnerSettingsTab extends StatefulWidget {
   final AuthService authService;
   final AppUser user;
 
-  const OwnerSettingsTab({super.key, required this.authService, required this.user});
+  const OwnerSettingsTab({
+    super.key,
+    required this.authService,
+    required this.user,
+  });
+
+  @override
+  State<OwnerSettingsTab> createState() => _OwnerSettingsTabState();
+}
+
+class _OwnerSettingsTabState extends State<OwnerSettingsTab> {
+  late final ApiService _api = ApiService(
+    baseUrl: widget.authService.baseUrl,
+    username: widget.authService.username,
+    password: widget.authService.password,
+  );
+
+  late final TextEditingController _firstNameCtrl;
+  late final TextEditingController _lastNameCtrl;
+  late final TextEditingController _emailCtrl;
+  late final TextEditingController _phoneCtrl;
+  bool _profileSaving = false;
+
+  final _oldPasswordCtrl = TextEditingController();
+  final _newPasswordCtrl = TextEditingController();
+  final _confirmPasswordCtrl = TextEditingController();
+  bool _passwordSaving = false;
+  bool _showOldPassword = false;
+  bool _showNewPassword = false;
+  bool _showConfirmPassword = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final u = widget.user;
+    _firstNameCtrl = TextEditingController(text: u.firstName);
+    _lastNameCtrl = TextEditingController(text: u.lastName);
+    _emailCtrl = TextEditingController(text: u.email ?? '');
+    _phoneCtrl = TextEditingController(text: u.phone ?? '');
+  }
+
+  @override
+  void dispose() {
+    _firstNameCtrl.dispose();
+    _lastNameCtrl.dispose();
+    _emailCtrl.dispose();
+    _phoneCtrl.dispose();
+    _oldPasswordCtrl.dispose();
+    _newPasswordCtrl.dispose();
+    _confirmPasswordCtrl.dispose();
+    super.dispose();
+  }
 
   void _logout(BuildContext context) {
-    authService.logout();
+    widget.authService.logout();
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
     );
   }
 
   String _initials() {
-    final f = user.firstName.isNotEmpty ? user.firstName[0] : '';
-    final l = user.lastName.isNotEmpty ? user.lastName[0] : '';
+    final f = widget.user.firstName.isNotEmpty ? widget.user.firstName[0] : '';
+    final l = widget.user.lastName.isNotEmpty ? widget.user.lastName[0] : '';
     return '$f$l'.toUpperCase();
   }
 
@@ -27,14 +79,124 @@ class OwnerSettingsTab extends StatelessWidget {
     if (raw == null) return '—';
     final digits = raw.replaceAll(RegExp(r'\\D'), '');
     if (digits.length == 9) {
-      // e.g. 062987789 -> 062-987-789
       return '${digits.substring(0, 3)}-${digits.substring(3, 6)}-${digits.substring(6)}';
     }
     return raw;
   }
 
+  Future<void> _saveProfile() async {
+    final firstName = _firstNameCtrl.text.trim();
+    final lastName = _lastNameCtrl.text.trim();
+    if (firstName.isEmpty || lastName.isEmpty) {
+      _showError('Validation error', 'First name and last name are required.');
+      return;
+    }
+    setState(() => _profileSaving = true);
+    try {
+      final updated = await _api.updateProfile(
+        userId: widget.user.userId,
+        firstName: firstName,
+        lastName: lastName,
+        email: _emailCtrl.text.trim(),
+        phone: _phoneCtrl.text.trim(),
+      );
+      widget.authService.updateCurrentUser(updated);
+      if (!mounted) return;
+      setState(() => _profileSaving = false);
+      _showSuccess('Profile updated', 'Your profile has been updated.');
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _profileSaving = false);
+      _showError('Update failed', e.body);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _profileSaving = false);
+      _showError('Error', '$e');
+    }
+  }
+
+  Future<void> _changePassword() async {
+    final oldPw = _oldPasswordCtrl.text;
+    final newPw = _newPasswordCtrl.text;
+    final confirmPw = _confirmPasswordCtrl.text;
+
+    if (oldPw.isEmpty) {
+      _showError('Validation error', 'Please enter your current password.');
+      return;
+    }
+    if (newPw.isEmpty) {
+      _showError('Validation error', 'Please enter a new password.');
+      return;
+    }
+    if (newPw.length < 6) {
+      _showError('Validation error', 'New password must be at least 6 characters.');
+      return;
+    }
+    if (newPw != confirmPw) {
+      _showError('Validation error', 'Passwords do not match.');
+      return;
+    }
+
+    setState(() => _passwordSaving = true);
+    try {
+      await _api.changePassword(
+        userId: widget.user.userId,
+        oldPassword: oldPw,
+        newPassword: newPw,
+      );
+      widget.authService.updatePassword(newPw);
+      _oldPasswordCtrl.clear();
+      _newPasswordCtrl.clear();
+      _confirmPasswordCtrl.clear();
+      if (!mounted) return;
+      setState(() => _passwordSaving = false);
+      _showSuccess('Password changed', 'Your password has been changed.');
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _passwordSaving = false);
+      _showError('Password change failed', e.body);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _passwordSaving = false);
+      _showError('Error', '$e');
+    }
+  }
+
+  void _showError(String title, String message) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSuccess(String title, String message) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final user = widget.user;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -111,7 +273,81 @@ class OwnerSettingsTab extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          // Contact details
+          // Editable profile fields
+          const Text(
+            'Profile',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+            Expanded(
+              child: TextField(
+                controller: _firstNameCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'First name',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TextField(
+                controller: _lastNameCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Last name',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+            ),
+          ],
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _emailCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Email',
+              border: OutlineInputBorder(),
+              isDense: true,
+              prefixIcon: Icon(Icons.email_outlined, size: 20),
+            ),
+            keyboardType: TextInputType.emailAddress,
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _phoneCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Phone',
+              border: OutlineInputBorder(),
+              isDense: true,
+              prefixIcon: Icon(Icons.phone_outlined, size: 20),
+            ),
+            keyboardType: TextInputType.phone,
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              onPressed: _profileSaving ? null : _saveProfile,
+              icon: _profileSaving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.save_outlined, size: 18),
+              label: Text(_profileSaving ? 'Saving...' : 'Save profile'),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Contact details (read-only summary)
           const Text(
             'Contact Details',
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
@@ -128,13 +364,123 @@ class OwnerSettingsTab extends StatelessWidget {
 
           const SizedBox(height: 24),
 
+          // Password section
+          const Text(
+            'Security',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            elevation: 1,
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: const [
+                      Icon(Icons.lock_outline, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'Change password',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _oldPasswordCtrl,
+                    obscureText: !_showOldPassword,
+                    decoration: InputDecoration(
+                      labelText: 'Current password',
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                      prefixIcon: const Icon(Icons.key_outlined, size: 20),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _showOldPassword ? Icons.visibility_off : Icons.visibility,
+                          size: 20,
+                        ),
+                        onPressed: () =>
+                            setState(() => _showOldPassword = !_showOldPassword),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _newPasswordCtrl,
+                    obscureText: !_showNewPassword,
+                    decoration: InputDecoration(
+                      labelText: 'New password',
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                      prefixIcon: const Icon(Icons.lock_reset_outlined, size: 20),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _showNewPassword ? Icons.visibility_off : Icons.visibility,
+                          size: 20,
+                        ),
+                        onPressed: () =>
+                            setState(() => _showNewPassword = !_showNewPassword),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _confirmPasswordCtrl,
+                    obscureText: !_showConfirmPassword,
+                    decoration: InputDecoration(
+                      labelText: 'Confirm new password',
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                      prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _showConfirmPassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                          size: 20,
+                        ),
+                        onPressed: () => setState(
+                            () => _showConfirmPassword = !_showConfirmPassword),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: FilledButton.icon(
+                      onPressed: _passwordSaving ? null : _changePassword,
+                      icon: _passwordSaving
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.lock_reset, size: 18),
+                      label: Text(
+                        _passwordSaving ? 'Changing...' : 'Change password',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
           // App info
           const Text(
             'Application',
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
-          _settingsTile(Icons.dns_outlined, 'API Server', authService.baseUrl),
+          _settingsTile(Icons.dns_outlined, 'API Server', widget.authService.baseUrl),
           _settingsTile(Icons.info_outline, 'Version', '1.0.0'),
 
           const SizedBox(height: 32),
