@@ -229,7 +229,8 @@ namespace Yamore.Services.Services
                 Capacity = y.Capacity,
                 PricePerDay = y.PricePerDay,
                 StateMachine = y.StateMachine,
-                ThumbnailImageId = thumbnails.TryGetValue(y.YachtId, out var tid) ? tid : null
+                ThumbnailImageId = thumbnails.TryGetValue(y.YachtId, out var tid) ? tid : null,
+                CategoryId = y.CategoryId
             }).ToList();
 
             return new PagedResponse<YachtOverviewDto> { Count = count, ResultList = result };

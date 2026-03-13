@@ -6,12 +6,19 @@ import '../../services/api_service.dart';
 import '../../services/favorites_service.dart';
 import '../../models/yacht_overview.dart';
 import '../../models/city.dart';
+import '../../models/yacht_category.dart';
 
 class MobileHomeTab extends StatefulWidget {
   final AuthService authService;
   final AppUser user;
+  final bool showOnlyFavorites;
 
-  const MobileHomeTab({super.key, required this.authService, required this.user});
+  const MobileHomeTab({
+    super.key,
+    required this.authService,
+    required this.user,
+    this.showOnlyFavorites = false,
+  });
 
   @override
   State<MobileHomeTab> createState() => _MobileHomeTabState();
@@ -28,6 +35,7 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
   List<YachtOverview> _filteredYachts = [];
   List<YachtOverview> _recommended = [];
   List<CityModel> _cities = [];
+  List<YachtCategoryModel> _categories = [];
   bool _loading = true;
   String? _error;
 
@@ -37,11 +45,22 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
   int _guests = 2;
   int? _selectedCityId;
   Set<int> _favoriteIds = {};
+  String _selectedType = 'All'; // All, Sailing, Motor, Catamaran
+  bool _sortAscending = true;
 
   @override
   void initState() {
     super.initState();
     _loadInitial();
+  }
+
+  @override
+  void didUpdateWidget(covariant MobileHomeTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.showOnlyFavorites != widget.showOnlyFavorites) {
+      // Re-apply filters when switching between Home and Favorites tabs.
+      _applyFilters();
+    }
   }
 
   Future<void> _loadInitial() async {
@@ -53,15 +72,18 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
       final results = await Future.wait([
         _api.getYachtOverviewForAdmin(pageSize: 50),
         _api.getCities(),
+        _api.getYachtCategories(),
         FavoritesService.loadFavorites(widget.user.userId),
       ]);
       final overview = results[0] as PagedYachtOverview;
       final cities = results[1] as List<CityModel>;
-      final favs = results[2] as Set<int>;
+      final cats = results[2] as List<YachtCategoryModel>;
+      final favs = results[3] as Set<int>;
       if (mounted) {
         setState(() {
           _allYachts = overview.resultList;
           _cities = cities;
+          _categories = cats;
           _favoriteIds = favs;
           _buildRecommended();
           _applyFilters();
@@ -85,7 +107,7 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
       child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(child: _buildHero()),
-          if (_recommended.isNotEmpty)
+          if (!widget.showOnlyFavorites && _recommended.isNotEmpty)
             SliverToBoxAdapter(child: _buildRecommendedStrip()),
           const SliverToBoxAdapter(child: SizedBox(height: 12)),
           SliverToBoxAdapter(child: _buildListHeader()),
@@ -256,14 +278,14 @@ extension on _MobileHomeTabState {
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (context, index) {
                 final y = _recommended[index];
-                final isFav = _favoriteIds.contains(y.yachtId);
                 return SizedBox(
                   width: 220,
                   child: _YachtCard(
                     yacht: y,
                     api: _api,
-                    isFavorite: isFav,
-                    onToggleFavorite: () => _toggleFavorite(y.yachtId, !isFav),
+                    isFavorite: false,
+                    onToggleFavorite: () {},
+                    showFavoriteIcon: false,
                   ),
                 );
               },
@@ -293,11 +315,18 @@ extension on _MobileHomeTabState {
           const SizedBox(height: 8),
           Row(
             children: [
-              _filterChip(icon: Icons.tune, label: 'Filter'),
+              _filterChip(icon: Icons.tune, label: 'Filter', onTap: _openFilterSheet),
               const SizedBox(width: 8),
-              _filterChip(icon: Icons.swap_vert, label: 'Sort'),
+              _filterChip(
+                icon: Icons.swap_vert,
+                label: _sortAscending ? 'Price ↑' : 'Price ↓',
+                onTap: () {
+                  setState(() => _sortAscending = !_sortAscending);
+                  _applyFilters();
+                },
+              ),
               const SizedBox(width: 8),
-              _filterChip(icon: Icons.map_outlined, label: 'Map'),
+              _filterChip(icon: Icons.map_outlined, label: 'Map', onTap: () {}),
             ],
           ),
           const SizedBox(height: 8),
@@ -315,20 +344,24 @@ extension on _MobileHomeTabState {
     );
   }
 
-  Widget _filterChip({required IconData icon, required String label}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: Colors.grey.shade700),
-          const SizedBox(width: 4),
-          Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
-        ],
+  Widget _filterChip({required IconData icon, required String label, required VoidCallback onTap}) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: Colors.grey.shade700),
+            const SizedBox(width: 4),
+            Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+          ],
+        ),
       ),
     );
   }
@@ -354,6 +387,49 @@ extension on _MobileHomeTabState {
     }
     // Capacity filter based on guests
     list = list.where((y) => y.capacity >= _guests).toList();
+
+    // Type filter based on category (sailing, motor, catamaran)
+    if (_selectedType != 'All') {
+      final sailingIds = _categories
+          .where((c) => c.name.toLowerCase().contains('sail'))
+          .map((c) => c.categoryId)
+          .toSet();
+      final motorIds = _categories
+          .where((c) => c.name.toLowerCase().contains('motor'))
+          .map((c) => c.categoryId)
+          .toSet();
+      final catamaranIds = _categories
+          .where((c) => c.name.toLowerCase().contains('catamaran'))
+          .map((c) => c.categoryId)
+          .toSet();
+
+      Set<int> allowed;
+      switch (_selectedType) {
+        case 'Sailing':
+          allowed = sailingIds;
+          break;
+        case 'Motor':
+          allowed = motorIds;
+          break;
+        case 'Catamaran':
+          allowed = catamaranIds;
+          break;
+        default:
+          allowed = {};
+      }
+      if (allowed.isNotEmpty) {
+        list = list.where((y) => allowed.contains(y.categoryId)).toList();
+      }
+    }
+
+    // Favorites-only mode (Favorites tab)
+    if (widget.showOnlyFavorites) {
+      list = list.where((y) => _favoriteIds.contains(y.yachtId)).toList();
+    }
+
+    // Sort by price
+    list.sort((a, b) =>
+        _sortAscending ? a.pricePerDay.compareTo(b.pricePerDay) : b.pricePerDay.compareTo(a.pricePerDay));
 
     setState(() {
       _filteredYachts = list;
@@ -445,6 +521,58 @@ extension on _MobileHomeTabState {
     });
     await FavoritesService.saveFavorites(widget.user.userId, _favoriteIds);
   }
+
+  Future<void> _openFilterSheet() async {
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(12),
+              child: Text(
+                'Yacht type',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+            RadioListTile<String>(
+              value: 'All',
+              groupValue: _selectedType,
+              title: const Text('All types'),
+              onChanged: (v) => Navigator.of(ctx).pop(v),
+            ),
+            RadioListTile<String>(
+              value: 'Sailing',
+              groupValue: _selectedType,
+              title: const Text('Sailing yachts'),
+              onChanged: (v) => Navigator.of(ctx).pop(v),
+            ),
+            RadioListTile<String>(
+              value: 'Motor',
+              groupValue: _selectedType,
+              title: const Text('Motor yachts'),
+              onChanged: (v) => Navigator.of(ctx).pop(v),
+            ),
+            RadioListTile<String>(
+              value: 'Catamaran',
+              groupValue: _selectedType,
+              title: const Text('Catamarans'),
+              onChanged: (v) => Navigator.of(ctx).pop(v),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (selected != null) {
+      setState(() => _selectedType = selected);
+      _applyFilters();
+    }
+  }
 }
 
 class _YachtCard extends StatelessWidget {
@@ -452,12 +580,14 @@ class _YachtCard extends StatelessWidget {
   final ApiService api;
   final bool isFavorite;
   final VoidCallback onToggleFavorite;
+  final bool showFavoriteIcon;
 
   const _YachtCard({
     required this.yacht,
     required this.api,
     required this.isFavorite,
     required this.onToggleFavorite,
+    this.showFavoriteIcon = true,
   });
 
   @override
@@ -527,23 +657,24 @@ class _YachtCard extends StatelessWidget {
               ),
             ],
           ),
-          Positioned(
-            top: 8,
-            right: 8,
-            child: IconButton(
-              style: IconButton.styleFrom(
-                backgroundColor: Colors.black54,
-                padding: const EdgeInsets.all(4),
-                minimumSize: const Size(32, 32),
+          if (showFavoriteIcon)
+            Positioned(
+              top: 8,
+              right: 8,
+              child: IconButton(
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.black54,
+                  padding: const EdgeInsets.all(4),
+                  minimumSize: const Size(32, 32),
+                ),
+                icon: Icon(
+                  isFavorite ? Icons.favorite : Icons.favorite_border,
+                  color: isFavorite ? Colors.pinkAccent : Colors.white,
+                  size: 18,
+                ),
+                onPressed: onToggleFavorite,
               ),
-              icon: Icon(
-                isFavorite ? Icons.favorite : Icons.favorite_border,
-                color: isFavorite ? Colors.pinkAccent : Colors.white,
-                size: 18,
-              ),
-              onPressed: onToggleFavorite,
             ),
-          ),
         ],
       ),
     );

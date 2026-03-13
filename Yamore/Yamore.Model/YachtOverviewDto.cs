@@ -16,5 +16,6 @@ namespace Yamore.Model
         public decimal PricePerDay { get; set; }
         public string? StateMachine { get; set; }
         public int? ThumbnailImageId { get; set; }
+        public int CategoryId { get; set; }
     }
 }
