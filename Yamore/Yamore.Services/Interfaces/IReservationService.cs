@@ -11,5 +11,6 @@ namespace Yamore.Services.Interfaces
     public interface IReservationService : ICRUDService<Model.Reservation, ReservationSearchObject, ReservationInsertRequest, ReservationUpdateRequest, ReservationDeleteRequest>
     {
         Model.Reservation Cancel(int id);
+        Model.Reservation Confirm(int id);
     }
 }

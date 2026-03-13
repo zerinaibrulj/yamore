@@ -55,5 +55,18 @@ namespace Yamore.Services.Services
             Context.SaveChanges();
             return Mapper.Map<Model.Reservation>(entity);
         }
+
+        public Model.Reservation Confirm(int id)
+        {
+            var set = Context.Set<Database.Reservation>();
+            var entity = set.Find(id);
+            if (entity == null)
+                throw new KeyNotFoundException($"Reservation with id {id} not found.");
+            if (string.Equals(entity.Status, "Cancelled", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Cannot confirm a cancelled reservation.");
+            entity.Status = "Confirmed";
+            Context.SaveChanges();
+            return Mapper.Map<Model.Reservation>(entity);
+        }
     }
 }

@@ -1164,6 +1164,14 @@ class ApiService {
     }
   }
 
+  Future<void> confirmReservation(int id) async {
+    final uri = Uri.parse('$baseUrl/Reservation/$id/confirm');
+    final response = await http.put(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
   // ── Reservation Services (extras) ──
 
   Future<void> addServiceToReservation({

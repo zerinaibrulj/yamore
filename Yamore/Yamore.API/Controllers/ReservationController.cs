@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Yamore.Model;
 using Yamore.Model.Requests.Reservation;
@@ -23,6 +24,15 @@ namespace Yamore.API.Controllers
         {
             var result = _reservationService.Cancel(id);
             Response.Headers["X-Operation-Message"] = "Reservation cancelled.";
+            return Ok(result);
+        }
+
+        [HttpPut("{id}/confirm")]
+        [Authorize(Roles = "Admin,YachtOwner")]
+        public ActionResult<Model.Reservation> Confirm(int id)
+        {
+            var result = _reservationService.Confirm(id);
+            Response.Headers["X-Operation-Message"] = "Reservation confirmed.";
             return Ok(result);
         }
     }

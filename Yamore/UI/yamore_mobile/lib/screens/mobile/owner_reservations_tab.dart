@@ -120,6 +120,37 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
     }
   }
 
+  Future<void> _confirmReservation(Reservation r) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm Reservation'),
+        content: Text('Confirm reservation #${r.reservationId}?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('No')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      try {
+        await _api.confirmReservation(r.reservationId);
+        await _loadReservations();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to confirm: $e')),
+          );
+        }
+      }
+    }
+  }
+
   String _fmtDate(DateTime dt) =>
       '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
 
@@ -278,14 +309,28 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
                   _infoRow(Icons.euro, 'Total', '€${r.totalPrice!.toStringAsFixed(2)}'),
                 if (r.status?.toLowerCase() != 'cancelled') ...[
                   const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton.icon(
-                      onPressed: () => _cancelReservation(r),
-                      icon: const Icon(Icons.cancel_outlined, size: 18),
-                      label: const Text('Cancel'),
-                      style: TextButton.styleFrom(foregroundColor: Colors.red),
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if ((r.status ?? '').toLowerCase() == 'pending')
+                        TextButton.icon(
+                          onPressed: () => _confirmReservation(r),
+                          icon: const Icon(Icons.check_circle_outline, size: 18),
+                          label: const Text('Confirm'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.green.shade700,
+                          ),
+                        ),
+                      const SizedBox(width: 8),
+                      TextButton.icon(
+                        onPressed: () => _cancelReservation(r),
+                        icon: const Icon(Icons.cancel_outlined, size: 18),
+                        label: const Text('Cancel'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.red,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ],
