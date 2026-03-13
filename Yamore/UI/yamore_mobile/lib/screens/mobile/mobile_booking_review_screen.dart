@@ -11,8 +11,7 @@ class MobileBookingReviewScreen extends StatefulWidget {
   final AppUser user;
   final YachtOverview overview;
   final DateTime startDateTime;
-  final String durationKey;
-  final bool skipperIncluded;
+  final DateTime endDateTime;
   final String paymentMethod;
 
   const MobileBookingReviewScreen({
@@ -21,8 +20,7 @@ class MobileBookingReviewScreen extends StatefulWidget {
     required this.user,
     required this.overview,
     required this.startDateTime,
-    required this.durationKey,
-    required this.skipperIncluded,
+    required this.endDateTime,
     required this.paymentMethod,
   });
 
@@ -81,7 +79,7 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
     final overview = widget.overview;
     final user = widget.user;
     final start = widget.startDateTime;
-    final end = _computeEndDate(start, widget.durationKey);
+    final end = widget.endDateTime;
     final durationDays = end.difference(start).inDays.clamp(1, 365);
     final totalPrice = overview.pricePerDay * durationDays;
 
@@ -281,30 +279,7 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
 
   Widget _buildDetailsRow(
       DateTime start, DateTime end, int durationDays) {
-    String durationLabel;
-    switch (widget.durationKey) {
-      case 'half':
-        durationLabel = 'Half-day';
-        break;
-      case 'full':
-        durationLabel = 'Full-day';
-        break;
-      case '2d':
-        durationLabel = '2 days';
-        break;
-      case '3d':
-        durationLabel = '3 days';
-        break;
-      case 'weekend':
-        durationLabel = 'Weekend charter';
-        break;
-      case 'week':
-        durationLabel = 'Weekly charter';
-        break;
-      default:
-        durationLabel = '$durationDays days';
-    }
-
+    final durationLabel = '$durationDays day${durationDays == 1 ? '' : 's'}';
     String paymentLabel;
     switch (widget.paymentMethod) {
       case 'card':
@@ -369,17 +344,6 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
             const SizedBox(height: 4),
             Row(
               children: [
-                const Icon(Icons.person_outline, size: 18),
-                const SizedBox(width: 6),
-                Text(
-                  widget.skipperIncluded ? 'With skipper' : 'Without skipper',
-                  style: const TextStyle(fontSize: 13),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
                 const Icon(Icons.payment, size: 18),
                 const SizedBox(width: 6),
                 Text(paymentLabel,
@@ -392,29 +356,10 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
     );
   }
 
-  DateTime _computeEndDate(DateTime start, String durationKey) {
-    switch (durationKey) {
-      case 'half':
-        return start.add(const Duration(hours: 4));
-      case 'full':
-        return start.add(const Duration(days: 1));
-      case '2d':
-        return start.add(const Duration(days: 2));
-      case '3d':
-        return start.add(const Duration(days: 3));
-      case 'weekend':
-        return start.add(const Duration(days: 3));
-      case 'week':
-        return start.add(const Duration(days: 7));
-      default:
-        return start.add(const Duration(days: 1));
-    }
-  }
-
   Future<void> _confirm(double totalPrice) async {
     setState(() => _saving = true);
     final start = widget.startDateTime;
-    final end = _computeEndDate(start, widget.durationKey);
+    final end = widget.endDateTime;
     try {
       final reservation = await widget.api.createReservation(
         userId: widget.user.userId,

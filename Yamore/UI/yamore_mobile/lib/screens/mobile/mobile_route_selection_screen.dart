@@ -14,8 +14,7 @@ class MobileRouteSelectionScreen extends StatefulWidget {
   final AppUser user;
   final YachtOverview overview;
   final DateTime startDateTime;
-  final String durationKey;
-  final bool skipperIncluded;
+  final DateTime endDateTime;
 
   const MobileRouteSelectionScreen({
     super.key,
@@ -23,8 +22,7 @@ class MobileRouteSelectionScreen extends StatefulWidget {
     required this.user,
     required this.overview,
     required this.startDateTime,
-    required this.durationKey,
-    required this.skipperIncluded,
+    required this.endDateTime,
   });
 
   @override
@@ -306,8 +304,7 @@ class _MobileRouteSelectionScreenState
           user: widget.user,
           overview: widget.overview,
           startDateTime: widget.startDateTime,
-          durationKey: widget.durationKey,
-          skipperIncluded: widget.skipperIncluded,
+          endDateTime: widget.endDateTime,
         ),
       ),
     );

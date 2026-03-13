@@ -11,8 +11,7 @@ class MobileBookingPaymentScreen extends StatefulWidget {
   final AppUser user;
   final YachtOverview overview;
   final DateTime startDateTime;
-  final String durationKey;
-  final bool skipperIncluded;
+  final DateTime endDateTime;
 
   const MobileBookingPaymentScreen({
     super.key,
@@ -20,8 +19,7 @@ class MobileBookingPaymentScreen extends StatefulWidget {
     required this.user,
     required this.overview,
     required this.startDateTime,
-    required this.durationKey,
-    required this.skipperIncluded,
+    required this.endDateTime,
   });
 
   @override
@@ -80,10 +78,9 @@ class _MobileBookingPaymentScreenState
 
   Widget _buildSummaryCard() {
     final start = widget.startDateTime;
-    final end = _computeEndDate(start, widget.durationKey);
+    final end = widget.endDateTime;
     final duration = end.difference(start).inDays.clamp(1, 365);
     final basePrice = widget.overview.pricePerDay * duration;
-    // For now skipper does not change DB data, only shown in summary.
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 2,
@@ -105,11 +102,6 @@ class _MobileBookingPaymentScreenState
             const SizedBox(height: 4),
             Text(
               'Duration: $duration night${duration == 1 ? '' : 's'}',
-              style: const TextStyle(fontSize: 13),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Skipper: ${widget.skipperIncluded ? 'Included' : 'No skipper'}',
               style: const TextStyle(fontSize: 13),
             ),
             const SizedBox(height: 8),
@@ -197,25 +189,6 @@ class _MobileBookingPaymentScreenState
     );
   }
 
-  DateTime _computeEndDate(DateTime start, String durationKey) {
-    switch (durationKey) {
-      case 'half':
-        return start.add(const Duration(hours: 4));
-      case 'full':
-        return start.add(const Duration(days: 1));
-      case '2d':
-        return start.add(const Duration(days: 2));
-      case '3d':
-        return start.add(const Duration(days: 3));
-      case 'weekend':
-        return start.add(const Duration(days: 3));
-      case 'week':
-        return start.add(const Duration(days: 7));
-      default:
-        return start.add(const Duration(days: 1));
-    }
-  }
-
   void _goNext() {
     if (_saving) return;
     Navigator.of(context).push(
@@ -225,8 +198,7 @@ class _MobileBookingPaymentScreenState
           user: widget.user,
           overview: widget.overview,
           startDateTime: widget.startDateTime,
-          durationKey: widget.durationKey,
-          skipperIncluded: widget.skipperIncluded,
+          endDateTime: widget.endDateTime,
           paymentMethod: _paymentMethod,
         ),
       ),

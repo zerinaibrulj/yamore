@@ -6,7 +6,7 @@ import '../../models/reservation.dart';
 import '../../models/yacht_availability.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
-import 'mobile_booking_options_screen.dart';
+import 'mobile_route_selection_screen.dart';
 
 class MobileBookingCalendarScreen extends StatefulWidget {
   final ApiService api;
@@ -27,9 +27,8 @@ class MobileBookingCalendarScreen extends StatefulWidget {
 
 class _MobileBookingCalendarScreenState
     extends State<MobileBookingCalendarScreen> {
-  DateTime _focusedDay = DateTime.now();
-  DateTime? _selectedDay;
-  DateTime? _selectedStart;
+  DateTimeRange? _selectedRange;
+  TimeOfDay? _selectedTime;
 
   bool _loading = true;
   String? _error;
@@ -85,8 +84,7 @@ class _MobileBookingCalendarScreenState
         TimeOfDay(hour: 22, minute: 0),
       ];
 
-  bool _slotAvailable(DateTime start, Duration baseDuration) {
-    final end = start.add(baseDuration);
+  bool _slotAvailable(DateTime start, DateTime end) {
     // Blocked periods
     for (final a in _blocks.where((b) => b.isBlocked)) {
       if (start.isBefore(a.endDate) && end.isAfter(a.startDate)) {
@@ -161,7 +159,7 @@ class _MobileBookingCalendarScreenState
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildCalendar(),
+                            _buildDateRangeCard(),
                             const SizedBox(height: 16),
                             _buildTimes(),
                           ],
@@ -179,7 +177,8 @@ class _MobileBookingCalendarScreenState
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF8BC34A),
               ),
-              onPressed: _selectedStart == null ? null : _goNext,
+              onPressed:
+                  _selectedRange == null || _selectedTime == null ? null : _goNext,
               child: const Text(
                 'NEXT STEP',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
@@ -191,38 +190,16 @@ class _MobileBookingCalendarScreenState
     );
   }
 
-  Widget _buildCalendar() {
-    final firstDate = DateTime.now();
-    final lastDate = firstDate.add(const Duration(days: 365));
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: CalendarDatePicker(
-          initialDate: _selectedDay ?? _focusedDay,
-          firstDate: firstDate,
-          lastDate: lastDate,
-          onDateChanged: (date) {
-            setState(() {
-              _selectedDay = date;
-              _selectedStart = null;
-            });
-          },
-          currentDate: DateTime.now(),
-        ),
-      ),
-    );
-  }
-
   Widget _buildTimes() {
-    if (_selectedDay == null) {
+    if (_selectedRange == null) {
       return const Text(
-        'Select a date to see available times.',
+        'Select dates to see available times.',
         style: TextStyle(fontSize: 13),
       );
     }
-    final baseDuration = const Duration(hours: 4);
+    final days =
+        _selectedRange!.end.difference(_selectedRange!.start).inDays.clamp(1, 365);
+    final tripDuration = Duration(days: days);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -235,22 +212,25 @@ class _MobileBookingCalendarScreenState
           spacing: 12,
           runSpacing: 12,
           children: _timeSlots.map((t) {
-            final start = DateTime(_selectedDay!.year, _selectedDay!.month,
-                _selectedDay!.day, t.hour, t.minute);
-            final available = _slotAvailable(start, baseDuration);
-            final selected = _selectedStart != null &&
-                _selectedStart!.year == start.year &&
-                _selectedStart!.month == start.month &&
-                _selectedStart!.day == start.day &&
-                _selectedStart!.hour == start.hour &&
-                _selectedStart!.minute == start.minute;
+            final start = DateTime(
+              _selectedRange!.start.year,
+              _selectedRange!.start.month,
+              _selectedRange!.start.day,
+              t.hour,
+              t.minute,
+            );
+            final end = start.add(tripDuration);
+            final available = _slotAvailable(start, end);
+            final selected = _selectedTime?.hour == t.hour &&
+                _selectedTime?.minute == t.minute;
             return ChoiceChip(
               label: Text(
                 '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}h',
               ),
               selected: selected,
-              onSelected:
-                  available ? (_) => setState(() => _selectedStart = start) : null,
+              onSelected: available
+                  ? (_) => setState(() => _selectedTime = t)
+                  : null,
               labelStyle: TextStyle(
                 color: available
                     ? (selected ? Colors.white : Colors.black87)
@@ -265,15 +245,97 @@ class _MobileBookingCalendarScreenState
     );
   }
 
+  Widget _buildDateRangeCard() {
+    final now = DateTime.now();
+    final initialRange = _selectedRange ??
+        DateTimeRange(
+          start: now.add(const Duration(days: 1)),
+          end: now.add(const Duration(days: 4)),
+        );
+    final label = _selectedRange == null
+        ? 'Select your travel dates'
+        : '${_selectedRange!.start.day.toString().padLeft(2, '0')}.'
+            '${_selectedRange!.start.month.toString().padLeft(2, '0')}.'
+            '${_selectedRange!.start.year} – '
+            '${_selectedRange!.end.day.toString().padLeft(2, '0')}.'
+            '${_selectedRange!.end.month.toString().padLeft(2, '0')}.'
+            '${_selectedRange!.end.year}';
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 2,
+      child: ListTile(
+        leading: const Icon(Icons.calendar_today_outlined),
+        title: const Text(
+          'Travel dates',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        subtitle: Text(
+          label,
+          style: const TextStyle(fontSize: 13),
+        ),
+        onTap: () async {
+          final picked = await showDateRangePicker(
+            context: context,
+            firstDate: now,
+            lastDate: now.add(const Duration(days: 365)),
+            initialDateRange: initialRange,
+            helpText: 'Select travel dates',
+            confirmText: 'Save',
+            cancelText: 'Cancel',
+            builder: (context, child) {
+              return Theme(
+                data: Theme.of(context).copyWith(
+                  colorScheme: Theme.of(context).colorScheme.copyWith(
+                        primary: AppTheme.primaryBlue,
+                      ),
+                  dialogTheme: const DialogThemeData(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(16)),
+                    ),
+                  ),
+                ),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints:
+                        const BoxConstraints(maxWidth: 420, maxHeight: 520),
+                    child: child!,
+                  ),
+                ),
+              );
+            },
+          );
+          if (picked != null) {
+            setState(() {
+              _selectedRange = picked;
+              _selectedTime = null;
+            });
+          }
+        },
+      ),
+    );
+  }
+
   void _goNext() {
-    if (_selectedStart == null) return;
+    if (_selectedRange == null || _selectedTime == null) return;
+    final days =
+        _selectedRange!.end.difference(_selectedRange!.start).inDays.clamp(1, 365);
+    final start = DateTime(
+      _selectedRange!.start.year,
+      _selectedRange!.start.month,
+      _selectedRange!.start.day,
+      _selectedTime!.hour,
+      _selectedTime!.minute,
+    );
+    final end = start.add(Duration(days: days));
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => MobileBookingOptionsScreen(
+        builder: (_) => MobileRouteSelectionScreen(
           api: widget.api,
           user: widget.user,
           overview: widget.overview,
-          startDateTime: _selectedStart!,
+          startDateTime: start,
+          endDateTime: end,
         ),
       ),
     );

@@ -330,8 +330,6 @@ extension on _MobileHomeTabState {
                   _applyFilters();
                 },
               ),
-              const SizedBox(width: 8),
-              _filterChip(icon: Icons.map_outlined, label: 'Map', onTap: () {}),
             ],
           ),
           const SizedBox(height: 8),
