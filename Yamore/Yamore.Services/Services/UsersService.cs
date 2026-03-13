@@ -372,6 +372,7 @@ namespace Yamore.Services.Services
                 FirstName = entity.FirstName,
                 LastName = entity.LastName,
                 Email = entity.Email,
+                Phone = entity.Phone,
                 Username = entity.Username,
                 Status = entity.Status,
                 Roles = roles
@@ -431,6 +432,7 @@ namespace Yamore.Services.Services
                     FirstName = u.FirstName,
                     LastName = u.LastName,
                     Email = u.Email,
+                    Phone = u.Phone,
                     Username = u.Username,
                     Status = u.Status,
                     Roles = roles

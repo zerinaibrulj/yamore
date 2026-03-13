@@ -9,6 +9,7 @@ namespace Yamore.Model
         public string FirstName { get; set; } = null!;
         public string LastName { get; set; } = null!;
         public string? Email { get; set; }
+        public string? Phone { get; set; }
         public string Username { get; set; } = null!;
         public bool? Status { get; set; }
         public List<string> Roles { get; set; } = new List<string>();

@@ -23,6 +23,16 @@ class OwnerSettingsTab extends StatelessWidget {
     return '$f$l'.toUpperCase();
   }
 
+  String _formatPhone(String? raw) {
+    if (raw == null) return '—';
+    final digits = raw.replaceAll(RegExp(r'\\D'), '');
+    if (digits.length == 9) {
+      // e.g. 062987789 -> 062-987-789
+      return '${digits.substring(0, 3)}-${digits.substring(3, 6)}-${digits.substring(6)}';
+    }
+    return raw;
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -108,7 +118,7 @@ class OwnerSettingsTab extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           _settingsTile(Icons.email_outlined, 'Email', user.email ?? '—'),
-          _settingsTile(Icons.phone_outlined, 'Phone', user.phone ?? '—'),
+          _settingsTile(Icons.phone_outlined, 'Phone', _formatPhone(user.phone)),
           _settingsTile(
             Icons.circle,
             'Account Status',
