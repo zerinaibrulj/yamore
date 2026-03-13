@@ -511,6 +511,8 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
   }) async {
     final isEdit = existing != null;
     DateTime? date = existing?.forecastDate ?? DateTime.now();
+    TimeOfDay time =
+        TimeOfDay.fromDateTime(date ?? DateTime.now());
     double? temp = existing?.temperature;
     double? wind = existing?.windSpeed;
     final condCtrl = TextEditingController(text: existing?.condition ?? '');
@@ -549,8 +551,34 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
                             picked.year,
                             picked.month,
                             picked.day,
-                            date!.hour,
-                            date!.minute,
+                            time.hour,
+                            time.minute,
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.access_time, size: 18),
+                      label: Text(
+                        '${time.hour.toString().padLeft(2, '0')}:'
+                        '${time.minute.toString().padLeft(2, '0')}',
+                      ),
+                      onPressed: () async {
+                        final picked = await showTimePicker(
+                          context: ctx,
+                          initialTime: time,
+                        );
+                        if (picked != null) {
+                          time = picked;
+                          date = DateTime(
+                            date!.year,
+                            date!.month,
+                            date!.day,
+                            time.hour,
+                            time.minute,
                           );
                         }
                       },
@@ -636,7 +664,7 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
       ),
     );
 
-    if (confirmed == true) {
+    if (confirmed == true && date != null) {
       try {
         if (existing == null) {
           await _api.insertWeatherForecast(
