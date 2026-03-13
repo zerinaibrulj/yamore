@@ -5,6 +5,7 @@ import '../../models/yacht_detail.dart';
 import '../../models/review.dart';
 import '../../models/reservation.dart';
 import '../../models/user.dart';
+import '../../models/yacht_image.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import 'mobile_booking_calendar_screen.dart';
@@ -35,10 +36,19 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
   bool _savingReview = false;
   String? _error;
 
+  final PageController _imagePageController = PageController();
+  int _imageIndex = 0;
+
   @override
   void initState() {
     super.initState();
     _loadAll();
+  }
+
+  @override
+  void dispose() {
+    _imagePageController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadAll() async {
@@ -313,19 +323,8 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Image
-          ClipRRect(
-            borderRadius: BorderRadius.circular(18),
-            child: overview.thumbnailImageId != null
-                ? Image.network(
-                    widget.api.yachtImageUrl(overview.thumbnailImageId!),
-                    height: 220,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    headers: widget.api.authHeaders,
-                  )
-                : _placeholderImage(),
-          ),
+          // Images carousel
+          _buildImageCarousel(),
           const SizedBox(height: 12),
           // Title + rating row
           Row(
@@ -619,6 +618,164 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
             style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildImageCarousel() {
+    final overview = widget.overview;
+
+    return FutureBuilder<List<YachtImageModel>>(
+      future: widget.api.getYachtImages(overview.yachtId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: SizedBox(
+              height: 220,
+              child: Container(
+                color: Colors.grey.shade200,
+                alignment: Alignment.center,
+                child: const CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          );
+        }
+        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+          // Fallback to single thumbnail or placeholder
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: overview.thumbnailImageId != null
+                ? Image.network(
+                    widget.api.yachtImageUrl(overview.thumbnailImageId!),
+                    height: 220,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    headers: widget.api.authHeaders,
+                  )
+                : _placeholderImage(),
+          );
+        }
+
+        final images = snapshot.data!;
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Stack(
+              children: [
+                PageView.builder(
+                  controller: _imagePageController,
+                  itemCount: images.length,
+                  onPageChanged: (i) => setState(() => _imageIndex = i),
+                  itemBuilder: (context, index) {
+                    final img = images[index];
+                    return Image.network(
+                      widget.api.yachtImageUrl(img.yachtImageId),
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      headers: widget.api.authHeaders,
+                      errorBuilder: (_, __, ___) => _placeholderImage(),
+                    );
+                  },
+                ),
+                if (images.length > 1)
+                  Positioned(
+                    left: 8,
+                    top: 0,
+                    bottom: 0,
+                    child: Center(
+                      child: _CarouselArrow(
+                        icon: Icons.chevron_left,
+                        onTap: () {
+                          final prev = _imageIndex - 1;
+                          if (prev >= 0) {
+                            _imagePageController.animateToPage(
+                              prev,
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.easeOut,
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                if (images.length > 1)
+                  Positioned(
+                    right: 8,
+                    top: 0,
+                    bottom: 0,
+                    child: Center(
+                      child: _CarouselArrow(
+                        icon: Icons.chevron_right,
+                        onTap: () {
+                          final next = _imageIndex + 1;
+                          if (next < images.length) {
+                            _imagePageController.animateToPage(
+                              next,
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.easeOut,
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                if (images.length > 1)
+                  Positioned(
+                    bottom: 10,
+                    left: 0,
+                    right: 0,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(images.length, (i) {
+                        final selected = i == _imageIndex;
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          width: selected ? 10 : 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? Colors.white
+                                : Colors.white.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _CarouselArrow extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _CarouselArrow({
+    super.key,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black45,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Icon(icon, color: Colors.white, size: 22),
+        ),
       ),
     );
   }
