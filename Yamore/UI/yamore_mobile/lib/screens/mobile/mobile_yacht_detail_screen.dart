@@ -30,9 +30,10 @@ class MobileYachtDetailScreen extends StatefulWidget {
 class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
   YachtDetail? _detail;
   List<Review> _reviews = [];
-  List<Reservation> _completedReservations = [];
+  List<Reservation> _myReservationsForYacht = [];
   Review? _myReview;
   List<YachtImageModel> _yachtImages = [];
+  Map<int, String> _reviewAuthorNames = {};
   bool _loading = true;
   bool _savingReview = false;
   String? _error;
@@ -70,7 +71,6 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
           pageSize: 50,
           userId: widget.user.userId,
           yachtId: widget.overview.yachtId,
-          status: 'Completed',
         ),
         widget.api.getYachtImages(widget.overview.yachtId).catchError((_) => <YachtImageModel>[]),
       ]);
@@ -83,12 +83,22 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
           .cast<Review?>()
           .firstWhere((_) => true, orElse: () => null);
       final images = results[3] as List<YachtImageModel>;
+      final authorIds = allReviews.map((r) => r.userId).toSet().where((id) => id != widget.user.userId).toList();
+      final names = <int, String>{};
+      for (final id in authorIds) {
+        try {
+          final u = await widget.api.getUserById(id);
+          if (u.displayName.isNotEmpty) names[id] = u.displayName;
+        } catch (_) {}
+      }
+      if (!mounted) return;
       setState(() {
         _detail = results[0] as YachtDetail;
         _reviews = allReviews;
-        _completedReservations = pagedReservations.resultList;
+        _myReservationsForYacht = pagedReservations.resultList;
         _myReview = myReview;
         _yachtImages = images;
+        _reviewAuthorNames = names;
         _imageIndex = 0;
         _loading = false;
       });
@@ -112,7 +122,7 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
   int get _reviewCount =>
       _reviews.where((r) => r.rating != null && r.rating! > 0).length;
 
-  bool get _canReview => _completedReservations.isNotEmpty;
+  bool get _canReview => _myReservationsForYacht.isNotEmpty;
 
   Future<void> _openReviewSheet() async {
     if (!_canReview) return;
@@ -121,7 +131,7 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
     final commentCtrl =
         TextEditingController(text: existing?.comment ?? '');
 
-    final confirmed = await showModalBottomSheet<bool>(
+    final result = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
@@ -143,15 +153,15 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
                 children: [
                   Row(
                     children: [
-                      const Text(
-                        'Your review',
-                        style: TextStyle(
+                      Text(
+                        existing == null ? 'Your review' : 'Edit or delete your review',
+                        style: const TextStyle(
                             fontSize: 16, fontWeight: FontWeight.w700),
                       ),
                       const Spacer(),
                       IconButton(
                         icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.of(ctx).pop(false),
+                        onPressed: () => Navigator.of(ctx).pop('cancel'),
                       ),
                     ],
                   ),
@@ -162,20 +172,37 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
                   ),
                   const SizedBox(height: 12),
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(5, (index) {
                       final starValue = index + 1;
-                      final filled = starValue <= tempRating;
-                      return IconButton(
-                        onPressed: () =>
-                            setLocal(() => tempRating = starValue),
-                        icon: Icon(
-                          filled ? Icons.star : Icons.star_border,
-                          color: const Color(0xFFFFC107),
+                      final selected = starValue <= tempRating;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: GestureDetector(
+                          onTap: () => setLocal(() => tempRating = starValue),
+                          child: Icon(
+                            selected ? Icons.star : Icons.star_border,
+                            size: 40,
+                            color: selected
+                                ? const Color(0xFFFFC107)
+                                : Colors.grey.shade400,
+                          ),
                         ),
                       );
                     }),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
+                  Center(
+                    child: Text(
+                      '$tempRating of 5 stars',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   TextField(
                     controller: commentCtrl,
                     maxLines: 4,
@@ -189,10 +216,69 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
-                      onPressed: () => Navigator.of(ctx).pop(true),
-                      child: const Text('Submit review'),
+                      onPressed: () => Navigator.of(ctx).pop('submit'),
+                      child: Text(existing == null ? 'Submit review' : 'Save changes'),
                     ),
                   ),
+                  if (existing != null) ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton.icon(
+                        onPressed: () async {
+                          final confirm = await showDialog<bool>(
+                            context: ctx,
+                            builder: (c) => AlertDialog(
+                              title: const Text('Delete review?'),
+                              content: const Text(
+                                'Your review will be permanently removed. This cannot be undone.',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(c).pop(false),
+                                  child: const Text('Cancel'),
+                                ),
+                                FilledButton(
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                  ),
+                                  onPressed: () => Navigator.of(c).pop(true),
+                                  child: const Text('Delete'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true && ctx.mounted) {
+                            try {
+                              await widget.api.deleteReview(existing.reviewId);
+                              if (!ctx.mounted) return;
+                              setState(() {
+                                _reviews = _reviews.where((r) => r.reviewId != existing.reviewId).toList();
+                                _myReview = null;
+                              });
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Review deleted.')),
+                                );
+                              }
+                              Navigator.of(ctx).pop('delete');
+                            } catch (e) {
+                              if (ctx.mounted) {
+                                ScaffoldMessenger.of(ctx).showSnackBar(
+                                  SnackBar(content: Text('Failed to delete: $e')),
+                                );
+                              }
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                        label: const Text(
+                          'Delete my review',
+                          style: TextStyle(color: Colors.red, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -201,7 +287,7 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
       },
     );
 
-    if (confirmed == true) {
+    if (result == 'submit') {
       await _saveReview(tempRating, commentCtrl.text.trim());
     }
     commentCtrl.dispose();
@@ -210,7 +296,7 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
   Future<void> _saveReview(int rating, String? comment) async {
     if (!_canReview || rating <= 0) return;
     final reservationId =
-        _myReview?.reservationId ?? _completedReservations.first.reservationId;
+        _myReview?.reservationId ?? _myReservationsForYacht.first.reservationId;
     setState(() => _savingReview = true);
     try {
       Review updated;
@@ -538,6 +624,11 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
     );
   }
 
+  String _reviewAuthorName(Review r) {
+    if (r.userId == widget.user.userId) return widget.user.displayName;
+    return _reviewAuthorNames[r.userId] ?? 'Guest';
+  }
+
   Widget _buildReviewCard(Review r) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -555,7 +646,7 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
               const Icon(Icons.person, size: 18, color: Colors.grey),
               const SizedBox(width: 6),
               Text(
-                'Guest #${r.userId}',
+                _reviewAuthorName(r),
                 style: const TextStyle(
                     fontSize: 13, fontWeight: FontWeight.w600),
               ),
