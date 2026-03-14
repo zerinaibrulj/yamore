@@ -1,7 +1,9 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Yamore.API.Services;
 using Yamore.Model;
+using Yamore.Model.Messages;
 using Yamore.Services.Database;
 
 namespace Yamore.API.Controllers
@@ -17,15 +19,18 @@ namespace Yamore.API.Controllers
         private readonly _220245Context _context;
         private readonly StripePaymentService _stripe;
         private readonly IConfiguration _configuration;
+        private readonly IMessagePublisher _messagePublisher;
 
         public PaymentController(
             _220245Context context,
             StripePaymentService stripe,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IMessagePublisher messagePublisher)
         {
             _context = context;
             _stripe = stripe;
             _configuration = configuration;
+            _messagePublisher = messagePublisher;
         }
 
         /// <summary>
@@ -132,6 +137,15 @@ namespace Yamore.API.Controllers
                 reservation.Status = "Confirmed";
 
             _context.SaveChanges();
+
+            var payMsg = new PaymentCompletedMessage
+            {
+                PaymentId = payment.PaymentId,
+                ReservationId = payment.ReservationId,
+                Amount = payment.Amount,
+                PaymentMethod = paymentMethod,
+            };
+            _messagePublisher.Publish(MessageEnvelope.PaymentCompleted, JsonSerializer.Serialize(payMsg));
 
             return Ok(new PaymentIntentDto { Status = status });
         }

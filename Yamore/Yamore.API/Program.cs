@@ -89,6 +89,7 @@ builder.Services.AddTransient<IStatisticsService, StatisticsService>();
 builder.Services.AddTransient<IYachtImageService, YachtImageService>();
 builder.Services.AddTransient<IYachtServiceService, YachtServiceService>();
 builder.Services.AddSingleton<StripePaymentService>();
+builder.Services.AddSingleton<IMessagePublisher, RabbitMQMessagePublisher>();
 
 
 
