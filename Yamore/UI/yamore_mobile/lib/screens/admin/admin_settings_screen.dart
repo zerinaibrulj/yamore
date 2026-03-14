@@ -3,7 +3,6 @@ import '../../theme/app_theme.dart';
 import '../../models/user.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
-
 class AdminSettingsScreen extends StatefulWidget {
   final AuthService authService;
 
@@ -582,24 +581,6 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildInfoRow(
-                        icon: Icons.link,
-                        label: 'API URL',
-                        value: widget.authService.baseUrl,
-                      ),
-                      const SizedBox(height: 14),
-                      _buildInfoRow(
-                        icon: Icons.numbers,
-                        label: 'App Version',
-                        value: '1.0.0 (build 1)',
-                      ),
-                      const SizedBox(height: 14),
-                      _buildInfoRow(
-                        icon: Icons.code,
-                        label: 'Platform',
-                        value: 'Flutter / .NET 8',
-                      ),
-                      const SizedBox(height: 14),
                       _buildInfoRow(
                         icon: Icons.person,
                         label: 'Logged in as',

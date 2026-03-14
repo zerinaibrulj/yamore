@@ -472,17 +472,6 @@ class _OwnerSettingsTabState extends State<OwnerSettingsTab> {
             ),
           ),
 
-          const SizedBox(height: 24),
-
-          // App info
-          const Text(
-            'Application',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-          _settingsTile(Icons.dns_outlined, 'API Server', widget.authService.baseUrl),
-          _settingsTile(Icons.info_outline, 'Version', '1.0.0'),
-
           const SizedBox(height: 32),
 
           SizedBox(

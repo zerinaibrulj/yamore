@@ -285,11 +285,6 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
                       r.status ?? 'Unknown',
                       style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 14),
                     ),
-                    const Spacer(),
-                    Text(
-                      '#${r.reservationId}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                    ),
                   ],
                 ),
                 const Divider(height: 18),

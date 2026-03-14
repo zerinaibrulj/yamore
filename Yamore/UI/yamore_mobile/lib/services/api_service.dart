@@ -6,6 +6,7 @@ import '../models/yacht_detail.dart';
 import '../models/yacht_image.dart';
 import '../models/yacht_availability.dart';
 import '../models/city.dart';
+import '../models/country.dart';
 import '../models/yacht_category.dart';
 import '../models/user.dart';
 import '../models/statistics.dart';
@@ -165,8 +166,88 @@ class ApiService {
       throw ApiException(response.statusCode, response.body);
     }
     final json = jsonDecode(response.body) as Map<String, dynamic>;
-    final list = json['resultList'] as List<dynamic>? ?? [];
+    final list = json['resultList'] as List<dynamic>? ?? json['ResultList'] as List<dynamic>? ?? [];
     return list.map((e) => CityModel.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<void> insertCity({required int countryId, required String name}) async {
+    final uri = Uri.parse('$baseUrl/City');
+    final response = await http.post(
+      uri,
+      headers: _headers,
+      body: jsonEncode({'CountryId': countryId, 'Name': name}),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  Future<void> updateCity(int id, {required int countryId, required String name}) async {
+    final uri = Uri.parse('$baseUrl/City/$id');
+    final response = await http.put(
+      uri,
+      headers: _headers,
+      body: jsonEncode({'CountryId': countryId, 'Name': name}),
+    );
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  Future<void> deleteCity(int id) async {
+    final uri = Uri.parse('$baseUrl/City/$id');
+    final response = await http.delete(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  Future<List<CountryModel>> getCountries() async {
+    final uri = Uri.parse('$baseUrl/Country').replace(
+      queryParameters: {
+        'Page': '0',
+        'PageSize': '1000',
+      },
+    );
+    final response = await http.get(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final list = json['resultList'] as List<dynamic>? ?? json['ResultList'] as List<dynamic>? ?? [];
+    return list.map((e) => CountryModel.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<void> insertCountry({required String name}) async {
+    final uri = Uri.parse('$baseUrl/Country');
+    final response = await http.post(
+      uri,
+      headers: _headers,
+      body: jsonEncode({'Name': name}),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  Future<void> updateCountry(int id, {required String name}) async {
+    final uri = Uri.parse('$baseUrl/Country/$id');
+    final response = await http.put(
+      uri,
+      headers: _headers,
+      body: jsonEncode({'Name': name}),
+    );
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  Future<void> deleteCountry(int id) async {
+    final uri = Uri.parse('$baseUrl/Country/$id');
+    final response = await http.delete(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
   }
 
   Future<List<YachtCategoryModel>> getYachtCategories() async {
