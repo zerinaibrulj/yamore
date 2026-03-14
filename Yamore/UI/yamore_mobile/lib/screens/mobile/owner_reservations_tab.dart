@@ -95,7 +95,7 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Cancel Reservation'),
-        content: Text('Cancel reservation #${r.reservationId}?'),
+        content: const Text('Are you sure you want to cancel this reservation?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
           FilledButton(
@@ -125,7 +125,7 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Confirm Reservation'),
-        content: Text('Confirm reservation #${r.reservationId}?'),
+        content: const Text('Are you sure you want to confirm this reservation?'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
