@@ -9,7 +9,6 @@ using Yamore.Model.Requests.Review;
 using Yamore.Model.Requests.Roles;
 using Yamore.Model.Requests.Route;
 using Yamore.Model.Requests.Service;
-using Yamore.Model.Requests.SpecialRequest;
 using Yamore.Model.Requests.User;
 using Yamore.Model.Requests.UserRole;
 using Yamore.Model.Requests.WeatherForecast;
@@ -601,28 +600,6 @@ public sealed class NotificationUpdateRequestValidator : AbstractValidator<Notif
         RuleFor(x => x.Message)
             .NotEmpty().WithMessage(ValidationMessages.Required("Message"))
             .MaximumLength(255).WithMessage(ValidationMessages.MaxLength("Message", 255));
-    }
-}
-
-public sealed class SpecialRequestInsertRequestValidator : AbstractValidator<SpecialRequestInsertRequest>
-{
-    public SpecialRequestInsertRequestValidator()
-    {
-        RuleFor(x => x.ReservationId).GreaterThan(0).WithMessage("Please select a valid reservation.");
-        RuleFor(x => x.Description)
-            .NotEmpty().WithMessage(ValidationMessages.Required("Description"))
-            .MaximumLength(255).WithMessage(ValidationMessages.MaxLength("Description", 255));
-    }
-}
-
-public sealed class SpecialRequestUpdateRequestValidator : AbstractValidator<SpecialRequestUpdateRequest>
-{
-    public SpecialRequestUpdateRequestValidator()
-    {
-        RuleFor(x => x.ReservationId).GreaterThan(0).WithMessage("Please select a valid reservation.");
-        RuleFor(x => x.Description)
-            .NotEmpty().WithMessage(ValidationMessages.Required("Description"))
-            .MaximumLength(255).WithMessage(ValidationMessages.MaxLength("Description", 255));
     }
 }
 

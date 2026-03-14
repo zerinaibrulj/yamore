@@ -33,8 +33,6 @@ public partial class _220245Context : DbContext
 
     public virtual DbSet<Service> Services { get; set; }
 
-    public virtual DbSet<SpecialRequest> SpecialRequests { get; set; }
-
     public virtual DbSet<User> Users { get; set; }
 
     public virtual DbSet<WeatherForecast> WeatherForecasts { get; set; }
@@ -266,18 +264,6 @@ public partial class _220245Context : DbContext
             entity.HasOne(d => d.Service).WithMany(p => p.YachtServices)
                 .HasForeignKey(d => d.ServiceId)
                 .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        modelBuilder.Entity<SpecialRequest>(entity =>
-        {
-            entity.HasKey(e => e.RequestId).HasName("PK__SpecialR__33A8517A69D944E8");
-
-            entity.Property(e => e.Description).HasMaxLength(255);
-
-            entity.HasOne(d => d.Reservation).WithMany(p => p.SpecialRequests)
-                .HasForeignKey(d => d.ReservationId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__SpecialRe__Reser__6C190EBB");
         });
 
         modelBuilder.Entity<User>(entity =>
