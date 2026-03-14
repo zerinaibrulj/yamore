@@ -122,10 +122,34 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
   int get _reviewCount =>
       _reviews.where((r) => r.rating != null && r.rating! > 0).length;
 
-  bool get _canReview => _myReservationsForYacht.isNotEmpty;
+  bool get _canReview =>
+      _myReservationsForYacht.any((r) => (r.status ?? '').toLowerCase() == 'confirmed');
+
+  void _showReviewNotAllowedMessage() {
+    final hasReservation = _myReservationsForYacht.isNotEmpty;
+    final message = hasReservation
+        ? 'Only users who have reserved this yacht with a confirmed booking can leave a review.\n\nYour reservation is currently ${_myReservationsForYacht.first.status ?? 'pending'}.'
+        : 'Only users who have reserved this yacht can leave a review. Please make a reservation first.';
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cannot leave a review'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _openReviewSheet() async {
-    if (!_canReview) return;
+    if (!_canReview) {
+      _showReviewNotAllowedMessage();
+      return;
+    }
     final existing = _myReview;
     int tempRating = existing?.rating ?? 5;
     final commentCtrl =
@@ -580,6 +604,14 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
                 child: Text(
                   _myReview == null ? 'Write a review' : 'Edit your review',
                   style: const TextStyle(fontSize: 13),
+                ),
+              )
+            else if (_myReservationsForYacht.isNotEmpty)
+              TextButton(
+                onPressed: _showReviewNotAllowedMessage,
+                child: Text(
+                  'Write a review',
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                 ),
               )
             else if (count > 0)

@@ -91,7 +91,7 @@ namespace Yamore.Services.Services
             {
                 var from = search.AvailableFrom.Value;
                 var to = search.AvailableTo.Value;
-                var confirmedStatuses = new[] { "Confirmed", "Pending", "Completed" };
+                var confirmedStatuses = new[] { "Confirmed", "Pending" };
                 filteredQurey = filteredQurey.Where(y =>
                     !Context.Reservations.Any(r => r.YachtId == y.YachtId && r.StartDate < to && r.EndDate > from && r.Status != "Cancelled") &&
                     !Context.YachtAvailabilities.Any(a => a.YachtId == y.YachtId && a.IsBlocked && a.StartDate < to && a.EndDate > from));
