@@ -72,7 +72,12 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
     });
     try {
       final results = await Future.wait([
-        _api.getYachtOverviewForAdmin(pageSize: 50),
+        _api.getYachtOverviewForAdmin(
+          pageSize: 100,
+          capacityMin: _guests,
+          availableFrom: _dateRange?.start,
+          availableTo: _dateRange?.end,
+        ),
         _api.getCities(),
         _api.getYachtCategories(),
         FavoritesService.loadFavorites(widget.user.userId),
@@ -456,6 +461,7 @@ extension on _MobileHomeTabState {
     );
     if (picked != null) {
       setState(() => _dateRange = picked);
+      await _loadInitial();
     }
   }
 
@@ -488,7 +494,7 @@ extension on _MobileHomeTabState {
     );
     if (selected != null) {
       setState(() => _guests = selected);
-      _applyFilters();
+      await _loadInitial();
     }
   }
 
