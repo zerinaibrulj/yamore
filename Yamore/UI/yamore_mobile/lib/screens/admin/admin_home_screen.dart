@@ -221,6 +221,15 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     );
   }
 
+  /// Format revenue for axis/tooltip: e.g. €1.2k, €500, €0
+  static String _formatRevenue(double value) {
+    if (value >= 1000) {
+      final k = value / 1000;
+      return k == k.roundToDouble() ? '€${k.toInt()}k' : '€${k.toStringAsFixed(1)}k';
+    }
+    return value >= 1 ? '€${value.toStringAsFixed(0)}' : '€0';
+  }
+
   Widget _buildRevenueChartCard(
       BuildContext context, StatisticsDtoModel stats) {
     final data = stats.revenueByMonth;
@@ -230,11 +239,14 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
     final spots = <FlSpot>[];
     final labels = <int, String>{};
+    double maxRevenue = 0;
     for (var i = 0; i < data.length; i++) {
       final m = data[i];
+      if (m.revenue > maxRevenue) maxRevenue = m.revenue;
       spots.add(FlSpot(i.toDouble(), m.revenue));
       labels[i] = '${m.month}/${m.year % 100}';
     }
+    final maxY = (maxRevenue * 1.15).clamp(1.0, double.infinity);
 
     return Card(
       elevation: 2,
@@ -251,8 +263,23 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             Expanded(
               child: LineChart(
                 LineChartData(
-                  gridData: const FlGridData(show: false),
-                  borderData: FlBorderData(show: false),
+                  minY: 0,
+                  maxY: maxY,
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    getDrawingHorizontalLine: (value) => FlLine(
+                      color: Colors.grey.shade200,
+                      strokeWidth: 1,
+                    ),
+                  ),
+                  borderData: FlBorderData(
+                    show: true,
+                    border: Border(
+                      left: BorderSide(color: Colors.grey.shade300),
+                      bottom: BorderSide(color: Colors.grey.shade300),
+                    ),
+                  ),
                   lineBarsData: [
                     LineChartBarData(
                       spots: spots,
@@ -268,18 +295,42 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
+                        reservedSize: 24,
+                        interval: 1,
                         getTitlesWidget: (value, meta) {
                           final index = value.toInt();
                           if (!labels.containsKey(index)) return const SizedBox.shrink();
-                          return Text(
-                            labels[index]!,
-                            style: const TextStyle(fontSize: 10),
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              labels[index]!,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
                           );
                         },
                       ),
                     ),
-                    leftTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: true, reservedSize: 40),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 44,
+                        interval: maxY / 4,
+                        getTitlesWidget: (value, meta) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 4),
+                            child: Text(
+                              _formatRevenue(value),
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ),
