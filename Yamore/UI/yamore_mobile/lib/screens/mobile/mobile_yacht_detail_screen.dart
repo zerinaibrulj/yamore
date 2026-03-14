@@ -705,6 +705,39 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
               style: const TextStyle(fontSize: 13),
             ),
           ],
+          if (r.ownerResponse != null && r.ownerResponse!.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            const Divider(height: 1),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.reply, size: 14, color: AppTheme.primaryBlue),
+                const SizedBox(width: 4),
+                Text(
+                  'Owner response',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.primaryBlue,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade100),
+              ),
+              child: Text(
+                r.ownerResponse!,
+                style: const TextStyle(fontSize: 13),
+              ),
+            ),
+          ],
         ],
       ),
     );

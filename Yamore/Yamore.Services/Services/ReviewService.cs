@@ -60,6 +60,16 @@ namespace Yamore.Services.Services
             return Mapper.Map<Model.Review>(entity);
         }
 
+        public Model.Review Unreport(int id)
+        {
+            var entity = Context.Reviews.Find(id);
+            if (entity == null)
+                throw new KeyNotFoundException($"Review with id {id} not found.");
+            entity.IsReported = false;
+            Context.SaveChanges();
+            return Mapper.Map<Model.Review>(entity);
+        }
+
         public Model.Review RespondAsOwner(int id, string ownerResponse)
         {
             var entity = Context.Reviews.Find(id);

@@ -21,6 +21,8 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
   );
 
   List<Review> _reviews = [];
+  Map<int, String> _yachtNames = {};
+  Map<int, String> _userNames = {};
   int? _totalCount;
   bool _loading = true;
   String? _error;
@@ -45,9 +47,35 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
         pageSize: _pageSize,
         isReported: _filterReported ? true : null,
       );
+      final reviews = result.resultList;
+      final yachtIds = reviews.map((r) => r.yachtId).toSet().toList();
+      final userIds = reviews.map((r) => r.userId).toSet().toList();
+      final yachtFutures = yachtIds.map((id) async {
+        try {
+          final yacht = await _api.getYachtById(id);
+          return MapEntry(id, yacht.name.isNotEmpty ? yacht.name : 'Yacht #$id');
+        } catch (_) {
+          return MapEntry(id, 'Yacht #$id');
+        }
+      });
+      final userFutures = userIds.map((id) async {
+        try {
+          final user = await _api.getUserById(id);
+          final name = user.displayName;
+          return MapEntry(id, name.isNotEmpty ? name : 'User #$id');
+        } catch (_) {
+          return MapEntry(id, 'User #$id');
+        }
+      });
+      final yachtResults = await Future.wait(yachtFutures);
+      final userResults = await Future.wait(userFutures);
+      final yachtNames = Map.fromEntries(yachtResults);
+      final userNames = Map.fromEntries(userResults);
       if (mounted) {
         setState(() {
-          _reviews = result.resultList;
+          _reviews = reviews;
+          _yachtNames = yachtNames;
+          _userNames = userNames;
           _totalCount = result.count;
           _loading = false;
         });
@@ -196,14 +224,16 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
   }
 
   Future<void> _viewReviewDetails(Review review) async {
+    final yachtName = _yachtNames[review.yachtId] ?? 'Yacht #${review.yachtId}';
+    final userName = _userNames[review.userId] ?? 'User #${review.userId}';
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Row(
           children: [
             const Icon(Icons.rate_review_outlined, size: 22),
             const SizedBox(width: 8),
-            Text('Review #${review.reviewId}'),
+            const Text('Review'),
             const Spacer(),
             if (review.isReported)
               Container(
@@ -237,11 +267,10 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              _detailRow('User', userName),
+              _detailRow('Yacht', yachtName),
               _detailRow('Rating', review.rating != null ? '${review.rating}/5' : '—'),
               _detailRow('Date', _formatDate(review.datePosted)),
-              _detailRow('User ID', review.userId.toString()),
-              _detailRow('Yacht ID', review.yachtId.toString()),
-              _detailRow('Reservation ID', review.reservationId.toString()),
               const Divider(height: 24),
               const Text('Comment:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
               const SizedBox(height: 4),
@@ -282,8 +311,54 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
           ),
         ),
         actions: [
+          if (review.isReported)
+            TextButton.icon(
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                try {
+                  await _api.unreportReview(review.reviewId);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Review marked as OK.')),
+                    );
+                    await _loadReviews();
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to update status: $e')),
+                    );
+                  }
+                }
+              },
+              icon: const Icon(Icons.check_circle_outline, size: 18),
+              label: const Text('Mark as OK'),
+            ),
+          if (!review.isReported)
+            TextButton.icon(
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                try {
+                  await _api.reportReview(review.reviewId);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Review marked as inappropriate.')),
+                    );
+                    await _loadReviews();
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to update status: $e')),
+                    );
+                  }
+                }
+              },
+              icon: Icon(Icons.flag_outlined, size: 18, color: Colors.red.shade700),
+              label: Text('Mark as inappropriate', style: TextStyle(color: Colors.red.shade700)),
+            ),
           FilledButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Close'),
           ),
         ],
@@ -397,8 +472,8 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
                 ),
                 columns: const [
                   DataColumn(label: Text('No.')),
-                  DataColumn(label: Text('Yacht ID')),
-                  DataColumn(label: Text('User ID')),
+                  DataColumn(label: Text('Yacht')),
+                  DataColumn(label: Text('User')),
                   DataColumn(label: Text('Rating')),
                   DataColumn(label: Text('Comment')),
                   DataColumn(label: Text('Date')),
@@ -415,8 +490,8 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
                   return DataRow(
                     cells: [
                       DataCell(Text('$displayIndex.')),
-                      DataCell(Text(r.yachtId.toString())),
-                      DataCell(Text(r.userId.toString())),
+                      DataCell(Text(_yachtNames[r.yachtId] ?? 'Yacht #${r.yachtId}')),
+                      DataCell(Text(_userNames[r.userId] ?? 'User #${r.userId}')),
                       DataCell(_buildStars(r.rating)),
                       DataCell(
                         SizedBox(

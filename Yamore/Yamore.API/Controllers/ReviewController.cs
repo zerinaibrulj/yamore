@@ -26,6 +26,13 @@ namespace Yamore.API.Controllers
             return Ok(result);
         }
 
+        [HttpPut("{id}/unreport")]
+        public ActionResult<Model.Review> Unreport(int id)
+        {
+            var result = _reviewService.Unreport(id);
+            return Ok(result);
+        }
+
         [HttpPut("{id}/respond")]
         [Authorize(Roles = "Admin,YachtOwner")]
         public ActionResult<Model.Review> RespondAsOwner(int id, [FromBody] ReviewRespondRequest request)

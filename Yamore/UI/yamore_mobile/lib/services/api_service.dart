@@ -654,6 +654,14 @@ class ApiService {
     }
   }
 
+  Future<void> unreportReview(int id) async {
+    final uri = Uri.parse('$baseUrl/Review/$id/unreport');
+    final response = await http.put(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
   Future<void> respondToReview(int id, String ownerResponse) async {
     final uri = Uri.parse('$baseUrl/Review/$id/respond');
     final response = await http.put(

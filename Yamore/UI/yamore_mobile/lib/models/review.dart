@@ -23,22 +23,29 @@ class Review {
     this.isReported = false,
   });
 
+  static dynamic _key(Map<String, dynamic> json, String camel, String pascal) {
+    if (json.containsKey(camel)) return json[camel];
+    return json[pascal];
+  }
+
   factory Review.fromJson(Map<String, dynamic> json) {
+    final ownerResp = _key(json, 'ownerResponse', 'OwnerResponse') as String?;
+    final ownerRespDate = _key(json, 'ownerResponseDate', 'OwnerResponseDate');
     return Review(
-      reviewId: json['reviewId'] as int,
-      reservationId: json['reservationId'] as int,
-      userId: json['userId'] as int,
-      yachtId: json['yachtId'] as int,
-      rating: json['rating'] as int?,
-      comment: json['comment'] as String?,
-      datePosted: json['datePosted'] != null
-          ? DateTime.tryParse(json['datePosted'] as String)
+      reviewId: (_key(json, 'reviewId', 'ReviewId') as num?)?.toInt() ?? 0,
+      reservationId: (_key(json, 'reservationId', 'ReservationId') as num?)?.toInt() ?? 0,
+      userId: (_key(json, 'userId', 'UserId') as num?)?.toInt() ?? 0,
+      yachtId: (_key(json, 'yachtId', 'YachtId') as num?)?.toInt() ?? 0,
+      rating: (_key(json, 'rating', 'Rating') as num?)?.toInt(),
+      comment: _key(json, 'comment', 'Comment') as String?,
+      datePosted: _key(json, 'datePosted', 'DatePosted') != null
+          ? DateTime.tryParse(_key(json, 'datePosted', 'DatePosted').toString())
           : null,
-      ownerResponse: json['ownerResponse'] as String?,
-      ownerResponseDate: json['ownerResponseDate'] != null
-          ? DateTime.tryParse(json['ownerResponseDate'] as String)
+      ownerResponse: ownerResp,
+      ownerResponseDate: ownerRespDate != null
+          ? DateTime.tryParse(ownerRespDate.toString())
           : null,
-      isReported: json['isReported'] as bool? ?? false,
+      isReported: _key(json, 'isReported', 'IsReported') as bool? ?? false,
     );
   }
 }
