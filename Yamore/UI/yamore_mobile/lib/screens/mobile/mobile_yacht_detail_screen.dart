@@ -32,6 +32,7 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
   List<Review> _reviews = [];
   List<Reservation> _completedReservations = [];
   Review? _myReview;
+  List<YachtImageModel> _yachtImages = [];
   bool _loading = true;
   bool _savingReview = false;
   String? _error;
@@ -71,6 +72,7 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
           yachtId: widget.overview.yachtId,
           status: 'Completed',
         ),
+        widget.api.getYachtImages(widget.overview.yachtId).catchError((_) => <YachtImageModel>[]),
       ]);
       if (!mounted) return;
       final pagedReviews = results[1] as PagedReviews;
@@ -80,11 +82,14 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
           .where((r) => r.userId == widget.user.userId)
           .cast<Review?>()
           .firstWhere((_) => true, orElse: () => null);
+      final images = results[3] as List<YachtImageModel>;
       setState(() {
         _detail = results[0] as YachtDetail;
         _reviews = allReviews;
         _completedReservations = pagedReservations.resultList;
         _myReview = myReview;
+        _yachtImages = images;
+        _imageIndex = 0;
         _loading = false;
       });
     } catch (e) {
@@ -625,131 +630,117 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
   Widget _buildImageCarousel() {
     final overview = widget.overview;
 
-    return FutureBuilder<List<YachtImageModel>>(
-      future: widget.api.getYachtImages(overview.yachtId),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(18),
-            child: SizedBox(
-              height: 220,
-              child: Container(
-                color: Colors.grey.shade200,
-                alignment: Alignment.center,
-                child: const CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ),
-          );
-        }
-        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-          // Fallback to single thumbnail or placeholder
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(18),
-            child: overview.thumbnailImageId != null
-                ? Image.network(
-                    widget.api.yachtImageUrl(overview.thumbnailImageId!),
-                    height: 220,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    headers: widget.api.authHeaders,
-                  )
-                : _placeholderImage(),
-          );
-        }
+    // Deduplicate by yachtImageId (keep first occurrence), then sort by sortOrder
+    final seenIds = <int>{};
+    final images = _yachtImages
+        .where((img) => seenIds.add(img.yachtImageId))
+        .toList()
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
 
-        final images = snapshot.data!;
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(18),
-          child: AspectRatio(
-            aspectRatio: 16 / 9,
-            child: Stack(
-              children: [
-                PageView.builder(
-                  controller: _imagePageController,
-                  itemCount: images.length,
-                  onPageChanged: (i) => setState(() => _imageIndex = i),
-                  itemBuilder: (context, index) {
-                    final img = images[index];
-                    return Image.network(
-                      widget.api.yachtImageUrl(img.yachtImageId),
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      headers: widget.api.authHeaders,
-                      errorBuilder: (_, __, ___) => _placeholderImage(),
-                    );
-                  },
-                ),
-                if (images.length > 1)
-                  Positioned(
-                    left: 8,
-                    top: 0,
-                    bottom: 0,
-                    child: Center(
-                      child: _CarouselArrow(
-                        icon: Icons.chevron_left,
-                        onTap: () {
-                          final prev = _imageIndex - 1;
-                          if (prev >= 0) {
-                            _imagePageController.animateToPage(
-                              prev,
-                              duration: const Duration(milliseconds: 250),
-                              curve: Curves.easeOut,
-                            );
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-                if (images.length > 1)
-                  Positioned(
-                    right: 8,
-                    top: 0,
-                    bottom: 0,
-                    child: Center(
-                      child: _CarouselArrow(
-                        icon: Icons.chevron_right,
-                        onTap: () {
-                          final next = _imageIndex + 1;
-                          if (next < images.length) {
-                            _imagePageController.animateToPage(
-                              next,
-                              duration: const Duration(milliseconds: 250),
-                              curve: Curves.easeOut,
-                            );
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-                if (images.length > 1)
-                  Positioned(
-                    bottom: 10,
-                    left: 0,
-                    right: 0,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(images.length, (i) {
-                        final selected = i == _imageIndex;
-                        return AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          margin: const EdgeInsets.symmetric(horizontal: 3),
-                          width: selected ? 10 : 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color: selected
-                                ? Colors.white
-                                : Colors.white.withOpacity(0.5),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        );
-                      }),
-                    ),
-                  ),
-              ],
+    // If no images from API, use thumbnail so we always show at least one
+    final List<int> imageIds;
+    if (images.isEmpty && overview.thumbnailImageId != null) {
+      imageIds = [overview.thumbnailImageId!];
+    } else if (images.isEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: _placeholderImage(),
+      );
+    } else {
+      imageIds = images.map((e) => e.yachtImageId).toList();
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: Stack(
+          children: [
+            PageView.builder(
+              controller: _imagePageController,
+              itemCount: imageIds.length,
+              onPageChanged: (i) => setState(() => _imageIndex = i),
+              itemBuilder: (context, index) {
+                final imageId = imageIds[index];
+                return Image.network(
+                  widget.api.yachtImageUrl(imageId),
+                  key: ValueKey<int>(imageId),
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  headers: widget.api.authHeaders,
+                  errorBuilder: (_, __, ___) => _placeholderImage(),
+                );
+              },
             ),
-          ),
-        );
-      },
+            if (imageIds.length > 1)
+              Positioned(
+                left: 8,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: _CarouselArrow(
+                    icon: Icons.chevron_left,
+                    onTap: () {
+                      final prev = _imageIndex - 1;
+                      if (prev >= 0) {
+                        _imagePageController.animateToPage(
+                          prev,
+                          duration: const Duration(milliseconds: 250),
+                          curve: Curves.easeOut,
+                        );
+                      }
+                    },
+                  ),
+                ),
+              ),
+            if (imageIds.length > 1)
+              Positioned(
+                right: 8,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: _CarouselArrow(
+                    icon: Icons.chevron_right,
+                    onTap: () {
+                      final next = _imageIndex + 1;
+                      if (next < imageIds.length) {
+                        _imagePageController.animateToPage(
+                          next,
+                          duration: const Duration(milliseconds: 250),
+                          curve: Curves.easeOut,
+                        );
+                      }
+                    },
+                  ),
+                ),
+              ),
+            if (imageIds.length > 1)
+              Positioned(
+                bottom: 10,
+                left: 0,
+                right: 0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(imageIds.length, (i) {
+                    final selected = i == _imageIndex;
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      width: selected ? 10 : 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? Colors.white
+                            : Colors.white.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

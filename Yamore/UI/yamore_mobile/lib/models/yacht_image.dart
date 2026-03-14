@@ -16,13 +16,25 @@ class YachtImageModel {
   });
 
   factory YachtImageModel.fromJson(Map<String, dynamic> json) {
+    // Support both camelCase and PascalCase (e.g. .NET API)
+    int readInt(String camel, String pascal) {
+      final v = json[camel] ?? json[pascal];
+      if (v == null) return 0;
+      if (v is int) return v;
+      if (v is num) return v.toInt();
+      return 0;
+    }
+    String? readString(String camel, String pascal) =>
+        json[camel] as String? ?? json[pascal] as String?;
+    final isThumb = json['isThumbnail'] as bool? ?? json['IsThumbnail'] as bool? ?? false;
+    final order = (json['sortOrder'] as num?)?.toInt() ?? (json['SortOrder'] as num?)?.toInt() ?? 0;
     return YachtImageModel(
-      yachtImageId: json['yachtImageId'] as int,
-      yachtId: json['yachtId'] as int,
-      contentType: json['contentType'] as String? ?? 'image/jpeg',
-      fileName: json['fileName'] as String?,
-      isThumbnail: json['isThumbnail'] as bool? ?? false,
-      sortOrder: json['sortOrder'] as int? ?? 0,
+      yachtImageId: readInt('yachtImageId', 'YachtImageId'),
+      yachtId: readInt('yachtId', 'YachtId'),
+      contentType: readString('contentType', 'ContentType') ?? 'image/jpeg',
+      fileName: readString('fileName', 'FileName'),
+      isThumbnail: isThumb,
+      sortOrder: order,
     );
   }
 }

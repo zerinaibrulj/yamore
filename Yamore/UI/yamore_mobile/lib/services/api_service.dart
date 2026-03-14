@@ -477,7 +477,17 @@ class ApiService {
     if (response.statusCode != 200) {
       throw ApiException(response.statusCode, response.body);
     }
-    final list = jsonDecode(response.body) as List<dynamic>;
+    final decoded = jsonDecode(response.body);
+    List<dynamic> list;
+    if (decoded is List<dynamic>) {
+      list = decoded;
+    } else if (decoded is Map<String, dynamic>) {
+      list = (decoded['resultList'] ?? decoded['ResultList']
+              ?? decoded['data'] ?? decoded['Data']
+              ?? decoded['items'] ?? decoded['Items'] ?? []) as List<dynamic>? ?? [];
+    } else {
+      list = [];
+    }
     return list
         .map((e) => YachtImageModel.fromJson(e as Map<String, dynamic>))
         .toList();
