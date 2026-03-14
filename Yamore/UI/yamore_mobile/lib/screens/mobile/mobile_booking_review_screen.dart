@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_stripe/flutter_stripe.dart' hide Card;
 
 import '../../models/user.dart';
 import '../../models/yacht_overview.dart';
@@ -283,13 +284,10 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
     String paymentLabel;
     switch (widget.paymentMethod) {
       case 'card':
-        paymentLabel = 'Credit/Debit card';
-        break;
-      case 'paypal':
-        paymentLabel = 'PayPal / Stripe';
+        paymentLabel = 'Credit/Debit card (Stripe)';
         break;
       case 'cash':
-        paymentLabel = 'Cash';
+        paymentLabel = 'Pay on arrival';
         break;
       default:
         paymentLabel = widget.paymentMethod;
@@ -369,25 +367,104 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
         totalPrice: totalPrice,
         status: 'Pending',
       );
-      // Attach selected extra services
       for (final sid in _selectedServiceIds) {
         await widget.api.addServiceToReservation(
           reservationId: reservation.reservationId,
           serviceId: sid,
         );
       }
+
+      final isCard = widget.paymentMethod == 'card';
+      String offlineMethod = 'Cash';
+      if (isCard) {
+        final intentResult = await widget.api.createPaymentIntent(
+          reservationId: reservation.reservationId,
+          amount: totalPrice,
+          paymentMethod: 'stripe',
+        );
+        final clientSecret = intentResult.clientSecret;
+        final paymentIntentId = intentResult.paymentIntentId;
+        if (clientSecret == null || clientSecret.isEmpty) {
+          if (!mounted) return;
+          setState(() => _saving = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Card payment is not configured. Please choose Pay on arrival or contact support.',
+              ),
+            ),
+          );
+          return;
+        }
+        final publishableKey = await widget.api.getStripePublishableKey();
+        if (publishableKey.isEmpty) {
+          if (!mounted) return;
+          setState(() => _saving = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Payment configuration missing. Please try Pay on arrival.')),
+          );
+          return;
+        }
+        Stripe.publishableKey = publishableKey;
+        try {
+          await Stripe.instance.initPaymentSheet(
+            paymentSheetParameters: SetupPaymentSheetParameters(
+              paymentIntentClientSecret: clientSecret,
+              merchantDisplayName: 'Yamore',
+            ),
+          );
+          await Stripe.instance.presentPaymentSheet();
+        } on StripeException catch (e) {
+          if (!mounted) return;
+          setState(() => _saving = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Payment cancelled or failed: ${e.error?.localizedMessage ?? e.toString()}')),
+          );
+          return;
+        } catch (e) {
+          if (!mounted) return;
+          setState(() => _saving = false);
+          final msg = e.toString();
+          if (msg.contains('MissingPluginException') || msg.contains('flutter.stripe')) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Card payment is only available on Android and iOS. On this device please use Pay on arrival.',
+                ),
+                duration: Duration(seconds: 5),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Payment failed: $e')),
+            );
+          }
+          return;
+        }
+        await widget.api.confirmPayment(
+          reservationId: reservation.reservationId,
+          paymentIntentId: paymentIntentId,
+        );
+      } else {
+        offlineMethod = 'Cash';
+        await widget.api.confirmPayment(
+          reservationId: reservation.reservationId,
+          paymentMethod: offlineMethod,
+        );
+      }
+
       if (!mounted) return;
       setState(() => _saving = false);
       await showDialog<void>(
         context: context,
         barrierDismissible: false,
         builder: (ctx) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Icon(Icons.check_circle,
-              size: 48, color: Colors.green),
-          content: const Text(
-            'Your reservation has been successfully received.\n\nThank you for your trust!',
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Icon(Icons.check_circle, size: 48, color: Colors.green),
+          content: Text(
+            isCard
+                ? 'Payment successful. Your reservation is confirmed.\n\nThank you for your trust!'
+                : 'Your reservation has been received. ${offlineMethod == 'Cash' ? 'You will pay on arrival (cash/bank transfer).' : 'Payment will be arranged separately.'}\n\nThank you for your trust!',
             textAlign: TextAlign.center,
           ),
           actions: [
@@ -403,7 +480,7 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
       if (!mounted) return;
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to create reservation: $e')),
+        SnackBar(content: Text('Failed: $e')),
       );
     }
   }

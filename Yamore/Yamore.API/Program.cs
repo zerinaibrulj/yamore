@@ -14,6 +14,7 @@ using Yamore.Services.Database;
 using Yamore.Services.Interfaces;
 using Yamore.Services.Services;
 using Yamore.Services.YachtStateMachine;
+using Yamore.API.Services;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -87,6 +88,7 @@ builder.Services.AddTransient<IYachtDocumentService, YachtDocumentService>();
 builder.Services.AddTransient<IStatisticsService, StatisticsService>();
 builder.Services.AddTransient<IYachtImageService, YachtImageService>();
 builder.Services.AddTransient<IYachtServiceService, YachtServiceService>();
+builder.Services.AddSingleton<StripePaymentService>();
 
 
 

@@ -143,44 +143,38 @@ class _MobileBookingPaymentScreenState
               'Please select your preferred payment method',
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
             ),
+            const SizedBox(height: 8),
+            Text(
+              'Card payments are secure and powered by Stripe.',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
             const SizedBox(height: 12),
             RadioListTile<String>(
               value: 'card',
               groupValue: _paymentMethod,
               dense: true,
-              title: Row(
-                children: const [
+              title: const Row(
+                children: [
                   Icon(Icons.credit_card, size: 20),
                   SizedBox(width: 8),
-                  Text('Credit/Debit Card'),
+                  Text('Credit/Debit card (Stripe)'),
                 ],
               ),
-              onChanged: (v) => setState(() => _paymentMethod = v!),
-            ),
-            RadioListTile<String>(
-              value: 'paypal',
-              groupValue: _paymentMethod,
-              dense: true,
-              title: Row(
-                children: const [
-                  Icon(Icons.phone_iphone, size: 20),
-                  SizedBox(width: 8),
-                  Text('PayPal / Stripe'),
-                ],
-              ),
+              subtitle: const Text('Pay now – secure online payment', style: TextStyle(fontSize: 12)),
               onChanged: (v) => setState(() => _paymentMethod = v!),
             ),
             RadioListTile<String>(
               value: 'cash',
               groupValue: _paymentMethod,
               dense: true,
-              title: Row(
-                children: const [
-                  Icon(Icons.attach_money, size: 20),
+              title: const Row(
+                children: [
+                  Icon(Icons.payments_outlined, size: 20),
                   SizedBox(width: 8),
-                  Text('Cash'),
+                  Text('Pay on arrival'),
                 ],
               ),
+              subtitle: const Text('Cash or bank transfer – pay when you board', style: TextStyle(fontSize: 12)),
               onChanged: (v) => setState(() => _paymentMethod = v!),
             ),
           ],

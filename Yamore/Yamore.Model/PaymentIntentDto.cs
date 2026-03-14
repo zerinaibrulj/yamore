@@ -18,7 +18,12 @@ namespace Yamore.Model
 
     public class ConfirmPaymentRequest
     {
+        /// <summary>Required for card (Stripe) payments. Omit for cash/bank transfer.</summary>
         public string? PaymentIntentId { get; set; }
+
         public int ReservationId { get; set; }
+
+        /// <summary>For offline payments: "cash" or "bank_transfer". Ignored when PaymentIntentId is set.</summary>
+        public string? PaymentMethod { get; set; }
     }
 }

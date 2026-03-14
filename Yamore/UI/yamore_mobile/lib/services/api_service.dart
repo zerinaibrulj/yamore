@@ -1209,6 +1209,85 @@ class ApiService {
       throw ApiException(response.statusCode, response.body);
     }
   }
+
+  // ── Payment (Stripe + offline) ──
+
+  /// Fetches Stripe publishable key (endpoint is AllowAnonymous). Use to init Stripe SDK.
+  Future<String> getStripePublishableKey() async {
+    final uri = Uri.parse('$baseUrl/Payment/stripe-config');
+    final response = await http.get(uri, headers: _headers);
+    if (response.statusCode != 200) return '';
+    final map = jsonDecode(response.body) as Map<String, dynamic>;
+    return (map['publishableKey'] ?? map['PublishableKey'] ?? '') as String;
+  }
+
+  /// Creates a Stripe PaymentIntent for card payment. Returns clientSecret and paymentIntentId.
+  Future<PaymentIntentResult> createPaymentIntent({
+    required int reservationId,
+    required double amount,
+    String paymentMethod = 'stripe',
+  }) async {
+    final uri = Uri.parse('$baseUrl/Payment/create-intent');
+    final response = await http.post(
+      uri,
+      headers: _headers,
+      body: jsonEncode({
+        'reservationId': reservationId,
+        'ReservationId': reservationId,
+        'amount': amount,
+        'Amount': amount,
+        'paymentMethod': paymentMethod,
+        'PaymentMethod': paymentMethod,
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    final map = jsonDecode(response.body) as Map<String, dynamic>;
+    return PaymentIntentResult(
+      clientSecret: map['clientSecret'] as String? ?? map['ClientSecret'] as String?,
+      paymentIntentId: map['paymentIntentId'] as String? ?? map['PaymentIntentId'] as String?,
+      status: map['status'] as String? ?? map['Status'] as String?,
+    );
+  }
+
+  /// Confirms payment: for card pass paymentIntentId; for cash/bank pass paymentMethod only.
+  Future<String> confirmPayment({
+    required int reservationId,
+    String? paymentIntentId,
+    String? paymentMethod,
+  }) async {
+    final uri = Uri.parse('$baseUrl/Payment/confirm');
+    final body = <String, dynamic>{
+      'reservationId': reservationId,
+      'ReservationId': reservationId,
+    };
+    if (paymentIntentId != null && paymentIntentId.isNotEmpty) {
+      body['paymentIntentId'] = paymentIntentId;
+      body['PaymentIntentId'] = paymentIntentId;
+    }
+    if (paymentMethod != null && paymentMethod.isNotEmpty) {
+      body['paymentMethod'] = paymentMethod;
+      body['PaymentMethod'] = paymentMethod;
+    }
+    final response = await http.post(
+      uri,
+      headers: _headers,
+      body: jsonEncode(body),
+    );
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    final map = jsonDecode(response.body) as Map<String, dynamic>;
+    return map['status'] as String? ?? map['Status'] as String? ?? 'succeeded';
+  }
+}
+
+class PaymentIntentResult {
+  final String? clientSecret;
+  final String? paymentIntentId;
+  final String? status;
+  PaymentIntentResult({this.clientSecret, this.paymentIntentId, this.status});
 }
 
 class ApiException implements Exception {
