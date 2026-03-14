@@ -7,7 +7,7 @@ import '../../services/favorites_service.dart';
 import '../../models/yacht_overview.dart';
 import '../../models/city.dart';
 import '../../models/yacht_category.dart';
-import '../../models/user.dart';
+import '../../widgets/custom_date_range_picker_dialog.dart';
 import 'mobile_yacht_detail_screen.dart';
 
 class MobileHomeTab extends StatefulWidget {
@@ -446,38 +446,16 @@ extension on _MobileHomeTabState {
           start: now.add(const Duration(days: 1)),
           end: now.add(const Duration(days: 4)),
         );
-    final picked = await showDateRangePicker(
+    final picked = await showDialog<DateTimeRange>(
       context: context,
-      firstDate: now,
-      lastDate: now.add(const Duration(days: 365)),
-      initialDateRange: initial,
-      helpText: 'Select travel dates',
-      confirmText: 'Save',
-      cancelText: 'Cancel',
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-                  primary: AppTheme.primaryBlue,
-                ),
-            dialogTheme: const DialogThemeData(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.all(Radius.circular(16)),
-              ),
-            ),
-          ),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420, maxHeight: 520),
-              child: child!,
-            ),
-          ),
-        );
-      },
+      builder: (ctx) => CustomDateRangePickerDialog(
+        initialRange: initial,
+        firstDate: now,
+        lastDate: now.add(const Duration(days: 365)),
+      ),
     );
     if (picked != null) {
       setState(() => _dateRange = picked);
-      // We keep date range for future server-side filtering if needed
     }
   }
 

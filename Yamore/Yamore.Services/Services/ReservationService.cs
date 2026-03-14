@@ -45,6 +45,23 @@ namespace Yamore.Services.Services
             return filteredQurey;
         }
 
+        public override Model.Reservation Insert(ReservationInsertRequest request)
+        {
+            var yachtId = request.YachtId;
+            var start = request.StartDate;
+            var end = request.EndDate;
+
+            // Check for overlapping reservations for the same yacht (excluding cancelled)
+            var overlapping = Context.Set<Database.Reservation>()
+                .Where(r => r.YachtId == yachtId && r.Status != null && r.Status != "Cancelled")
+                .Any(r => start < r.EndDate && end > r.StartDate);
+
+            if (overlapping)
+                throw new InvalidOperationException("This yacht is already reserved for the selected dates. Please choose different dates or times.");
+
+            return base.Insert(request);
+        }
+
         public Model.Reservation Cancel(int id)
         {
             var set = Context.Set<Database.Reservation>();

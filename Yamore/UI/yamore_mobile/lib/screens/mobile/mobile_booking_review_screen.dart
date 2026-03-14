@@ -387,6 +387,8 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
         if (clientSecret == null || clientSecret.isEmpty) {
           if (!mounted) return;
           setState(() => _saving = false);
+          try { await widget.api.cancelReservation(reservation.reservationId); } catch (_) {}
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
@@ -394,15 +396,19 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
               ),
             ),
           );
+          Navigator.of(context).pop();
           return;
         }
         final publishableKey = await widget.api.getStripePublishableKey();
         if (publishableKey.isEmpty) {
           if (!mounted) return;
           setState(() => _saving = false);
+          try { await widget.api.cancelReservation(reservation.reservationId); } catch (_) {}
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Payment configuration missing. Please try Pay on arrival.')),
           );
+          Navigator.of(context).pop();
           return;
         }
         Stripe.publishableKey = publishableKey;
@@ -417,28 +423,44 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
         } on StripeException catch (e) {
           if (!mounted) return;
           setState(() => _saving = false);
+          try { await widget.api.cancelReservation(reservation.reservationId); } catch (_) {}
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Payment cancelled or failed: ${e.error?.localizedMessage ?? e.toString()}')),
           );
+          Navigator.of(context).pop();
           return;
         } catch (e) {
           if (!mounted) return;
           setState(() => _saving = false);
+          try { await widget.api.cancelReservation(reservation.reservationId); } catch (_) {}
+          if (!mounted) return;
           final msg = e.toString();
           if (msg.contains('MissingPluginException') || msg.contains('flutter.stripe')) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Card payment is only available on Android and iOS. On this device please use Pay on arrival.',
+            await showDialog<void>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                icon: Icon(Icons.credit_card_off, size: 40, color: Colors.orange.shade700),
+                title: const Text('Card payment not available'),
+                content: const Text(
+                  'Payment by card is not possible on this device. Please choose "Pay on arrival" (cash) instead.',
+                  textAlign: TextAlign.center,
                 ),
-                duration: Duration(seconds: 5),
+                actions: [
+                  FilledButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: const Text('OK'),
+                  ),
+                ],
               ),
             );
+            if (!mounted) return;
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Payment failed: $e')),
             );
           }
+          Navigator.of(context).pop();
           return;
         }
         await widget.api.confirmPayment(
@@ -476,6 +498,16 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
         ),
       );
       Navigator.of(context).popUntil((route) => route.isFirst);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      final bodyLower = e.body.toLowerCase();
+      final msg = bodyLower.contains('already reserved') || bodyLower.contains('selected dates')
+          ? 'This yacht is already reserved for the selected dates. Please choose different dates or times.'
+          : (e.body.isNotEmpty ? e.body : 'Request failed.');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), duration: const Duration(seconds: 5)),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);

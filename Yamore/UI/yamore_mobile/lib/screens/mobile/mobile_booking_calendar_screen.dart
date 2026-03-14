@@ -6,6 +6,7 @@ import '../../models/reservation.dart';
 import '../../models/yacht_availability.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/custom_date_range_picker_dialog.dart';
 import 'mobile_route_selection_screen.dart';
 
 class MobileBookingCalendarScreen extends StatefulWidget {
@@ -35,6 +36,8 @@ class _MobileBookingCalendarScreenState
 
   List<Reservation> _reservations = [];
   List<YachtAvailability> _blocks = [];
+
+  DateTime _calendarMonth = DateTime.now();
 
   @override
   void initState() {
@@ -101,6 +104,20 @@ class _MobileBookingCalendarScreenState
     return true;
   }
 
+  /// True if the given day (date only) is fully or partially booked (reservation or block overlaps it).
+  bool _isDayBooked(DateTime day) {
+    final dayStart = DateTime(day.year, day.month, day.day);
+    final dayEnd = dayStart.add(const Duration(days: 1));
+    for (final a in _blocks.where((b) => b.isBlocked)) {
+      if (dayStart.isBefore(a.endDate) && dayEnd.isAfter(a.startDate)) return true;
+    }
+    for (final r in _reservations.where(
+        (r) => (r.status ?? '').toLowerCase() != 'cancelled')) {
+      if (dayStart.isBefore(r.endDate) && dayEnd.isAfter(r.startDate)) return true;
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final overview = widget.overview;
@@ -159,6 +176,8 @@ class _MobileBookingCalendarScreenState
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            _buildAvailabilityCalendar(),
+                            const SizedBox(height: 20),
                             _buildDateRangeCard(),
                             const SizedBox(height: 16),
                             _buildTimes(),
@@ -245,6 +264,157 @@ class _MobileBookingCalendarScreenState
     );
   }
 
+  static const List<String> _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  Widget _buildAvailabilityCalendar() {
+    final year = _calendarMonth.year;
+    final month = _calendarMonth.month;
+    final firstDay = DateTime(year, month, 1);
+    final daysInMonth = DateTime(year, month + 1, 0).day;
+    final firstWeekday = firstDay.weekday; // 1 = Monday, 7 = Sunday
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    const double maxCellSize = 26;
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.calendar_month, color: AppTheme.primaryBlue, size: 18),
+                const SizedBox(width: 6),
+                const Text(
+                  'Availability',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                ),
+                const Spacer(),
+                InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: () => setState(() => _calendarMonth = DateTime(year, month - 1)),
+                  child: const Padding( padding: EdgeInsets.all(4), child: Icon(Icons.chevron_left, size: 20)),
+                ),
+                Text(
+                  '${_monthName(month)} $year',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+                InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: () => setState(() => _calendarMonth = DateTime(year, month + 1)),
+                  child: const Padding( padding: EdgeInsets.all(4), child: Icon(Icons.chevron_right, size: 20)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: _weekdays.map((d) => Expanded(child: Center(child: Text(d, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.grey.shade600))))).toList(),
+            ),
+            const SizedBox(height: 2),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final cellSize = ((constraints.maxWidth - 6) / 7).clamp(0.0, maxCellSize);
+                final leadingEmpty = firstWeekday - 1;
+                final totalCells = leadingEmpty + daysInMonth;
+                final rows = (totalCells / 7).ceil();
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: List.generate(rows, (row) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 2),
+                      child: Row(
+                        children: List.generate(7, (col) {
+                          final cellIndex = row * 7 + col;
+                          if (cellIndex < leadingEmpty) {
+                            return SizedBox(width: cellSize, height: cellSize, child: const SizedBox());
+                          }
+                          final day = cellIndex - leadingEmpty + 1;
+                          if (day > daysInMonth) {
+                            return SizedBox(width: cellSize, height: cellSize, child: const SizedBox());
+                          }
+                          final date = DateTime(year, month, day);
+                          final isPast = date.isBefore(today);
+                          final booked = _isDayBooked(date);
+                          Color bg;
+                          Color fg;
+                          if (isPast) {
+                            bg = Colors.grey.shade200;
+                            fg = Colors.grey.shade500;
+                          } else if (booked) {
+                            bg = Colors.red.shade100;
+                            fg = Colors.red.shade800;
+                          } else {
+                            bg = Colors.green.shade50;
+                            fg = Colors.green.shade800;
+                          }
+                          return SizedBox(
+                            width: cellSize,
+                            height: cellSize,
+                            child: Padding(
+                              padding: const EdgeInsets.all(1),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: bg,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: fg.withOpacity(0.3), width: 0.5),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '$day',
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: fg),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                    );
+                  }),
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _legendDot(Colors.green.shade50, Colors.green.shade800, 'Available'),
+                const SizedBox(width: 10),
+                _legendDot(Colors.red.shade100, Colors.red.shade800, 'Booked'),
+                const SizedBox(width: 10),
+                _legendDot(Colors.grey.shade200, Colors.grey.shade500, 'Past'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _legendDot(Color bg, Color fg, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(2), border: Border.all(color: fg.withOpacity(0.4), width: 0.5)),
+        ),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey.shade700)),
+      ],
+    );
+  }
+
+  String _monthName(int month) {
+    const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return names[month - 1];
+  }
+
   Widget _buildDateRangeCard() {
     final now = DateTime.now();
     final initialRange = _selectedRange ??
@@ -275,35 +445,13 @@ class _MobileBookingCalendarScreenState
           style: const TextStyle(fontSize: 13),
         ),
         onTap: () async {
-          final picked = await showDateRangePicker(
+          final picked = await showDialog<DateTimeRange>(
             context: context,
-            firstDate: now,
-            lastDate: now.add(const Duration(days: 365)),
-            initialDateRange: initialRange,
-            helpText: 'Select travel dates',
-            confirmText: 'Save',
-            cancelText: 'Cancel',
-            builder: (context, child) {
-              return Theme(
-                data: Theme.of(context).copyWith(
-                  colorScheme: Theme.of(context).colorScheme.copyWith(
-                        primary: AppTheme.primaryBlue,
-                      ),
-                  dialogTheme: const DialogThemeData(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(16)),
-                    ),
-                  ),
-                ),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints:
-                        const BoxConstraints(maxWidth: 420, maxHeight: 520),
-                    child: child!,
-                  ),
-                ),
-              );
-            },
+            builder: (ctx) => CustomDateRangePickerDialog(
+              initialRange: initialRange,
+              firstDate: now,
+              lastDate: now.add(const Duration(days: 365)),
+            ),
           );
           if (picked != null) {
             setState(() {
