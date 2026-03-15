@@ -7,7 +7,7 @@ import '../../models/weather_forecast.dart';
 import '../../models/city.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
-import 'mobile_booking_payment_screen.dart';
+import 'mobile_booking_services_screen.dart';
 
 class MobileRouteSelectionScreen extends StatefulWidget {
   final ApiService api;
@@ -139,8 +139,6 @@ class _MobileRouteSelectionScreenState
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF8BC34A),
               ),
-              // Even if there are no predefined routes, the user
-              // should still be able to proceed to the next step.
               onPressed: _goNext,
               child: const Text(
                 'NEXT STEP',
@@ -299,7 +297,7 @@ class _MobileRouteSelectionScreenState
   void _goNext() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => MobileBookingPaymentScreen(
+        builder: (_) => MobileBookingServicesScreen(
           api: widget.api,
           user: widget.user,
           overview: widget.overview,
@@ -310,4 +308,3 @@ class _MobileRouteSelectionScreenState
     );
   }
 }
-

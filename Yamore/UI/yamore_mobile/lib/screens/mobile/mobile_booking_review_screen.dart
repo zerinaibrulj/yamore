@@ -14,6 +14,7 @@ class MobileBookingReviewScreen extends StatefulWidget {
   final DateTime startDateTime;
   final DateTime endDateTime;
   final String paymentMethod;
+  final List<ServiceModel> selectedServices;
 
   const MobileBookingReviewScreen({
     super.key,
@@ -23,6 +24,7 @@ class MobileBookingReviewScreen extends StatefulWidget {
     required this.startDateTime,
     required this.endDateTime,
     required this.paymentMethod,
+    this.selectedServices = const [],
   });
 
   @override
@@ -32,48 +34,6 @@ class MobileBookingReviewScreen extends StatefulWidget {
 
 class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
   bool _saving = false;
-  List<ServiceModel> _extras = [];
-  Set<int> _selectedServiceIds = {};
-  bool _loadingExtras = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadExtras();
-  }
-
-  Future<void> _loadExtras() async {
-    setState(() {
-      _loadingExtras = true;
-    });
-    try {
-      final ids =
-          await widget.api.getYachtServiceIds(widget.overview.yachtId);
-      if (ids.isEmpty) {
-        if (!mounted) return;
-        setState(() {
-          _extras = [];
-          _loadingExtras = false;
-        });
-        return;
-      }
-      final all = await widget.api.getServices(pageSize: 200);
-      final filtered = all.resultList
-          .where((s) => ids.contains(s.serviceId))
-          .toList();
-      if (!mounted) return;
-      setState(() {
-        _extras = filtered;
-        _loadingExtras = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _extras = [];
-        _loadingExtras = false;
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +42,11 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
     final start = widget.startDateTime;
     final end = widget.endDateTime;
     final durationDays = end.difference(start).inDays.clamp(1, 365);
-    final totalPrice = overview.pricePerDay * durationDays;
+    double servicesTotal = 0;
+    for (final s in widget.selectedServices) {
+      if (s.price != null && s.price! > 0) servicesTotal += s.price!;
+    }
+    final totalPrice = overview.pricePerDay * durationDays + servicesTotal;
 
     return Scaffold(
       appBar: AppBar(
@@ -126,9 +90,11 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
             const SizedBox(height: 12),
             _buildContactCard(user),
             const SizedBox(height: 12),
-            _buildDetailsRow(start, end, durationDays),
-            const SizedBox(height: 16),
-            _buildExtrasSection(),
+            _buildDetailsRow(start, end, durationDays, totalPrice),
+            if (widget.selectedServices.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _buildSelectedServicesCard(),
+            ],
             const SizedBox(height: 16),
             Align(
               alignment: Alignment.center,
@@ -173,18 +139,7 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
     );
   }
 
-  Widget _buildExtrasSection() {
-    if (_loadingExtras) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(12),
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-      );
-    }
-    if (_extras.isEmpty) {
-      return const SizedBox.shrink();
-    }
+  Widget _buildSelectedServicesCard() {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 2,
@@ -194,41 +149,41 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Special requests',
+              'Selected services',
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
-            ..._extras.map((s) {
-              final selected = _selectedServiceIds.contains(s.serviceId);
+            ...widget.selectedServices.map((s) {
               final icon = _serviceIcon(s.name);
-              return CheckboxListTile(
-                value: selected,
-                onChanged: (v) {
-                  setState(() {
-                    if (v == true) {
-                      _selectedServiceIds.add(s.serviceId);
-                    } else {
-                      _selectedServiceIds.remove(s.serviceId);
-                    }
-                  });
-                },
-                dense: true,
-                controlAffinity: ListTileControlAffinity.leading,
-                secondary: Icon(icon, size: 20),
-                title: Text(s.name),
-                subtitle: s.description != null && s.description!.isNotEmpty
-                    ? Text(
-                        s.description!,
-                        style: const TextStyle(fontSize: 12),
-                      )
-                    : null,
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(icon, size: 20, color: AppTheme.primaryBlue),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(s.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                          if (s.description != null && s.description!.trim().isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                s.description!.trim(),
+                                style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    if (s.price != null && s.price! > 0)
+                      Text('€${s.price!.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  ],
+                ),
               );
             }),
-            const SizedBox(height: 6),
-            Text(
-              "We'll do our best to fulfill your requests.",
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-            ),
           ],
         ),
       ),
@@ -279,7 +234,7 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
   }
 
   Widget _buildDetailsRow(
-      DateTime start, DateTime end, int durationDays) {
+      DateTime start, DateTime end, int durationDays, double totalPrice) {
     final durationLabel = '$durationDays day${durationDays == 1 ? '' : 's'}';
     String paymentLabel;
     switch (widget.paymentMethod) {
@@ -348,6 +303,16 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
                     style: const TextStyle(fontSize: 13)),
               ],
             ),
+            const SizedBox(height: 8),
+            const Divider(),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Text('Total', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                const Spacer(),
+                Text('€${totalPrice.toStringAsFixed(0)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.primaryBlue)),
+              ],
+            ),
           ],
         ),
       ),
@@ -367,10 +332,10 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
         totalPrice: totalPrice,
         status: 'Pending',
       );
-      for (final sid in _selectedServiceIds) {
+      for (final s in widget.selectedServices) {
         await widget.api.addServiceToReservation(
           reservationId: reservation.reservationId,
-          serviceId: sid,
+          serviceId: s.serviceId,
         );
       }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/user.dart';
 import '../../models/yacht_overview.dart';
+import '../../models/service_model.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import 'mobile_booking_review_screen.dart';
@@ -12,6 +13,7 @@ class MobileBookingPaymentScreen extends StatefulWidget {
   final YachtOverview overview;
   final DateTime startDateTime;
   final DateTime endDateTime;
+  final List<ServiceModel> selectedServices;
 
   const MobileBookingPaymentScreen({
     super.key,
@@ -20,6 +22,7 @@ class MobileBookingPaymentScreen extends StatefulWidget {
     required this.overview,
     required this.startDateTime,
     required this.endDateTime,
+    this.selectedServices = const [],
   });
 
   @override
@@ -81,6 +84,11 @@ class _MobileBookingPaymentScreenState
     final end = widget.endDateTime;
     final duration = end.difference(start).inDays.clamp(1, 365);
     final basePrice = widget.overview.pricePerDay * duration;
+    double servicesTotal = 0;
+    for (final s in widget.selectedServices) {
+      if (s.price != null && s.price! > 0) servicesTotal += s.price!;
+    }
+    final totalPrice = basePrice + servicesTotal;
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 2,
@@ -101,21 +109,51 @@ class _MobileBookingPaymentScreenState
             ),
             const SizedBox(height: 4),
             Text(
-              'Duration: $duration night${duration == 1 ? '' : 's'}',
+              'Duration: $duration day${duration == 1 ? '' : 's'}',
               style: const TextStyle(fontSize: 13),
             ),
+            if (widget.selectedServices.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              const Divider(),
+              const SizedBox(height: 4),
+              ...widget.selectedServices.map((s) => Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: Row(
+                      children: [
+                        Text('• ${s.name}', style: const TextStyle(fontSize: 13)),
+                        const Spacer(),
+                        if (s.price != null && s.price! > 0)
+                          Text(
+                            '€${s.price!.toStringAsFixed(0)}',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                      ],
+                    ),
+                  )),
+            ],
             const SizedBox(height: 8),
             const Divider(),
             const SizedBox(height: 8),
+            if (widget.selectedServices.isNotEmpty && servicesTotal > 0)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    const Text('Base (yacht)', style: TextStyle(fontSize: 13)),
+                    const Spacer(),
+                    Text('€${basePrice.toStringAsFixed(0)}', style: const TextStyle(fontSize: 13)),
+                  ],
+                ),
+              ),
             Row(
               children: [
                 const Text(
                   'Total price',
-                  style: TextStyle(fontSize: 14),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                 ),
                 const Spacer(),
                 Text(
-                  '€${basePrice.toStringAsFixed(0)}',
+                  '€${totalPrice.toStringAsFixed(0)}',
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
@@ -194,6 +232,7 @@ class _MobileBookingPaymentScreenState
           startDateTime: widget.startDateTime,
           endDateTime: widget.endDateTime,
           paymentMethod: _paymentMethod,
+          selectedServices: widget.selectedServices,
         ),
       ),
     );
