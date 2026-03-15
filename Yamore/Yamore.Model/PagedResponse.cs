@@ -1,12 +1,14 @@
-﻿ using System;
 using System.Collections.Generic;
-using System.Text;
+using System.Text.Json.Serialization;
 
 namespace Yamore.Model
 {
-    public class PagedResponse<T>       // Sluzi da vratimo COUNT objekata iz baze kao i listu tih objekata
+    public class PagedResponse<T>
     {
+        [JsonPropertyName("count")]
         public int? Count { get; set; }
+
+        [JsonPropertyName("resultList")]
         public IList<T>? ResultList { get; set; }
     }
 }

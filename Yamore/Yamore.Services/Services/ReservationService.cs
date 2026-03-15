@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Yamore.Model;
 using Yamore.Model.Requests.Reservation;
 using Yamore.Model.SearchObjects;
 using Yamore.Services.Database;
@@ -16,6 +17,35 @@ namespace Yamore.Services.Services
         public ReservationService(_220245Context context, IMapper mapper) 
             : base(context, mapper)
         {
+        }
+
+        public override PagedResponse<Model.Reservation> GetPaged(ReservationSearchObject search)
+        {
+            var query = Context.Set<Database.Reservation>().AsQueryable();
+            query = AddFilter(search, query);
+            int count = query.Count();
+
+            if (search?.Page.HasValue == true && search?.PageSize.HasValue == true)
+                query = query.Skip(search.Page.Value * search.PageSize.Value).Take(search.PageSize.Value);
+
+            var list = query.ToList();
+            var result = list.Select(r => new Model.Reservation
+            {
+                ReservationId = r.ReservationId,
+                UserId = r.UserId,
+                YachtId = r.YachtId,
+                StartDate = r.StartDate,
+                EndDate = r.EndDate,
+                TotalPrice = r.TotalPrice,
+                Status = r.Status,
+                CreatedAt = r.CreatedAt
+            }).ToList();
+
+            return new PagedResponse<Model.Reservation>
+            {
+                Count = count,
+                ResultList = result
+            };
         }
 
         public override IQueryable<Database.Reservation> AddFilter(ReservationSearchObject search, IQueryable<Database.Reservation> query)

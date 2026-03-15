@@ -23,23 +23,27 @@ class Reservation {
     return endDate.difference(startDate).inDays;
   }
 
-  /// Reads a value from json with camelCase or PascalCase key (API may use either).
-  static dynamic _key(Map<String, dynamic> json, String camel, String pascal) {
-    if (json.containsKey(camel)) return json[camel];
-    return json[pascal];
+  /// Case-insensitive key lookup so status is read correctly regardless of API serialization.
+  static dynamic _v(Map<String, dynamic> json, String name) {
+    final lower = name.toLowerCase();
+    for (final k in json.keys) {
+      if (k.toLowerCase() == lower) return json[k];
+    }
+    return null;
   }
 
   factory Reservation.fromJson(Map<String, dynamic> json) {
+    final statusRaw = _v(json, 'status');
     return Reservation(
-      reservationId: (_key(json, 'reservationId', 'ReservationId')) as int,
-      userId: (_key(json, 'userId', 'UserId')) as int,
-      yachtId: (_key(json, 'yachtId', 'YachtId')) as int,
-      startDate: DateTime.parse((_key(json, 'startDate', 'StartDate')) as String),
-      endDate: DateTime.parse((_key(json, 'endDate', 'EndDate')) as String),
-      totalPrice: (_key(json, 'totalPrice', 'TotalPrice') as num?)?.toDouble(),
-      status: _key(json, 'status', 'Status') as String?,
-      createdAt: _key(json, 'createdAt', 'CreatedAt') != null
-          ? DateTime.tryParse((_key(json, 'createdAt', 'CreatedAt')) as String)
+      reservationId: _v(json, 'reservationId') as int,
+      userId: _v(json, 'userId') as int,
+      yachtId: _v(json, 'yachtId') as int,
+      startDate: DateTime.parse(_v(json, 'startDate') as String),
+      endDate: DateTime.parse(_v(json, 'endDate') as String),
+      totalPrice: (_v(json, 'totalPrice') as num?)?.toDouble(),
+      status: statusRaw is String ? statusRaw : statusRaw?.toString(),
+      createdAt: _v(json, 'createdAt') != null
+          ? DateTime.tryParse(_v(json, 'createdAt').toString())
           : null,
     );
   }
@@ -51,16 +55,20 @@ class PagedReservations {
 
   PagedReservations({this.count, required this.resultList});
 
-  static dynamic _key(Map<String, dynamic> json, String camel, String pascal) {
-    if (json.containsKey(camel)) return json[camel];
-    return json[pascal];
+  static dynamic _v(Map<String, dynamic> json, String name) {
+    final lower = name.toLowerCase();
+    for (final k in json.keys) {
+      if (k.toLowerCase() == lower) return json[k];
+    }
+    return null;
   }
 
   factory PagedReservations.fromJson(Map<String, dynamic> json) {
-    final rawList = _key(json, 'resultList', 'ResultList');
+    final rawList = _v(json, 'resultList') ?? _v(json, 'ResultList');
     final list = rawList is List<dynamic> ? rawList : <dynamic>[];
+    final countRaw = _v(json, 'count') ?? _v(json, 'Count');
     return PagedReservations(
-      count: _key(json, 'count', 'Count') as int?,
+      count: countRaw as int?,
       resultList: list
           .map((e) => Reservation.fromJson(e as Map<String, dynamic>))
           .toList(),
