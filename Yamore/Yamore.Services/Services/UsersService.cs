@@ -409,11 +409,12 @@ namespace Yamore.Services.Services
 
         public List<Model.LoginResponseDto> GetOwners()
         {
-            // For admin dropdowns we simply return ALL users,
-            // together with their roles. The UI can decide how to filter.
+            // Return only users who have the YachtOwner or Owner role (for admin "Add Yacht" dropdown).
             var list = Context.Users
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
+                .Where(u => u.UserRoles.Any(ur => ur.Role != null &&
+                    (ur.Role.Name == "YachtOwner" || ur.Role.Name == "Owner")))
                 .ToList();
 
             var result = new List<Model.LoginResponseDto>();
