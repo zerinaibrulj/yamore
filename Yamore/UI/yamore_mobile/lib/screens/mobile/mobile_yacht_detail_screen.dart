@@ -575,7 +575,7 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'US \$${overview.pricePerDay.toStringAsFixed(0)}',
+            'US \$${overview.pricePerDay.toStringAsFixed(2)}',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 20,

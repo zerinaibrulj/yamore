@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../theme/app_theme.dart';
 import '../../models/yacht_overview.dart';
@@ -460,7 +461,7 @@ class _OwnerYachtsTabState extends State<OwnerYachtsTab> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
-                    '€${yacht.pricePerDay.toStringAsFixed(0)} / day',
+                    '€${_formatPriceDisplay(yacht.pricePerDay)} / day',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
@@ -532,6 +533,10 @@ class _OwnerYachtsTabState extends State<OwnerYachtsTab> {
         ],
       ),
     );
+  }
+
+  static String _formatPriceDisplay(double price) {
+    return price.toStringAsFixed(2);
   }
 
   Color _stateColor(String? state) {
@@ -622,6 +627,11 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
 
   bool get _isEdit => widget.existing != null;
 
+  static String _formatPriceForEdit(double value) {
+    if (value == value.truncateToDouble()) return value.toInt().toString();
+    return value.toString();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -632,8 +642,8 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
     _capacity = y?.capacity;
     _cabins = y?.cabins;
     _bathrooms = y?.bathrooms;
-    _price =
-        TextEditingController(text: y != null ? y.pricePerDay.toString() : '');
+    _price = TextEditingController(
+        text: y != null ? _formatPriceForEdit(y!.pricePerDay) : '');
     _description = TextEditingController(text: y?.description ?? '');
     _locationId = y?.locationId;
     _categoryId = y?.categoryId;
@@ -1107,7 +1117,10 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                   controller: _price,
                   decoration:
                       _inputDeco('Price (€/day)', icon: Icons.euro),
-                  keyboardType: TextInputType.number,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                  ],
                   validator: (v) =>
                       double.tryParse(v ?? '') == null ? 'Price' : null,
                 ),

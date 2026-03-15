@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../theme/app_theme.dart';
 import '../../models/yacht_overview.dart';
@@ -594,6 +595,11 @@ class YachtFormDialog extends StatefulWidget {
 class _YachtFormDialogState extends State<YachtFormDialog> {
   final _formKey = GlobalKey<FormState>();
 
+  static String _formatPriceForEdit(double value) {
+    if (value == value.truncateToDouble()) return value.toInt().toString();
+    return value.toString();
+  }
+
   late TextEditingController _name;
   late TextEditingController _ownerId;
   late TextEditingController _year;
@@ -627,7 +633,8 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
     _capacity = TextEditingController(text: y?.capacity.toString() ?? '');
     _cabins = TextEditingController(text: y?.cabins.toString() ?? '');
     _bathrooms = TextEditingController(text: y?.bathrooms?.toString() ?? '');
-    _price = TextEditingController(text: y?.pricePerDay.toString() ?? '');
+    _price = TextEditingController(
+        text: y != null ? _formatPriceForEdit(y!.pricePerDay) : '');
     _locationId = TextEditingController(text: y?.locationId.toString() ?? '');
     _categoryId = TextEditingController(text: y?.categoryId.toString() ?? '');
     _description = TextEditingController(text: y?.description ?? '');
@@ -1182,7 +1189,10 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                           labelText: 'Price (€ / day)',
                           prefixIcon: Icon(Icons.euro_symbol),
                         ),
-                        keyboardType: TextInputType.number,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                        ],
                         validator: (v) => double.tryParse(v ?? '') == null
                             ? 'Price'
                             : null,
@@ -1387,20 +1397,7 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
 }
 
 String _formatEuroPrice(double value) {
-  final intVal = value.round();
-  final raw = intVal.toString();
-  final buffer = StringBuffer();
-  int count = 0;
-  for (int i = raw.length - 1; i >= 0; i--) {
-    buffer.write(raw[i]);
-    count++;
-    if (count == 3 && i != 0) {
-      buffer.write('.');
-      count = 0;
-    }
-  }
-  final withDots = buffer.toString().split('').reversed.join();
-  return '€$withDots';
+  return '€${value.toStringAsFixed(2)}';
 }
 
 Future<void> _showSuccessDialog(

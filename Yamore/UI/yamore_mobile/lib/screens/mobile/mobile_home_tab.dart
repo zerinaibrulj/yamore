@@ -689,7 +689,7 @@ class _YachtCardState extends State<_YachtCard> {
                                   '${yacht.yearBuilt}'),
                             const Spacer(),
                             Text(
-                              '€${yacht.pricePerDay.toStringAsFixed(0)}/day',
+                              '€${yacht.pricePerDay.toStringAsFixed(2)}/day',
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
