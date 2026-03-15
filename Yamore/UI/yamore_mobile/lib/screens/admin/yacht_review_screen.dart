@@ -220,6 +220,7 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
                   DataColumn(label: Text('Length')),
                   DataColumn(label: Text('Capacity')),
                   DataColumn(label: Text('Price')),
+                  DataColumn(label: Text('Status')),
                   DataColumn(label: Text('')),
                 ],
                 rows: _yachts
@@ -273,9 +274,29 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
                               : '—')),
                           DataCell(Text('${y.capacity}')),
                           DataCell(Text(_formatEuroPrice(y.pricePerDay))),
+                          DataCell(_statusChip(y.stateMachine)),
                           DataCell(
                             Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
+                                PopupMenuButton<String>(
+                                  icon: const Icon(Icons.more_vert),
+                                  tooltip: 'Status',
+                                  onSelected: (value) => _onStatusAction(value, y),
+                                  itemBuilder: (context) {
+                                    final state = (y.stateMachine ?? '').toLowerCase();
+                                    final items = <PopupMenuEntry<String>>[];
+                                    if (state == 'draft' || state == '') {
+                                      items.add(const PopupMenuItem(value: 'activate', child: Text('Activate')));
+                                      items.add(const PopupMenuItem(value: 'hide', child: Text('Hide')));
+                                    } else if (state == 'active') {
+                                      items.add(const PopupMenuItem(value: 'hide', child: Text('Hide')));
+                                    } else if (state == 'hidden') {
+                                      items.add(const PopupMenuItem(value: 'draft', child: Text('Set to Draft')));
+                                    }
+                                    return items;
+                                  },
+                                ),
                                 IconButton(
                                   icon: const Icon(Icons.edit_outlined),
                                   tooltip: 'Edit',
@@ -529,6 +550,69 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to load yacht: ${e.body}')),
       );
+    }
+  }
+
+  Widget _statusChip(String? state) {
+    final s = (state ?? '').toLowerCase();
+    Color bg;
+    Color fg;
+    String label;
+    if (s == 'active') {
+      bg = Colors.green.shade50;
+      fg = Colors.green.shade800;
+      label = 'Active';
+    } else if (s == 'hidden') {
+      bg = Colors.orange.shade50;
+      fg = Colors.orange.shade800;
+      label = 'Hidden';
+    } else {
+      bg = Colors.grey.shade200;
+      fg = Colors.grey.shade800;
+      label = 'Draft';
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: fg.withOpacity(0.4)),
+      ),
+      child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: fg)),
+    );
+  }
+
+  Future<void> _onStatusAction(String action, YachtOverview y) async {
+    try {
+      if (action == 'activate') {
+        await _api.activateYacht(y.yachtId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${y.name} is now active.')),
+          );
+        }
+      } else if (action == 'hide') {
+        await _api.hideYacht(y.yachtId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${y.name} is now hidden.')),
+          );
+        }
+      } else if (action == 'draft') {
+        await _api.setYachtToDraft(y.yachtId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${y.name} is now in draft.')),
+          );
+        }
+      }
+      if (mounted) await _loadYachts();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red.shade700),
+        );
+      }
     }
   }
 

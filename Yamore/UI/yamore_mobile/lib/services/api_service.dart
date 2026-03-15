@@ -154,6 +154,33 @@ class ApiService {
     }
   }
 
+  /// Move yacht to active (visible to users). Allowed from draft.
+  Future<void> activateYacht(int id) async {
+    final uri = Uri.parse('$baseUrl/Yachts/$id/activate');
+    final response = await http.put(uri, headers: _headers, body: '{}');
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  /// Move yacht to hidden (not visible). Allowed from draft or active.
+  Future<void> hideYacht(int id) async {
+    final uri = Uri.parse('$baseUrl/Yachts/$id/hide');
+    final response = await http.put(uri, headers: _headers, body: '{}');
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  /// Move yacht from hidden back to draft. Allowed from hidden only.
+  Future<void> setYachtToDraft(int id) async {
+    final uri = Uri.parse('$baseUrl/Yachts/$id/edit');
+    final response = await http.put(uri, headers: _headers, body: '{}');
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
   Future<List<CityModel>> getCities() async {
     final uri = Uri.parse('$baseUrl/City').replace(
       queryParameters: {

@@ -45,7 +45,7 @@ class YachtOverview {
       length: (json['length'] as num?)?.toDouble(),
       capacity: json['capacity'] as int? ?? 0,
       pricePerDay: (json['pricePerDay'] as num?)?.toDouble() ?? 0,
-      stateMachine: json['stateMachine'] as String?,
+      stateMachine: json['stateMachine'] as String? ?? json['StateMachine'] as String?,
       thumbnailImageId: json['thumbnailImageId'] as int?,
       categoryId: json['categoryId'] as int? ?? 0,
       averageRating: (json['averageRating'] ?? json['AverageRating']) == null
