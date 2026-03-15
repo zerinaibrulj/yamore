@@ -109,6 +109,7 @@ builder.Services.AddControllers(x =>
 .AddJsonOptions(options =>
 {
     options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+    options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
 })
 .ConfigureApiBehaviorOptions(options =>
 {
