@@ -169,32 +169,117 @@ namespace Yamore.Services.Services
             }
         }
 
-        public PagedResponse<Model.Yacht> GetRecommendations(int? userId, int page = 0, int pageSize = 10)
+        /// <summary>Recommendation system: content-based (category, location, services) + collaborative (ratings, popularity). Returns overview DTOs.</summary>
+        public PagedResponse<YachtOverviewDto> GetRecommendations(int? userId, int page = 0, int pageSize = 10)
         {
-            var activeYachts = Context.Yachts.Where(y => y.StateMachine == "active").AsQueryable();
-            IQueryable<Database.Yacht> query;
+            var activeYachts = Context.Yachts
+                .Include(y => y.Owner)
+                .Include(y => y.Location).ThenInclude(c => c.Country)
+                .Include(y => y.Reviews)
+                .Include(y => y.YachtServices)
+                .Include(y => y.Reservations)
+                .Where(y => y.StateMachine == "active")
+                .AsQueryable();
+
+            IOrderedQueryable<Database.Yacht> ordered;
 
             if (userId.HasValue)
             {
-                var userYachtIds = Context.Reservations.Where(r => r.UserId == userId && r.Status != "Cancelled")
+                // User profile from past reservations (confirmed) and positive reviews (rating >= 4)
+                var userReservationYachtIds = Context.Reservations
+                    .Where(r => r.UserId == userId && r.Status != "Cancelled")
                     .Select(r => r.YachtId).Distinct().ToList();
-                var preferredCategoryIds = Context.Yachts.Where(y => userYachtIds.Contains(y.YachtId)).Select(y => y.CategoryId).Distinct().ToList();
-                var preferredLocationIds = Context.Yachts.Where(y => userYachtIds.Contains(y.YachtId)).Select(y => y.LocationId).Distinct().ToList();
-                query = activeYachts
-                    .Where(y => !userYachtIds.Contains(y.YachtId) &&
-                        (preferredCategoryIds.Contains(y.CategoryId) || preferredLocationIds.Contains(y.LocationId)))
-                    .OrderByDescending(y => y.Reviews.Any() ? y.Reviews.Average(r => r.Rating ?? 0) : 0);
+
+                var highlyRatedYachtIds = Context.Reviews
+                    .Where(r => r.UserId == userId && r.Rating >= 4)
+                    .Select(r => r.YachtId).Distinct().ToList();
+
+                var preferredCategoryIds = Context.Yachts
+                    .Where(y => userReservationYachtIds.Contains(y.YachtId))
+                    .Select(y => y.CategoryId).Distinct().ToList();
+
+                var preferredLocationIds = Context.Yachts
+                    .Where(y => userReservationYachtIds.Contains(y.YachtId))
+                    .Select(y => y.LocationId).Distinct().ToList();
+
+                var preferredCountryIds = Context.Yachts
+                    .Where(y => userReservationYachtIds.Contains(y.YachtId) && y.Location != null)
+                    .Select(y => y.Location!.CountryId).Distinct().ToList();
+
+                // Services the user often added to reservations (skipper, catering, etc.)
+                var preferredServiceIds = Context.ReservationServices
+                    .Where(rs => rs.Reservation != null && rs.Reservation.UserId == userId)
+                    .Select(rs => rs.ServiceId).Distinct().ToList();
+
+                // Content-based + collaborative: exclude already-booked, prefer same category/location/country and yachts offering preferred services
+                var candidates = activeYachts
+                    .Where(y => !userReservationYachtIds.Contains(y.YachtId));
+
+                if (preferredCategoryIds.Count == 0 && preferredLocationIds.Count == 0 && preferredCountryIds.Count == 0)
+                {
+                    // No history: fall back to popular (collaborative - most booked, then by rating)
+                    ordered = candidates
+                        .OrderByDescending(y => y.Reservations.Count(r => r.Status != "Cancelled"))
+                        .ThenByDescending(y => y.Reviews.Any(r => r.Rating.HasValue) ? y.Reviews.Average(r => r.Rating ?? 0) : 0);
+                }
+                else
+                {
+                    // Score: prefer category match, then location, then country; then order by rating and popularity
+                    ordered = candidates
+                        .OrderByDescending(y => preferredCategoryIds.Contains(y.CategoryId))
+                        .ThenByDescending(y => preferredLocationIds.Contains(y.LocationId))
+                        .ThenByDescending(y => y.Location != null && preferredCountryIds.Contains(y.Location.CountryId))
+                        .ThenByDescending(y => y.YachtServices.Any(ys => preferredServiceIds.Contains(ys.ServiceId)))
+                        .ThenByDescending(y => y.Reviews.Any(r => r.Rating.HasValue) ? y.Reviews.Average(r => r.Rating ?? 0) : 0)
+                        .ThenByDescending(y => y.Reservations.Count(r => r.Status != "Cancelled"));
+                }
+
+                var totalCount = ordered.Count();
+                var list = ordered.Skip(page * pageSize).Take(pageSize).ToList();
+                return BuildRecommendationOverviewResult(list, totalCount);
             }
             else
             {
-                query = activeYachts
-                    .OrderByDescending(y => y.Reservations.Count(r => r.Status != "Cancelled"));
+                // Anonymous: most popular active yachts by booking count, then rating
+                ordered = activeYachts
+                    .OrderByDescending(y => y.Reservations.Count(r => r.Status != "Cancelled"))
+                    .ThenByDescending(y => y.Reviews.Any(r => r.Rating.HasValue) ? y.Reviews.Average(r => r.Rating ?? 0) : 0);
+                var totalCount = ordered.Count();
+                var list = ordered.Skip(page * pageSize).Take(pageSize).ToList();
+                return BuildRecommendationOverviewResult(list, totalCount);
             }
+        }
 
-            var count = query.Count();
-            var list = query.Skip(page * pageSize).Take(pageSize).ToList();
-            var result = Mapper.Map<List<Model.Yacht>>(list);
-            return new PagedResponse<Model.Yacht> { Count = count, ResultList = result };
+        private PagedResponse<YachtOverviewDto> BuildRecommendationOverviewResult(List<Database.Yacht> list, int totalCount)
+        {
+            var yachtIds = list.Select(y => y.YachtId).ToList();
+            var thumbnails = Context.YachtImages
+                .Where(i => yachtIds.Contains(i.YachtId) && i.IsThumbnail)
+                .Select(i => new { i.YachtId, i.YachtImageId })
+                .ToDictionary(x => x.YachtId, x => x.YachtImageId);
+
+            var result = list.Select(y => new YachtOverviewDto
+            {
+                YachtId = y.YachtId,
+                Name = y.Name,
+                LocationName = y.Location?.Name,
+                CountryName = y.Location?.Country?.Name,
+                OwnerName = y.Owner != null ? $"{y.Owner.FirstName} {y.Owner.LastName}".Trim() : null,
+                OwnerId = y.OwnerId,
+                YearBuilt = y.YearBuilt,
+                Length = y.Length,
+                Capacity = y.Capacity,
+                PricePerDay = y.PricePerDay,
+                StateMachine = y.StateMachine,
+                ThumbnailImageId = thumbnails.TryGetValue(y.YachtId, out var tid) ? tid : null,
+                CategoryId = y.CategoryId,
+                AverageRating = y.Reviews.Any(r => r.Rating.HasValue)
+                    ? y.Reviews.Where(r => r.Rating.HasValue).Average(r => (double)r.Rating!)
+                    : (double?)null,
+                ReviewCount = y.Reviews.Count(r => r.Rating.HasValue)
+            }).ToList();
+
+            return new PagedResponse<YachtOverviewDto> { Count = totalCount, ResultList = result };
         }
 
         public PagedResponse<YachtOverviewDto> GetOverviewForAdmin(YachtsSearchObject search)

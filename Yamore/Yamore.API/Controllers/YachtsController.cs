@@ -48,7 +48,7 @@ namespace Yamore.API.Controllers
         }
 
         [HttpGet("recommendations")]
-        public PagedResponse<Yacht> GetRecommendations([FromQuery] int? userId, [FromQuery] int page = 0, [FromQuery] int pageSize = 10)
+        public PagedResponse<YachtOverviewDto> GetRecommendations([FromQuery] int? userId, [FromQuery] int page = 0, [FromQuery] int pageSize = 10)
         {
             var currentUserId = User?.FindFirstValue(ClaimTypes.NameIdentifier);
             var id = userId ?? (int.TryParse(currentUserId, out var uid) ? (int?)uid : null);

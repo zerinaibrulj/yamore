@@ -70,7 +70,7 @@ namespace Yamore.Services.DummyService
             throw new NotImplementedException();
         }
 
-        public PagedResponse<Yacht> GetRecommendations(int? userId, int page = 0, int pageSize = 10)
+        public PagedResponse<YachtOverviewDto> GetRecommendations(int? userId, int page = 0, int pageSize = 10)
         {
             throw new NotImplementedException();
         }

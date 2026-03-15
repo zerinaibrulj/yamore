@@ -102,6 +102,28 @@ class ApiService {
     );
   }
 
+  /// Personalized yacht recommendations (content-based + collaborative). Pass [userId] when logged in, or null for anonymous/popular.
+  Future<PagedYachtOverview> getRecommendations({
+    int? userId,
+    int page = 0,
+    int pageSize = 10,
+  }) async {
+    final query = <String, String>{
+      'page': page.toString(),
+      'pageSize': pageSize.toString(),
+    };
+    if (userId != null) query['userId'] = userId.toString();
+    final uri = Uri.parse('$baseUrl/Yachts/recommendations')
+        .replace(queryParameters: query);
+    final response = await http.get(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return PagedYachtOverview.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
   Future<YachtDetail> getYachtById(int id) async {
     final uri = Uri.parse('$baseUrl/Yachts/$id');
     final response = await http.get(uri, headers: _headers);

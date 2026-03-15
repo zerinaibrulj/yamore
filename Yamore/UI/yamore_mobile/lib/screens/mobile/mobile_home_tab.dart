@@ -81,18 +81,22 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
         _api.getCities(),
         _api.getYachtCategories(),
         FavoritesService.loadFavorites(widget.user.userId),
+        _api.getRecommendations(userId: widget.user.userId, pageSize: 10),
       ]);
       final overview = results[0] as PagedYachtOverview;
       final cities = results[1] as List<CityModel>;
       final cats = results[2] as List<YachtCategoryModel>;
       final favs = results[3] as Set<int>;
+      final recPage = results[4] as PagedYachtOverview;
       if (mounted) {
         setState(() {
           _allYachts = overview.resultList;
           _cities = cities;
           _categories = cats;
           _favoriteIds = favs;
-          _buildRecommended();
+          _recommended = recPage.resultList.isNotEmpty
+              ? recPage.resultList
+              : _fallbackRecommended(overview.resultList);
           _applyFilters();
           _loading = false;
         });
@@ -100,11 +104,18 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
     } catch (e) {
       if (mounted) {
         setState(() {
+          _recommended = [];
           _error = 'Failed to load yachts: $e';
           _loading = false;
         });
       }
     }
+  }
+
+  /// Fallback when recommendation API returns empty (e.g. new user): show popular/featured by price.
+  List<YachtOverview> _fallbackRecommended(List<YachtOverview> all) {
+    final sorted = [...all]..sort((a, b) => b.pricePerDay.compareTo(a.pricePerDay));
+    return sorted.take(10).toList();
   }
 
   @override
@@ -372,12 +383,6 @@ extension on _MobileHomeTabState {
         ),
       ),
     );
-  }
-
-  void _buildRecommended() {
-    // For now just take the top 3 by price as \"featured\".
-    final sorted = [..._allYachts]..sort((a, b) => b.pricePerDay.compareTo(a.pricePerDay));
-    _recommended = sorted.take(3).toList();
   }
 
   void _applyFilters() {
