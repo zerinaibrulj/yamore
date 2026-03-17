@@ -291,7 +291,7 @@ extension on _MobileHomeTabState {
           ),
           const SizedBox(height: 6),
           SizedBox(
-            height: 150,
+            height: 230,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: _recommended.length,
