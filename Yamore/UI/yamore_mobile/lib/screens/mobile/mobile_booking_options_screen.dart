@@ -73,7 +73,7 @@ class _MobileBookingOptionsScreenState
                 backgroundColor: const Color(0xFF8BC34A),
               ),
               onPressed:
-                  _skipperYes == null || _durationKey == null ? null : _goNext,
+                  _durationKey == null ? null : _goNext,
               child: const Text(
                 'NEXT STEP',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
@@ -173,7 +173,8 @@ class _MobileBookingOptionsScreenState
   }
 
   void _goNext() {
-    if (_skipperYes == null || _durationKey == null) return;
+    if (_durationKey == null) return;
+    final endDateTime = _calculateEndDateTime(widget.startDateTime, _durationKey!);
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => MobileRouteSelectionScreen(
@@ -181,11 +182,24 @@ class _MobileBookingOptionsScreenState
           user: widget.user,
           overview: widget.overview,
           startDateTime: widget.startDateTime,
-          durationKey: _durationKey!,
-          skipperIncluded: _skipperYes!,
+          endDateTime: endDateTime,
         ),
       ),
     );
+  }
+
+  DateTime _calculateEndDateTime(DateTime start, String durationKey) {
+    // The app later computes price using the day difference, so for "half" we still
+    // move forward enough days to avoid a 0-day range (payment clamps to >= 1 day).
+    return switch (durationKey) {
+      'half' => start.add(const Duration(hours: 12)),
+      'full' => start.add(const Duration(days: 1)),
+      '2d' => start.add(const Duration(days: 2)),
+      '3d' => start.add(const Duration(days: 3)),
+      'weekend' => start.add(const Duration(days: 2)),
+      'week' => start.add(const Duration(days: 7)),
+      _ => start.add(const Duration(days: 1)),
+    };
   }
 }
 
