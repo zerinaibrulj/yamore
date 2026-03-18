@@ -4,6 +4,7 @@ import '../../models/user.dart';
 import '../../models/yacht_overview.dart';
 import '../../models/service_model.dart';
 import '../../services/api_service.dart';
+import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 import 'mobile_booking_payment_screen.dart';
 
@@ -11,16 +12,20 @@ class MobileBookingServicesScreen extends StatefulWidget {
   final ApiService api;
   final AppUser user;
   final YachtOverview overview;
+  final AuthService authService;
   final DateTime startDateTime;
   final DateTime endDateTime;
+  final String selectedRouteLabel;
 
   const MobileBookingServicesScreen({
     super.key,
     required this.api,
     required this.user,
     required this.overview,
+    required this.authService,
     required this.startDateTime,
     required this.endDateTime,
+    required this.selectedRouteLabel,
   });
 
   @override
@@ -249,9 +254,11 @@ class _MobileBookingServicesScreenState
           api: widget.api,
           user: widget.user,
           overview: widget.overview,
+          authService: widget.authService,
           startDateTime: widget.startDateTime,
           endDateTime: widget.endDateTime,
           selectedServices: selectedServices,
+          selectedRouteLabel: widget.selectedRouteLabel,
         ),
       ),
     );

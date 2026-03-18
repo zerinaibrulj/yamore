@@ -4,27 +4,33 @@ import 'package:flutter_stripe/flutter_stripe.dart' hide Card;
 import '../../models/user.dart';
 import '../../models/yacht_overview.dart';
 import '../../services/api_service.dart';
+import '../../services/auth_service.dart';
 import '../../models/service_model.dart';
 import '../../theme/app_theme.dart';
+import 'mobile_shell.dart';
 
 class MobileBookingReviewScreen extends StatefulWidget {
   final ApiService api;
   final AppUser user;
   final YachtOverview overview;
+  final AuthService authService;
   final DateTime startDateTime;
   final DateTime endDateTime;
   final String paymentMethod;
   final List<ServiceModel> selectedServices;
+  final String selectedRouteLabel;
 
   const MobileBookingReviewScreen({
     super.key,
     required this.api,
     required this.user,
     required this.overview,
+    required this.authService,
     required this.startDateTime,
     required this.endDateTime,
     required this.paymentMethod,
     this.selectedServices = const [],
+    required this.selectedRouteLabel,
   });
 
   @override
@@ -303,6 +309,17 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
                     style: const TextStyle(fontSize: 13)),
               ],
             ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(Icons.route_outlined, size: 18),
+                const SizedBox(width: 6),
+                Text(
+                  widget.selectedRouteLabel,
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ],
+            ),
             const SizedBox(height: 8),
             const Divider(),
             const SizedBox(height: 6),
@@ -462,7 +479,16 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
           ],
         ),
       );
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      // Always return to the Home tab after a successful reservation.
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => MobileShell(
+            user: widget.user,
+            authService: widget.authService,
+          ),
+        ),
+        (route) => false,
+      );
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);

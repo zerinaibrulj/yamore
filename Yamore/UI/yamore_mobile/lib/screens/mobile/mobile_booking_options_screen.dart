@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/user.dart';
 import '../../models/yacht_overview.dart';
 import '../../services/api_service.dart';
+import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 import 'mobile_booking_payment_screen.dart';
 import 'mobile_route_selection_screen.dart';
@@ -11,6 +12,7 @@ class MobileBookingOptionsScreen extends StatefulWidget {
   final ApiService api;
   final AppUser user;
   final YachtOverview overview;
+  final AuthService authService;
   final DateTime startDateTime;
 
   const MobileBookingOptionsScreen({
@@ -18,6 +20,7 @@ class MobileBookingOptionsScreen extends StatefulWidget {
     required this.api,
     required this.user,
     required this.overview,
+    required this.authService,
     required this.startDateTime,
   });
 
@@ -181,6 +184,7 @@ class _MobileBookingOptionsScreenState
           api: widget.api,
           user: widget.user,
           overview: widget.overview,
+          authService: widget.authService,
           startDateTime: widget.startDateTime,
           endDateTime: endDateTime,
         ),

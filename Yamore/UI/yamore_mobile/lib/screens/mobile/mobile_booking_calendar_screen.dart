@@ -5,6 +5,7 @@ import '../../models/yacht_overview.dart';
 import '../../models/reservation.dart';
 import '../../models/yacht_availability.dart';
 import '../../services/api_service.dart';
+import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/custom_date_range_picker_dialog.dart';
 import 'mobile_route_selection_screen.dart';
@@ -12,12 +13,14 @@ import 'mobile_route_selection_screen.dart';
 class MobileBookingCalendarScreen extends StatefulWidget {
   final ApiService api;
   final AppUser user;
+  final AuthService authService;
   final YachtOverview overview;
 
   const MobileBookingCalendarScreen({
     super.key,
     required this.api,
     required this.user,
+    required this.authService,
     required this.overview,
   });
 
@@ -311,70 +314,118 @@ class _MobileBookingCalendarScreenState
               ],
             ),
             const SizedBox(height: 8),
-            Row(
-              children: _weekdays.map((d) => Expanded(child: Center(child: Text(d, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.grey.shade600))))).toList(),
-            ),
-            const SizedBox(height: 2),
             LayoutBuilder(
               builder: (context, constraints) {
-                final cellSize = ((constraints.maxWidth - 6) / 7).clamp(0.0, maxCellSize);
+                // Keep the weekdays header and the day cells perfectly aligned by using
+                // the same fixed cellSize for both.
+                final cellSize =
+                    ((constraints.maxWidth - 6) / 7).clamp(18.0, maxCellSize);
+                final calendarWidth = cellSize * 7;
+
                 final leadingEmpty = firstWeekday - 1;
                 final totalCells = leadingEmpty + daysInMonth;
                 final rows = (totalCells / 7).ceil();
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: List.generate(rows, (row) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 2),
-                      child: Row(
-                        children: List.generate(7, (col) {
-                          final cellIndex = row * 7 + col;
-                          if (cellIndex < leadingEmpty) {
-                            return SizedBox(width: cellSize, height: cellSize, child: const SizedBox());
-                          }
-                          final day = cellIndex - leadingEmpty + 1;
-                          if (day > daysInMonth) {
-                            return SizedBox(width: cellSize, height: cellSize, child: const SizedBox());
-                          }
-                          final date = DateTime(year, month, day);
-                          final isPast = date.isBefore(today);
-                          final booked = _isDayBooked(date);
-                          Color bg;
-                          Color fg;
-                          if (isPast) {
-                            bg = Colors.grey.shade200;
-                            fg = Colors.grey.shade500;
-                          } else if (booked) {
-                            bg = Colors.red.shade100;
-                            fg = Colors.red.shade800;
-                          } else {
-                            bg = Colors.green.shade50;
-                            fg = Colors.green.shade800;
-                          }
-                          return SizedBox(
-                            width: cellSize,
-                            height: cellSize,
-                            child: Padding(
-                              padding: const EdgeInsets.all(1),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: bg,
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(color: fg.withOpacity(0.3), width: 0.5),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    '$day',
-                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: fg),
+
+                return Center(
+                  child: SizedBox(
+                    width: calendarWidth,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: _weekdays.map((d) {
+                            return SizedBox(
+                              width: cellSize,
+                              child: Center(
+                                child: Text(
+                                  d,
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.grey.shade600,
                                   ),
                                 ),
                               ),
-                            ),
-                          );
-                        }),
-                      ),
-                    );
-                  }),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 2),
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: List.generate(rows, (row) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 2),
+                              child: Row(
+                                children: List.generate(7, (col) {
+                                  final cellIndex = row * 7 + col;
+                                  if (cellIndex < leadingEmpty) {
+                                    return SizedBox(
+                                      width: cellSize,
+                                      height: cellSize,
+                                      child: const SizedBox(),
+                                    );
+                                  }
+                                  final day = cellIndex - leadingEmpty + 1;
+                                  if (day > daysInMonth) {
+                                    return SizedBox(
+                                      width: cellSize,
+                                      height: cellSize,
+                                      child: const SizedBox(),
+                                    );
+                                  }
+
+                                  final date = DateTime(year, month, day);
+                                  final isPast = date.isBefore(today);
+                                  final booked = _isDayBooked(date);
+
+                                  late final Color bg;
+                                  late final Color fg;
+                                  if (isPast) {
+                                    bg = Colors.grey.shade200;
+                                    fg = Colors.grey.shade500;
+                                  } else if (booked) {
+                                    bg = Colors.red.shade100;
+                                    fg = Colors.red.shade800;
+                                  } else {
+                                    bg = Colors.green.shade50;
+                                    fg = Colors.green.shade800;
+                                  }
+
+                                  return SizedBox(
+                                    width: cellSize,
+                                    height: cellSize,
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(1),
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: bg,
+                                          borderRadius: BorderRadius.circular(4),
+                                          border: Border.all(
+                                            color: fg.withOpacity(0.3),
+                                            width: 0.5,
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            '$day',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: fg,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }),
+                              ),
+                            );
+                          }),
+                        ),
+                      ],
+                    ),
+                  ),
                 );
               },
             ),
@@ -481,6 +532,7 @@ class _MobileBookingCalendarScreenState
         builder: (_) => MobileRouteSelectionScreen(
           api: widget.api,
           user: widget.user,
+          authService: widget.authService,
           overview: widget.overview,
           startDateTime: start,
           endDateTime: end,

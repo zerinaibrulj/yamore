@@ -572,6 +572,7 @@ extension on _MobileHomeTabState {
         builder: (_) => MobileYachtDetailScreen(
           api: _api,
           user: widget.user,
+          authService: widget.authService,
           overview: yacht,
         ),
       ),

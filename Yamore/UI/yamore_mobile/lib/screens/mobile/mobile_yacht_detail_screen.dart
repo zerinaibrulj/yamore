@@ -7,18 +7,21 @@ import '../../models/reservation.dart';
 import '../../models/user.dart';
 import '../../models/yacht_image.dart';
 import '../../services/api_service.dart';
+import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 import 'mobile_booking_calendar_screen.dart';
 
 class MobileYachtDetailScreen extends StatefulWidget {
   final ApiService api;
   final AppUser user;
+  final AuthService authService;
   final YachtOverview overview;
 
   const MobileYachtDetailScreen({
     super.key,
     required this.api,
     required this.user,
+    required this.authService,
     required this.overview,
   });
 
@@ -412,6 +415,7 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
                     builder: (_) => MobileBookingCalendarScreen(
                       api: widget.api,
                       user: widget.user,
+                      authService: widget.authService,
                       overview: widget.overview,
                     ),
                   ),

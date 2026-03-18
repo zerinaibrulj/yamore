@@ -6,6 +6,7 @@ import '../../models/route.dart';
 import '../../models/weather_forecast.dart';
 import '../../models/city.dart';
 import '../../services/api_service.dart';
+import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 import 'mobile_booking_services_screen.dart';
 
@@ -13,6 +14,7 @@ class MobileRouteSelectionScreen extends StatefulWidget {
   final ApiService api;
   final AppUser user;
   final YachtOverview overview;
+  final AuthService authService;
   final DateTime startDateTime;
   final DateTime endDateTime;
 
@@ -21,6 +23,7 @@ class MobileRouteSelectionScreen extends StatefulWidget {
     required this.api,
     required this.user,
     required this.overview,
+    required this.authService,
     required this.startDateTime,
     required this.endDateTime,
   });
@@ -295,6 +298,7 @@ class _MobileRouteSelectionScreenState
   }
 
   void _goNext() {
+    final routeLabel = _selectedRoute == null ? 'No route selected' : _routeLabel(_selectedRoute!);
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => MobileBookingServicesScreen(
@@ -303,6 +307,8 @@ class _MobileRouteSelectionScreenState
           overview: widget.overview,
           startDateTime: widget.startDateTime,
           endDateTime: widget.endDateTime,
+          authService: widget.authService,
+          selectedRouteLabel: routeLabel,
         ),
       ),
     );
