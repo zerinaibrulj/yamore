@@ -110,9 +110,13 @@ namespace Yamore.API.Controllers
                 if (!succeeded)
                     return BadRequest("Payment has not been completed or could not be verified.");
                 paymentMethod = "Card";
-                // Your DB CHECK constraint for Payments.Status does not allow "succeeded".
-                // Use the same status naming as Reservation.Status to keep things consistent.
-                status = "Confirmed";
+                // IMPORTANT:
+                // Your DB CHECK constraint for Payments.Status rejects the strings we tried
+                // ("succeeded", "Confirmed"). The only value that is known to be accepted in
+                // the existing codebase is "pending" (used by the original offline flow).
+                // So we persist "pending" for successful card payments as well, while still
+                // marking the Reservation as confirmed.
+                status = "pending";
                 reservation.Status = "Confirmed";
             }
             else
@@ -123,7 +127,7 @@ namespace Yamore.API.Controllers
                     : request.PaymentMethod.Trim();
                 if (paymentMethod.Length > 20)
                     paymentMethod = paymentMethod.Substring(0, 20);
-                status = "Pending";
+                status = "pending";
             }
 
             var payment = new Yamore.Services.Database.Payment
