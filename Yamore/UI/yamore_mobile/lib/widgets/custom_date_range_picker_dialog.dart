@@ -117,40 +117,45 @@ class _CustomDateRangePickerDialogState extends State<CustomDateRangePickerDialo
     final today = DateTime(now.year, now.month, now.day);
 
     return Dialog(
+      backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 380, maxHeight: 520),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 16, 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(18, 14, 12, 12),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryBlue,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              ),
               child: Row(
                 children: [
-                  Icon(Icons.calendar_month,
-                      color: AppTheme.primaryBlue, size: 24),
-                  const SizedBox(width: 10),
+                  const Icon(Icons.calendar_month, color: Colors.white, size: 22),
+                  const SizedBox(width: 8),
                   const Expanded(
                     child: Text(
                       'Select travel dates',
                       style: TextStyle(
-                        fontSize: 18,
+                        color: Colors.white,
+                        fontSize: 17,
                         fontWeight: FontWeight.w700,
-                        letterSpacing: 0.2,
                       ),
                     ),
                   ),
-                  IconButton.filled(
+                  IconButton(
                     style: IconButton.styleFrom(
-                      backgroundColor: Colors.grey.shade200,
-                      foregroundColor: Colors.grey.shade700,
+                      backgroundColor: Colors.white.withOpacity(0.18),
+                      foregroundColor: Colors.white,
                     ),
-                    icon: const Icon(Icons.close, size: 20),
+                    icon: const Icon(Icons.close, size: 18),
                     onPressed: () => Navigator.of(context).pop(),
                     tooltip: 'Close',
                   ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
+                  const SizedBox(width: 6),
+                  FilledButton(
                     onPressed: () {
                       if (_rangeStart != null && _rangeEnd != null) {
                         Navigator.of(context).pop(DateTimeRange(
@@ -165,21 +170,21 @@ class _CustomDateRangePickerDialogState extends State<CustomDateRangePickerDialo
                       }
                     },
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppTheme.primaryBlue,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      backgroundColor: Colors.white,
+                      foregroundColor: AppTheme.primaryBlue,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
                     ),
-                    icon: const Icon(Icons.check, size: 18),
-                    label: const Text('Save'),
+                    child: const Text('Save'),
                   ),
                 ],
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
               child: Text(
                 _formattedRange,
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: AppTheme.primaryBlue,
                 ),
@@ -236,7 +241,7 @@ class _CustomDateRangePickerDialogState extends State<CustomDateRangePickerDialo
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(
@@ -302,8 +307,7 @@ class _CustomDateRangePickerDialogState extends State<CustomDateRangePickerDialo
                                       : inRange
                                           ? (isStart || isEnd
                                               ? AppTheme.primaryBlue
-                                              : AppTheme.primaryBlue
-                                                  .withOpacity(0.3))
+                                              : AppTheme.primaryBlue.withOpacity(0.14))
                                           : Colors.transparent,
                                   borderRadius: BorderRadius.circular(10),
                                   child: InkWell(
@@ -319,9 +323,11 @@ class _CustomDateRangePickerDialogState extends State<CustomDateRangePickerDialo
                                           fontWeight: FontWeight.w600,
                                           color: isPast
                                               ? Colors.grey
-                                              : inRange
+                                              : (isStart || isEnd)
                                                   ? Colors.white
-                                                  : Colors.black87,
+                                                  : inRange
+                                                      ? AppTheme.primaryBlue
+                                                      : Colors.black87,
                                         ),
                                       ),
                                     ),

@@ -24,6 +24,7 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
   );
 
   List<Reservation> _reservations = [];
+  List<Reservation> _allReservations = [];
   bool _loading = true;
   String? _error;
   String _filterStatus = 'All';
@@ -45,11 +46,14 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
       _error = null;
     });
     try {
-      final result = await _api.getReservations(
-        pageSize: 50,
-        status: _filterStatus == 'All' ? null : _filterStatus,
-      );
-      final list = result.resultList;
+      final result = await _api.getReservations(pageSize: 200);
+      final all = result.resultList;
+      final list = _filterStatus == 'All'
+          ? all
+          : all
+              .where((r) =>
+                  (r.status ?? '').toLowerCase() == _filterStatus.toLowerCase())
+              .toList();
 
       // Preload yacht and guest details for nicer display.
       final yachtIds = list.map((r) => r.yachtId).toSet();
@@ -77,6 +81,7 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
       if (mounted) {
         setState(() {
           _reservations = list;
+          _allReservations = all;
           _loading = false;
         });
       }
@@ -180,6 +185,81 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
     }
   }
 
+  int _countStatus(String status) {
+    return _allReservations
+        .where((r) => (r.status ?? '').toLowerCase() == status.toLowerCase())
+        .length;
+  }
+
+  Widget _buildSummaryCards() {
+    Widget statCard({
+      required String label,
+      required int value,
+      required Color color,
+      required IconData icon,
+    }) {
+      return Container(
+        constraints: const BoxConstraints(minWidth: 145),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.25)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 6),
+            Text(
+              '$label: $value',
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+      child: Wrap(
+        alignment: WrapAlignment.end,
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          statCard(
+            label: 'Total',
+            value: _allReservations.length,
+            color: AppTheme.primaryBlue,
+            icon: Icons.receipt_long,
+          ),
+          statCard(
+            label: 'Pending',
+            value: _countStatus('pending'),
+            color: Colors.orange.shade700,
+            icon: Icons.hourglass_bottom,
+          ),
+          statCard(
+            label: 'Confirmed',
+            value: _countStatus('confirmed'),
+            color: Colors.green.shade700,
+            icon: Icons.check_circle,
+          ),
+          statCard(
+            label: 'Cancelled',
+            value: _countStatus('cancelled'),
+            color: Colors.red.shade700,
+            icon: Icons.cancel,
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
@@ -226,6 +306,7 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
               }).toList(),
             ),
           ),
+          if (!_loading && _error == null) _buildSummaryCards(),
           const SizedBox(height: 4),
           Expanded(child: _buildBody()),
         ],

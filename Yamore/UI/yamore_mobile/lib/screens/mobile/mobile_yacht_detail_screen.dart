@@ -513,20 +513,18 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
     final d = _detail;
     final overview = widget.overview;
     final lengthFeet = overview.length != null ? overview.length! * 3.28084 : null;
-    return Row(
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
       children: [
         if (overview.yearBuilt != null) ...[
           _infoChip(Icons.calendar_today_outlined, '${overview.yearBuilt}'),
-          const SizedBox(width: 8),
         ],
         _infoChip(Icons.king_bed_outlined,
             d?.cabins != null ? '${d!.cabins} cabins' : 'Cabins'),
-        const SizedBox(width: 8),
         _infoChip(Icons.bathtub_outlined,
             d?.bathrooms != null ? '${d!.bathrooms} baths' : 'Bathrooms'),
-        const SizedBox(width: 8),
         _infoChip(Icons.people_outline, '${overview.capacity} guests'),
-        const SizedBox(width: 8),
         if (lengthFeet != null)
           _infoChip(
             Icons.straighten,
