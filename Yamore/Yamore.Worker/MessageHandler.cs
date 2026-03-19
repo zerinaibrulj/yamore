@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Mail;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Yamore.Model.Messages;
 
 namespace Yamore.Worker;
@@ -11,6 +12,9 @@ namespace Yamore.Worker;
 /// </summary>
 public class MessageHandler
 {
+    private static readonly Regex _simpleEmailRegex =
+        new(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
     private readonly ILogger<MessageHandler> _logger;
     private readonly IConfiguration _configuration;
 
@@ -50,8 +54,18 @@ public class MessageHandler
             "Reservation created: Id={ReservationId}, UserId={UserId}, YachtId={YachtId}, Start={StartDate}, End={EndDate}, TotalPrice={TotalPrice}",
             msg.ReservationId, msg.UserId, msg.YachtId, msg.StartDate, msg.EndDate, msg.TotalPrice);
 
-        if (!string.IsNullOrWhiteSpace(msg.UserEmail))
-            await SendEmailAsync(msg.UserEmail, "Reservation received", $"Your reservation #{msg.ReservationId} has been received. We will confirm shortly.");
+        if (!_isValidEmail(msg.UserEmail))
+        {
+            _logger.LogWarning(
+                "ReservationCreated email skipped: invalid or missing recipient for ReservationId={ReservationId}, UserId={UserId}, Email={Email}",
+                msg.ReservationId, msg.UserId, msg.UserEmail ?? "(null)");
+            return;
+        }
+
+        await SendEmailAsync(
+            msg.UserEmail!,
+            "Reservation received",
+            $"Your reservation #{msg.ReservationId} has been received. We will confirm shortly.");
     }
 
     private async Task HandlePaymentCompletedAsync(string payloadJson)
@@ -63,8 +77,18 @@ public class MessageHandler
             "Payment completed: PaymentId={PaymentId}, ReservationId={ReservationId}, Amount={Amount}, Method={Method}",
             msg.PaymentId, msg.ReservationId, msg.Amount, msg.PaymentMethod);
 
-        if (!string.IsNullOrWhiteSpace(msg.UserEmail))
-            await SendEmailAsync(msg.UserEmail, "Payment confirmed", $"Payment of €{msg.Amount:N2} for reservation #{msg.ReservationId} has been confirmed.");
+        if (!_isValidEmail(msg.UserEmail))
+        {
+            _logger.LogWarning(
+                "PaymentCompleted email skipped: invalid or missing recipient for ReservationId={ReservationId}, PaymentId={PaymentId}, Email={Email}",
+                msg.ReservationId, msg.PaymentId, msg.UserEmail ?? "(null)");
+            return;
+        }
+
+        await SendEmailAsync(
+            msg.UserEmail!,
+            "Payment confirmed",
+            $"Payment of €{msg.Amount:N2} for reservation #{msg.ReservationId} has been confirmed.");
     }
 
     private Task HandleReviewSubmittedAsync(string payloadJson)
@@ -116,5 +140,12 @@ public class MessageHandler
         {
             _logger.LogError(ex, "Failed to send email to {To}", to);
         }
+    }
+
+    private static bool _isValidEmail(string? email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return false;
+        return _simpleEmailRegex.IsMatch(email.Trim());
     }
 }
