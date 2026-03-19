@@ -141,6 +141,7 @@ namespace Yamore.API.Controllers
             _context.Payments.Add(payment);
 
             _context.SaveChanges();
+            var user = _context.Users.Find(reservation.UserId);
 
             var payMsg = new PaymentCompletedMessage
             {
@@ -148,6 +149,7 @@ namespace Yamore.API.Controllers
                 ReservationId = payment.ReservationId,
                 Amount = payment.Amount,
                 PaymentMethod = paymentMethod,
+                UserEmail = user?.Email,
             };
             _messagePublisher.Publish(MessageEnvelope.PaymentCompleted, JsonSerializer.Serialize(payMsg));
 

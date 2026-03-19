@@ -6,6 +6,7 @@ using Yamore.Model;
 using Yamore.Model.Messages;
 using Yamore.Model.Requests.Reservation;
 using Yamore.Model.SearchObjects;
+using Yamore.Services.Database;
 using Yamore.Services.Interfaces;
 
 namespace Yamore.API.Controllers
@@ -16,18 +17,21 @@ namespace Yamore.API.Controllers
     {
         private readonly IReservationService _reservationService;
         private readonly IMessagePublisher _messagePublisher;
+        private readonly _220245Context _context;
 
-        public ReservationController(IReservationService service, IMessagePublisher messagePublisher)
+        public ReservationController(IReservationService service, IMessagePublisher messagePublisher, _220245Context context)
             : base(service)
         {
             _reservationService = service;
             _messagePublisher = messagePublisher;
+            _context = context;
         }
 
         [HttpPost]
         public override ActionResult<Model.Reservation> Insert(ReservationInsertRequest request)
         {
             var result = _reservationService.Insert(request);
+            var user = _context.Users.Find(result.UserId);
             var msg = new ReservationCreatedMessage
             {
                 ReservationId = result.ReservationId,
@@ -36,6 +40,8 @@ namespace Yamore.API.Controllers
                 StartDate = result.StartDate,
                 EndDate = result.EndDate,
                 TotalPrice = result.TotalPrice,
+                UserEmail = user?.Email,
+                UserName = user == null ? null : $"{user.FirstName} {user.LastName}".Trim(),
             };
             _messagePublisher.Publish(MessageEnvelope.ReservationCreated, JsonSerializer.Serialize(msg));
             Response.Headers["X-Operation-Message"] = "Reservation created successfully.";
