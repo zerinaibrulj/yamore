@@ -53,18 +53,18 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
       final yachtFutures = yachtIds.map((id) async {
         try {
           final yacht = await _api.getYachtById(id);
-          return MapEntry(id, yacht.name.isNotEmpty ? yacht.name : 'Yacht #$id');
+          return MapEntry(id, yacht.name.isNotEmpty ? yacht.name : 'Unknown yacht');
         } catch (_) {
-          return MapEntry(id, 'Yacht #$id');
+          return MapEntry(id, 'Unknown yacht');
         }
       });
       final userFutures = userIds.map((id) async {
         try {
           final user = await _api.getUserById(id);
           final name = user.displayName;
-          return MapEntry(id, name.isNotEmpty ? name : 'User #$id');
+          return MapEntry(id, name.isNotEmpty ? name : 'Guest user');
         } catch (_) {
-          return MapEntry(id, 'User #$id');
+          return MapEntry(id, 'Guest user');
         }
       });
       final yachtResults = await Future.wait(yachtFutures);
@@ -224,8 +224,8 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
   }
 
   Future<void> _viewReviewDetails(Review review) async {
-    final yachtName = _yachtNames[review.yachtId] ?? 'Yacht #${review.yachtId}';
-    final userName = _userNames[review.userId] ?? 'User #${review.userId}';
+    final yachtName = _yachtNames[review.yachtId] ?? 'Unknown yacht';
+    final userName = _userNames[review.userId] ?? 'Guest user';
     await showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -490,8 +490,8 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
                   return DataRow(
                     cells: [
                       DataCell(Text('$displayIndex.')),
-                      DataCell(Text(_yachtNames[r.yachtId] ?? 'Yacht #${r.yachtId}')),
-                      DataCell(Text(_userNames[r.userId] ?? 'User #${r.userId}')),
+                      DataCell(Text(_yachtNames[r.yachtId] ?? 'Unknown yacht')),
+                      DataCell(Text(_userNames[r.userId] ?? 'Guest user')),
                       DataCell(_buildStars(r.rating)),
                       DataCell(
                         SizedBox(

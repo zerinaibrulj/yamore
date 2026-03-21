@@ -372,12 +372,12 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
                 _infoRow(
                   Icons.directions_boat_outlined,
                   'Yacht',
-                  yacht?.name ?? 'Yacht #${r.yachtId}',
+                  yacht?.name ?? 'Unknown yacht',
                 ),
                 _infoRow(
                   Icons.person_outline,
                   'Guest',
-                  guest?.displayName ?? 'User #${r.userId}',
+                  guest?.displayName ?? 'Guest user',
                 ),
                 _infoRow(Icons.date_range, 'Period', '${_fmtDate(r.startDate)} – ${_fmtDate(r.endDate)}'),
                 _infoRow(Icons.timelapse, 'Duration', '${r.durationDays} day${r.durationDays == 1 ? '' : 's'}'),

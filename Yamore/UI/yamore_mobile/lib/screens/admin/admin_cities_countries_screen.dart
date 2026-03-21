@@ -29,6 +29,8 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
   bool _citiesLoading = true;
   String? _countriesError;
   String? _citiesError;
+  String _countrySearch = '';
+  String _citySearch = '';
 
   @override
   void initState() {
@@ -96,6 +98,21 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
     } catch (_) {
       return '—';
     }
+  }
+
+  List<CountryModel> get _filteredCountries {
+    final q = _countrySearch.trim().toLowerCase();
+    if (q.isEmpty) return _countries;
+    return _countries.where((c) => c.name.toLowerCase().contains(q)).toList();
+  }
+
+  List<CityModel> get _filteredCities {
+    final q = _citySearch.trim().toLowerCase();
+    if (q.isEmpty) return _cities;
+    return _cities.where((c) {
+      final country = _countryName(c.countryId).toLowerCase();
+      return c.name.toLowerCase().contains(q) || country.contains(q);
+    }).toList();
   }
 
   /// Returns true if a city with the same name (case-insensitive) already exists in the given country.
@@ -222,12 +239,21 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
             ),
           ),
           const SizedBox(height: 20),
+          TextField(
+            decoration: const InputDecoration(
+              hintText: 'Search countries',
+              prefixIcon: Icon(Icons.search),
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (v) => setState(() => _countrySearch = v),
+          ),
+          const SizedBox(height: 12),
           Card(
             elevation: 1,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: _countries.isEmpty
+              child: _filteredCountries.isEmpty
                   ? Padding(
                       padding: const EdgeInsets.all(32),
                       child: Center(
@@ -246,10 +272,10 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
                   : ListView.separated(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _countries.length,
+                      itemCount: _filteredCountries.length,
                       separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade200),
                       itemBuilder: (context, index) {
-                        final c = _countries[index];
+                        final c = _filteredCountries[index];
                         return ListTile(
                           leading: CircleAvatar(radius: 20, backgroundColor: AppTheme.primaryBlue.withOpacity(0.1), child: Icon(Icons.flag, size: 20, color: AppTheme.primaryBlue)),
                           title: Text(c.name, style: const TextStyle(fontWeight: FontWeight.w500)),
@@ -326,12 +352,21 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
             ),
           ),
           const SizedBox(height: 20),
+          TextField(
+            decoration: const InputDecoration(
+              hintText: 'Search cities or countries',
+              prefixIcon: Icon(Icons.search),
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (v) => setState(() => _citySearch = v),
+          ),
+          const SizedBox(height: 12),
           Card(
             elevation: 1,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: _cities.isEmpty
+              child: _filteredCities.isEmpty
                   ? Padding(
                       padding: const EdgeInsets.all(32),
                       child: Center(
@@ -350,10 +385,10 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
                   : ListView.separated(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _cities.length,
+                      itemCount: _filteredCities.length,
                       separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade200),
                       itemBuilder: (context, index) {
-                        final city = _cities[index];
+                        final city = _filteredCities[index];
                         return ListTile(
                           leading: CircleAvatar(radius: 20, backgroundColor: AppTheme.primaryBlue.withOpacity(0.1), child: Icon(Icons.location_on, size: 20, color: AppTheme.primaryBlue)),
                           title: Text(city.name, style: const TextStyle(fontWeight: FontWeight.w500)),

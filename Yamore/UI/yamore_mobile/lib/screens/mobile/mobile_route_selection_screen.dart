@@ -212,7 +212,7 @@ class _MobileRouteSelectionScreenState
     if (startCity.cityId != -1 && endCity.cityId != -1) {
       return '${startCity.name} → ${endCity.name}';
     }
-    return 'Route #${r.routeId}';
+    return 'Saved route';
   }
 
   Future<void> _showWeather() async {

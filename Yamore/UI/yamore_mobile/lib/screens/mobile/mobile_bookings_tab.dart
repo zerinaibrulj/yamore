@@ -267,7 +267,7 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              yacht?.name ?? 'Yacht #${r.yachtId}',
+              yacht?.name ?? 'Unknown yacht',
               style: const TextStyle(
                   fontSize: 16, fontWeight: FontWeight.w700),
             ),

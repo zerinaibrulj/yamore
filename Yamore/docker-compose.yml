@@ -1,0 +1,84 @@
+version: "3.9"
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: yamore-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "YourStrong!Passw0rd"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: [ "CMD-SHELL", "pidof sqlservr || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: yamore-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "check_running" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Yamore.API/Dockerfile
+    container_name: yamore-api
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=220245;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;"
+      RabbitMQ__HostName: rabbitmq
+      RabbitMQ__Port: "5672"
+      RabbitMQ__UserName: guest
+      RabbitMQ__Password: guest
+      RabbitMQ__VirtualHost: /
+      RabbitMQ__QueueName: yamore-tasks
+      Stripe__SecretKey: ""
+      Stripe__PublishableKey: ""
+    ports:
+      - "5096:8080"
+
+  worker:
+    build:
+      context: .
+      dockerfile: Yamore.Worker/Dockerfile
+    container_name: yamore-worker
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      api:
+        condition: service_started
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      RabbitMQ__HostName: rabbitmq
+      RabbitMQ__Port: "5672"
+      RabbitMQ__UserName: guest
+      RabbitMQ__Password: guest
+      RabbitMQ__VirtualHost: /
+      RabbitMQ__QueueName: yamore-tasks
+      Smtp__Host: ""
+      Smtp__Port: "587"
+      Smtp__UserName: ""
+      Smtp__Password: ""
+      Smtp__UseSsl: "true"
+      Smtp__FromAddress: "noreply@yamore.example"
+      Smtp__FromDisplayName: "Yamore"
+
+volumes:
+  sqlserver_data:

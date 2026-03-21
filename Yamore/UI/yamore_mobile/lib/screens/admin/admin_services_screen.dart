@@ -32,6 +32,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
   String? _catError;
   int _catPage = 0;
   final int _catPageSize = 10;
+  String _catSearch = '';
 
   // Services state
   List<ServiceModel> _services = [];
@@ -40,6 +41,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
   String? _svcError;
   int _svcPage = 0;
   final int _svcPageSize = 10;
+  String _svcSearch = '';
 
   // Cached categories for service dropdown
   List<ServiceCategory> _allCategories = [];
@@ -51,6 +53,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
   String? _ycError;
   int _ycPage = 0;
   final int _ycPageSize = 10;
+  String _ycSearch = '';
 
   @override
   void initState() {
@@ -86,6 +89,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
       final result = await _api.getServiceCategories(
         page: _catPage,
         pageSize: _catPageSize,
+        name: _catSearch.trim().isEmpty ? null : _catSearch.trim(),
       );
       if (mounted) {
         setState(() {
@@ -284,6 +288,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
       final result = await _api.getServices(
         page: _svcPage,
         pageSize: _svcPageSize,
+        nameGTE: _svcSearch.trim().isEmpty ? null : _svcSearch.trim(),
       );
       if (mounted) {
         setState(() {
@@ -537,7 +542,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
   String _categoryName(int? id) {
     if (id == null) return '—';
     final match = _allCategories.where((c) => c.serviceCategoryId == id);
-    return match.isNotEmpty ? match.first.name : 'ID: $id';
+    return match.isNotEmpty ? match.first.name : 'Unknown category';
   }
 
   @override
@@ -602,7 +607,24 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
         const SizedBox(height: 12),
         Row(
           children: [
-            const Spacer(),
+            Expanded(
+              child: TextField(
+                decoration: const InputDecoration(
+                  hintText: 'Search categories',
+                  prefixIcon: Icon(Icons.search),
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                onChanged: (v) {
+                  setState(() {
+                    _catSearch = v;
+                    _catPage = 0;
+                  });
+                  _loadCategories();
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
             FilledButton.icon(
               onPressed: _addCategory,
               icon: const Icon(Icons.add, size: 18),
@@ -710,7 +732,24 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
         const SizedBox(height: 12),
         Row(
           children: [
-            const Spacer(),
+            Expanded(
+              child: TextField(
+                decoration: const InputDecoration(
+                  hintText: 'Search services',
+                  prefixIcon: Icon(Icons.search),
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                onChanged: (v) {
+                  setState(() {
+                    _svcSearch = v;
+                    _svcPage = 0;
+                  });
+                  _loadServices();
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
             FilledButton.icon(
               onPressed: _addService,
               icon: const Icon(Icons.add, size: 18),
@@ -826,7 +865,18 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
         const SizedBox(height: 12),
         Row(
           children: [
-            const Spacer(),
+            Expanded(
+              child: TextField(
+                decoration: const InputDecoration(
+                  hintText: 'Search yacht categories',
+                  prefixIcon: Icon(Icons.search),
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                onChanged: (v) => setState(() => _ycSearch = v),
+              ),
+            ),
+            const SizedBox(width: 12),
             FilledButton.icon(
               onPressed: _addYachtCategory,
               icon: const Icon(Icons.add, size: 18),
@@ -854,11 +904,18 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
         ),
       );
     }
-    if (_yachtCategories.isEmpty) return const Center(child: Text('No yacht categories found.'));
+    final filtered = _ycSearch.trim().isEmpty
+        ? _yachtCategories
+        : _yachtCategories
+            .where((c) =>
+                c.name.toLowerCase().contains(_ycSearch.trim().toLowerCase()))
+            .toList();
 
-    final total = _ycTotalCount ?? _yachtCategories.length;
+    if (filtered.isEmpty) return const Center(child: Text('No yacht categories found.'));
+
+    final total = _ycTotalCount ?? filtered.length;
     final start = total == 0 ? 0 : _ycPage * _ycPageSize + 1;
-    final end = (_ycPage * _ycPageSize + _yachtCategories.length).clamp(0, total);
+    final end = (_ycPage * _ycPageSize + filtered.length).clamp(0, total);
     final totalPages = total == 0 ? 1 : ((total + _ycPageSize - 1) / _ycPageSize).floor();
 
     return Column(
@@ -878,7 +935,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
                 DataColumn(label: Text('Name')),
                 DataColumn(label: Text('')),
               ],
-              rows: _yachtCategories.asMap().entries.map((entry) {
+              rows: filtered.asMap().entries.map((entry) {
                 final index = entry.key;
                 final c = entry.value;
                 return DataRow(cells: [
@@ -1030,12 +1087,19 @@ class _ServiceDialogState extends State<_ServiceDialog> {
 
   Future<void> _save() async {
     if (_nameCtrl.text.trim().isEmpty) return;
+    final rawPrice = _priceCtrl.text.trim();
+    if (rawPrice.isNotEmpty && double.tryParse(rawPrice) == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Price must be a valid number (e.g. 120 or 120.50).')),
+      );
+      return;
+    }
     setState(() => _saving = true);
     try {
       await widget.onSave(
         _nameCtrl.text.trim(),
         _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
-        _priceCtrl.text.trim().isEmpty ? null : double.tryParse(_priceCtrl.text.trim()),
+        rawPrice.isEmpty ? null : double.parse(rawPrice),
         _selectedCategoryId,
       );
       if (mounted) Navigator.of(context).pop(true);
