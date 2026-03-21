@@ -177,7 +177,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// Android emulator calls the local API over http://10.0.2.2:5096 in Development.
+// Forcing HTTPS redirection there can cause connection-aborted errors on login.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 // apply the named CORS policy
 app.UseCors("DefaultCorsPolicy");
