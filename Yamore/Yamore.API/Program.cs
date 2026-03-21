@@ -83,7 +83,6 @@ builder.Services.AddTransient<INotificationService, NotificationService>();
 builder.Services.AddTransient<IPaymentService, PaymentService>();
 builder.Services.AddTransient<IYachtAvailabilityService, YachtAvailabilityService>();
 builder.Services.AddTransient<IServiceCategoryService, ServiceCategoryService>();
-builder.Services.AddTransient<IYachtDocumentService, YachtDocumentService>();
 builder.Services.AddTransient<IStatisticsService, StatisticsService>();
 builder.Services.AddTransient<IYachtImageService, YachtImageService>();
 builder.Services.AddTransient<IYachtServiceService, YachtServiceService>();

@@ -32,5 +32,4 @@ public partial class User
 
     public virtual ICollection<Yacht> Yachts { get; set; } = new List<Yacht>();
 
-    public virtual ICollection<YachtDocument> YachtDocumentsVerified { get; set; } = new List<YachtDocument>();
 }

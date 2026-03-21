@@ -44,7 +44,6 @@ public partial class _220245Context : DbContext
     public virtual DbSet<UserRole> UserRoles { get; set; }
     public virtual DbSet<YachtAvailability> YachtAvailabilities { get; set; }
     public virtual DbSet<ServiceCategory> ServiceCategories { get; set; }
-    public virtual DbSet<YachtDocument> YachtDocuments { get; set; }
     public virtual DbSet<YachtImage> YachtImages { get; set; }
     public virtual DbSet<YachtService> YachtServices { get; set; }
 
@@ -222,23 +221,6 @@ public partial class _220245Context : DbContext
                 .HasForeignKey(d => d.YachtId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("FK_YachtAvailabilities_Yachts");
-        });
-
-        modelBuilder.Entity<YachtDocument>(entity =>
-        {
-            entity.HasKey(e => e.YachtDocumentId).HasName("PK_YachtDocuments");
-            entity.Property(e => e.DocumentType).HasMaxLength(50);
-            entity.Property(e => e.FileName).HasMaxLength(255);
-            entity.Property(e => e.FileUrl).HasMaxLength(500);
-            entity.Property(e => e.Notes).HasMaxLength(500);
-            entity.HasOne(d => d.Yacht).WithMany(p => p.YachtDocuments)
-                .HasForeignKey(d => d.YachtId)
-                .OnDelete(DeleteBehavior.Cascade)
-                .HasConstraintName("FK_YachtDocuments_Yachts");
-            entity.HasOne(d => d.VerifiedByUser).WithMany(p => p.YachtDocumentsVerified)
-                .HasForeignKey(d => d.VerifiedByUserId)
-                .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("FK_YachtDocuments_Users");
         });
 
         modelBuilder.Entity<YachtImage>(entity =>
