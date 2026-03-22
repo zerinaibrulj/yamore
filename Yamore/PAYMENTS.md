@@ -25,6 +25,19 @@ The app supports three payment options so the flow stays clear and reliable.
 
 If Stripe keys are not set, the “Card” option still appears; create-intent will fail with a clear message and the user can choose “Pay on arrival” instead.
 
+### Testing card checkout (test mode — for evaluators)
+
+Use **test mode** API keys (`pk_test_…` / `sk_test_…`). In the Stripe payment sheet you can enter [Stripe’s official test cards](https://docs.stripe.com/testing):
+
+| Field | Example (successful Visa payment) |
+|--------|-----------------------------------|
+| Card number | `4242 4242 4242 4242` |
+| Expiry | Any **future** date, e.g. `12 / 34` |
+| CVC | Any 3 digits, e.g. `123` |
+| Country / ZIP / address | Usually any values are accepted in test mode; if a field is required, use plausible test data (e.g. country **United States**, ZIP **12345**). |
+
+Other scenarios (declines, 3D Secure, etc.) are listed in Stripe’s documentation above — those numbers are **not** secrets; Stripe publishes them for integration testing.
+
 ## 2. **Pay on arrival (cash / bank transfer)**
 
 - User selects “Pay on arrival”. No payment is taken in the app.

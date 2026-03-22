@@ -122,4 +122,5 @@ If SMTP is configured, logs should also contain:
 
 - RabbitMQ UI: `http://localhost:15672` (`guest/guest`)
 - API Swagger (development): `http://localhost:5096/swagger`
+- **Stripe test checkout:** ensure test keys are configured (see `.env.example`), then use the sample card and fields in **`PAYMENTS.md` → *Testing card checkout*** (or [Stripe testing docs](https://docs.stripe.com/testing)).
 - Core functionalities are available without code edits when configuration is provided through environment/appsettings.
