@@ -25,7 +25,10 @@ All configuration is stored in configuration files (appsettings, environment var
 cd Yamore.API
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Data Source=...;..."
 dotnet user-secrets set "Stripe:SecretKey" "sk_test_..."
+dotnet user-secrets set "Stripe:PublishableKey" "pk_test_..."
 ```
+
+**Docker Compose:** set `STRIPE_SECRET_KEY` and `STRIPE_PUBLISHABLE_KEY` in `Yamore/.env` (see `.env.example`). Compose maps them to `Stripe__SecretKey` and `Stripe__PublishableKey` for the API container.
 
 ---
 

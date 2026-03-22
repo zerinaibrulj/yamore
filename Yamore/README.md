@@ -23,9 +23,14 @@ Yamore is a yacht reservation platform with:
 
 From repository root (`Yamore`):
 
+1. **Card payments (optional):** copy `.env.example` to `.env` and set your Stripe **test** keys (`STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`). If you skip this, bookings still work with **Pay on arrival**; the app will show *Payment configuration missing* for card checkout.
+2. Start stack:
+
 ```bash
 docker compose up -d --build
 ```
+
+After changing `.env`, recreate the API container: `docker compose up -d --build api`.
 
 Services started:
 - SQL Server: `localhost:1433`
@@ -107,6 +112,10 @@ When creating reservation and confirming payment, Worker logs should contain:
 If SMTP is configured, logs should also contain:
 - `Email sent to ... subject: Reservation received`
 - `Email sent to ... subject: Payment confirmed`
+
+## Troubleshooting
+
+- **“Payment configuration missing”** (mobile, card checkout): the API has no `Stripe:PublishableKey`. With Docker Compose, add keys to `Yamore/.env` as in `.env.example` and restart the `api` service. Without Docker, set User Secrets or env vars for `Stripe:SecretKey` and `Stripe:PublishableKey`, or use **Pay on arrival**.
 
 ## Notes for Evaluators
 

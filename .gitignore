@@ -2,3 +2,7 @@
 .vs/
 bin/
 obj/
+
+# Local secrets (Docker Compose Stripe keys, etc.)
+Yamore/.env
+.env

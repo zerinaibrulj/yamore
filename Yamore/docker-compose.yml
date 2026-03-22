@@ -47,8 +47,9 @@ services:
       RabbitMQ__Password: guest
       RabbitMQ__VirtualHost: /
       RabbitMQ__QueueName: yamore-tasks
-      Stripe__SecretKey: ""
-      Stripe__PublishableKey: ""
+      # Set in Yamore/.env (see .env.example) — required for card payments in the mobile app
+      Stripe__SecretKey: "${STRIPE_SECRET_KEY:-}"
+      Stripe__PublishableKey: "${STRIPE_PUBLISHABLE_KEY:-}"
     ports:
       - "5096:8080"
 
