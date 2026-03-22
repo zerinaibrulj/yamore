@@ -24,13 +24,14 @@ Yamore is a yacht reservation platform with:
 From repository root (`Yamore`):
 
 1. **Card payments (optional):** copy `.env.example` to `.env` and set your Stripe **test** keys (`STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`). If you skip this, bookings still work with **Pay on arrival**; the app will show *Payment configuration missing* for card checkout.
-2. Start stack:
+2. **Email from Worker (optional):** in `.env`, set `SMTP_HOST`, `SMTP_USER_NAME`, `SMTP_PASSWORD`, and `SMTP_FROM_ADDRESS` (see `.env.example`). If `SMTP_HOST` is empty, reservations still work; the worker logs *Skipping email*.
+3. Start stack:
 
 ```bash
 docker compose up -d --build
 ```
 
-After changing `.env`, recreate the API container: `docker compose up -d --build api`.
+After changing `.env`, recreate containers so env is applied, e.g. `docker compose up -d --force-recreate api worker` (or `--build` if you changed code).
 
 Services started:
 - SQL Server: `localhost:1433`

@@ -30,6 +30,8 @@ dotnet user-secrets set "Stripe:PublishableKey" "pk_test_..."
 
 **Docker Compose:** set `STRIPE_SECRET_KEY` and `STRIPE_PUBLISHABLE_KEY` in `Yamore/.env` (see `.env.example`). Compose maps them to `Stripe__SecretKey` and `Stripe__PublishableKey` for the API container.
 
+**Docker Compose (Worker email):** set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER_NAME`, `SMTP_PASSWORD`, `SMTP_FROM_ADDRESS`, `SMTP_FROM_DISPLAY_NAME`, and optionally `SMTP_USE_SSL` in `Yamore/.env`. Maps to `Smtp__*` on the worker container. If `SMTP_HOST` is empty, the worker still runs but skips sending mail.
+
 ---
 
 ## Yamore.Worker (auxiliary service)

@@ -71,13 +71,14 @@ services:
       RabbitMQ__Password: guest
       RabbitMQ__VirtualHost: /
       RabbitMQ__QueueName: yamore-tasks
-      Smtp__Host: ""
-      Smtp__Port: "587"
-      Smtp__UserName: ""
-      Smtp__Password: ""
-      Smtp__UseSsl: "true"
-      Smtp__FromAddress: "noreply@yamore.example"
-      Smtp__FromDisplayName: "Yamore"
+      # Set in Yamore/.env (see .env.example) — Worker sends reservation/payment emails
+      Smtp__Host: "${SMTP_HOST:-}"
+      Smtp__Port: "${SMTP_PORT:-587}"
+      Smtp__UserName: "${SMTP_USER_NAME:-}"
+      Smtp__Password: "${SMTP_PASSWORD:-}"
+      Smtp__UseSsl: "${SMTP_USE_SSL:-true}"
+      Smtp__FromAddress: "${SMTP_FROM_ADDRESS:-noreply@yamore.example}"
+      Smtp__FromDisplayName: "${SMTP_FROM_DISPLAY_NAME:-Yamore}"
 
 volumes:
   sqlserver_data:
