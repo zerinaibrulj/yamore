@@ -8,6 +8,7 @@ import '../../models/city.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/weather_trip_context.dart';
 import 'mobile_booking_services_screen.dart';
 
 class MobileRouteSelectionScreen extends StatefulWidget {
@@ -119,6 +120,30 @@ class _MobileRouteSelectionScreenState
                     children: [
                       _buildRouteSelector(),
                       const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          const Icon(Icons.event_outlined, size: 18),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Your trip: ${formatTripDateRange(widget.startDateTime, widget.endDateTime)}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Weather uses these dates to show the right forecast for your booking.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       if (_selectedRoute != null)
                         Align(
                           alignment: Alignment.centerRight,
@@ -218,24 +243,132 @@ class _MobileRouteSelectionScreenState
   Future<void> _showWeather() async {
     final route = _selectedRoute;
     if (route == null) return;
+    final tripStart = widget.startDateTime;
+    final tripEnd = widget.endDateTime;
     try {
-      final forecasts = await widget.api.getWeatherForRoute(route.routeId);
+      var forecasts = await widget.api.getWeatherForRoute(
+        route.routeId,
+        tripStart: tripStart,
+        tripEnd: tripEnd,
+      );
+      var approximate = false;
+
+      if (forecasts.isEmpty) {
+        final all = await widget.api.getWeatherForRoute(route.routeId);
+        final inRange = forecastsInTripRange(all, tripStart, tripEnd);
+        if (inRange.isNotEmpty) {
+          forecasts = inRange;
+        } else {
+          final nearest = nearestForecastToTripStart(all, tripStart);
+          if (nearest != null) {
+            forecasts = [nearest];
+            approximate = true;
+          }
+        }
+      }
+
       if (!mounted) return;
       if (forecasts.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No weather data for this route.')),
+          SnackBar(
+            content: Text(
+              'No weather data for "${_routeLabel(route)}" on '
+              '${formatTripDateRange(tripStart, tripEnd)}. '
+              'An admin can add forecasts for those dates in Routes & Weather.',
+            ),
+          ),
         );
         return;
       }
-      final f = forecasts.first;
+
       await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text(_routeLabel(route)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Trip: ${formatTripDateRange(tripStart, tripEnd)}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    approximate
+                        ? 'No forecast on your exact trip dates. Showing the closest available entry.'
+                        : forecasts.length > 1
+                            ? 'Forecasts for each day of your trip on this route:'
+                            : 'Forecast aligned with your trip:',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade800),
+                  ),
+                  if (approximate) ...[
+                    const SizedBox(height: 8),
+                    Material(
+                      color: Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline,
+                                size: 20, color: Colors.amber.shade900),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Approximate — add forecasts for your dates in admin for an exact match.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.amber.shade900,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  ...forecasts.map(_buildForecastBlock),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load weather: $e')),
+      );
+    }
+  }
+
+  Widget _buildForecastBlock(WeatherForecastModel f) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (f.forecastDate != null)
@@ -243,18 +376,18 @@ class _MobileRouteSelectionScreenState
                   children: [
                     const Icon(Icons.calendar_today_outlined, size: 18),
                     const SizedBox(width: 6),
-                    Text(
-                      '${f.forecastDate!.day.toString().padLeft(2, '0')}.'
-                      '${f.forecastDate!.month.toString().padLeft(2, '0')}.'
-                      '${f.forecastDate!.year} '
-                      '${f.forecastDate!.hour.toString().padLeft(2, '0')}:'
-                      '${f.forecastDate!.minute.toString().padLeft(2, '0')}h',
-                      style: const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w600),
+                    Expanded(
+                      child: Text(
+                        formatForecastDateTime(f.forecastDate!),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              const SizedBox(height: 8),
+              if (f.forecastDate != null) const SizedBox(height: 8),
               if (f.windSpeed != null)
                 Row(
                   children: [
@@ -276,25 +409,14 @@ class _MobileRouteSelectionScreenState
                   children: [
                     const Icon(Icons.wb_sunny_outlined, size: 18),
                     const SizedBox(width: 6),
-                    Text('Condition: ${f.condition}'),
+                    Expanded(child: Text('Condition: ${f.condition}')),
                   ],
                 ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Close'),
-            ),
-          ],
         ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load weather: $e')),
-      );
-    }
+      ),
+    );
   }
 
   void _goNext() {

@@ -1,4 +1,4 @@
-﻿using MapsterMapper;
+using MapsterMapper;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -32,7 +32,22 @@ namespace Yamore.Services.Services
                 filteredQurey = filteredQurey.Where(x => x.RouteId == search.RouteId);
             }
 
-            return filteredQurey;
+            if (search?.TripStart != null || search?.TripEnd != null)
+            {
+                var startDay = (search!.TripStart ?? search.TripEnd)!.Value.Date;
+                var endDay = (search.TripEnd ?? search.TripStart)!.Value.Date;
+                if (endDay < startDay)
+                {
+                    (startDay, endDay) = (endDay, startDay);
+                }
+
+                filteredQurey = filteredQurey.Where(x =>
+                    x.ForecastDate != null
+                    && x.ForecastDate.Value.Date >= startDay
+                    && x.ForecastDate.Value.Date <= endDay);
+            }
+
+            return filteredQurey.OrderBy(x => x.ForecastDate);
         }
     }
 }

@@ -32,6 +32,8 @@ dotnet user-secrets set "Stripe:PublishableKey" "pk_test_..."
 
 **Docker Compose (Worker email):** set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER_NAME`, `SMTP_PASSWORD`, `SMTP_FROM_ADDRESS`, `SMTP_FROM_DISPLAY_NAME`, and optionally `SMTP_USE_SSL` in `Yamore/.env`. Maps to `Smtp__*` on the worker container. If `SMTP_HOST` is empty, the worker still runs but skips sending mail.
 
+**Weather forecasts (mobile booking):** `GET /WeatherForecast` accepts optional `TripStart` and `TripEnd` (ISO 8601) together with `RouteId`. The API returns only rows whose `ForecastDate` falls on a calendar day between those trip dates (inclusive). The mobile app passes the user’s booking window from the route step. Omit trip dates to list all forecasts for a route (e.g. admin).
+
 ---
 
 ## Yamore.Worker (auxiliary service)

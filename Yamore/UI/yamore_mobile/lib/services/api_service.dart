@@ -1170,13 +1170,26 @@ class ApiService {
     }
   }
 
-  Future<List<WeatherForecastModel>> getWeatherForRoute(int routeId) async {
+  /// When [tripStart] / [tripEnd] are set, the API returns only forecasts on those
+  /// calendar days (inclusive). Omit both for all forecasts for the route.
+  Future<List<WeatherForecastModel>> getWeatherForRoute(
+    int routeId, {
+    DateTime? tripStart,
+    DateTime? tripEnd,
+  }) async {
+    final query = <String, String>{
+      'Page': '0',
+      'PageSize': '50',
+      'RouteId': routeId.toString(),
+    };
+    if (tripStart != null) {
+      query['TripStart'] = tripStart.toUtc().toIso8601String();
+    }
+    if (tripEnd != null) {
+      query['TripEnd'] = tripEnd.toUtc().toIso8601String();
+    }
     final uri = Uri.parse('$baseUrl/WeatherForecast').replace(
-      queryParameters: {
-        'Page': '0',
-        'PageSize': '10',
-        'RouteId': routeId.toString(),
-      },
+      queryParameters: query,
     );
     final response = await http.get(uri, headers: _headers);
     if (response.statusCode != 200) {
@@ -1193,11 +1206,19 @@ class ApiService {
     int? routeId,
     int? page,
     int? pageSize,
+    DateTime? tripStart,
+    DateTime? tripEnd,
   }) async {
     final query = <String, String>{};
     if (page != null) query['Page'] = page.toString();
     if (pageSize != null) query['PageSize'] = pageSize.toString();
     if (routeId != null) query['RouteId'] = routeId.toString();
+    if (tripStart != null) {
+      query['TripStart'] = tripStart.toUtc().toIso8601String();
+    }
+    if (tripEnd != null) {
+      query['TripEnd'] = tripEnd.toUtc().toIso8601String();
+    }
     final uri = Uri.parse('$baseUrl/WeatherForecast')
         .replace(queryParameters: query.isNotEmpty ? query : null);
     final response = await http.get(uri, headers: _headers);
