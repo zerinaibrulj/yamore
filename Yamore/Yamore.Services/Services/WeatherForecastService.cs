@@ -18,6 +18,23 @@ namespace Yamore.Services.Services
         {
         }
 
+        public override Model.WeatherForecast Update(int id, WeatherForecastUpdateRequest request)
+        {
+            var entity = Context.WeatherForecasts.Find(id);
+            if (entity == null)
+                throw new KeyNotFoundException($"WeatherForecast with id {id} not found.");
+
+            // Do not map/modify key fields through request payload.
+            entity.RouteId = request.RouteId;
+            entity.ForecastDate = request.ForecastDate;
+            entity.Temperature = request.Temperature;
+            entity.Condition = request.Condition;
+            entity.WindSpeed = request.WindSpeed;
+
+            Context.SaveChanges();
+            return Mapper.Map<Model.WeatherForecast>(entity);
+        }
+
         public override IQueryable<Database.WeatherForecast> AddFilter(WeatherForecastSearchObject search, IQueryable<Database.WeatherForecast> query)
         {
             var filteredQurey = base.AddFilter(search, query);

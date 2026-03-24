@@ -129,9 +129,14 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
       '${dt.year} ${dt.hour.toString().padLeft(2, '0')}:'
       '${dt.minute.toString().padLeft(2, '0')}h';
 
+  String _formatDateOnly(DateTime dt) =>
+      '${dt.day.toString().padLeft(2, '0')}.'
+      '${dt.month.toString().padLeft(2, '0')}.'
+      '${dt.year}';
+
   String _reservationContextLabel(Reservation r) {
-    final from = _formatDateTime(r.startDate);
-    final to = _formatDateTime(r.endDate);
+    final from = _formatDateOnly(r.startDate);
+    final to = _formatDateOnly(r.endDate);
     final past = _isReservationPast(r);
     return past ? '$from  –  $to (passed)' : '$from  –  $to';
   }
@@ -403,7 +408,7 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
           decoration: const InputDecoration(
             border: OutlineInputBorder(),
             contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            labelText: 'Use reservation date/time to prefill forecast',
+            labelText: 'Use reservation date to prefill forecast',
           ),
           items: contexts
               .map(
