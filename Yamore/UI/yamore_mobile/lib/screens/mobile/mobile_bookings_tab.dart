@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../models/city.dart';
 import '../../models/reservation.dart';
+import '../../models/route.dart';
 import '../../models/user.dart';
+import '../../models/weather_forecast.dart';
 import '../../models/yacht_detail.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
@@ -34,6 +37,8 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
 
   List<Reservation> _allReservations = [];
   final Map<int, YachtDetail> _yachtCache = {};
+  final Map<int, List<RouteModel>> _routesByYachtId = {};
+  final List<CityModel> _cities = [];
 
   @override
   void initState() {
@@ -54,6 +59,10 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
       );
       final list = result.resultList;
       final yachtIds = list.map((r) => r.yachtId).toSet().toList();
+      List<CityModel> cities = [];
+      try {
+        cities = await _api.getCities();
+      } catch (_) {}
       final details = await Future.wait(
         yachtIds.map((id) async {
           try {
@@ -69,6 +78,22 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
           _yachtCache[entry.key] = entry.value!;
         }
       }
+      final routes = await Future.wait(
+        yachtIds.map((id) async {
+          try {
+            final r = await _api.getRoutesForYacht(id);
+            return MapEntry(id, r);
+          } catch (_) {
+            return MapEntry<int, List<RouteModel>>(id, const []);
+          }
+        }),
+      );
+      for (final entry in routes) {
+        _routesByYachtId[entry.key] = entry.value;
+      }
+      _cities
+        ..clear()
+        ..addAll(cities);
       if (!mounted) return;
       setState(() {
         _allReservations = list;
@@ -248,6 +273,7 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
     final end = r.endDate;
     final isActive = _activeReservations.contains(r);
     final status = (r.status ?? 'Pending');
+    final isConfirmed = status.toLowerCase() == 'confirmed';
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -266,10 +292,30 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              yacht?.name ?? 'Unknown yacht',
-              style: const TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.w700),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    yacht?.name ?? 'Unknown yacht',
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                if (isConfirmed)
+                  OutlinedButton.icon(
+                    onPressed: () => _showWeatherForReservation(r),
+                    icon: const Icon(Icons.cloud_outlined, size: 18),
+                    label: const Text('Weather'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 8),
+                      side: BorderSide(color: Colors.blue.shade200),
+                      foregroundColor: Colors.blue.shade700,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 4),
             Text(
@@ -290,6 +336,7 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
               ),
             const SizedBox(height: 6),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -311,21 +358,228 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
                     ),
                   ),
                 ),
-                const Spacer(),
-                if (isActive)
-                  TextButton(
-                    onPressed: () => _confirmCancel(r),
-                    child: Text(
-                      'Cancel reservation',
-                      style: TextStyle(color: Colors.red.shade600),
-                    ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Wrap(
+                    alignment: WrapAlignment.end,
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      if (isActive)
+                        TextButton(
+                          onPressed: () => _confirmCancel(r),
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 8),
+                          ),
+                          child: Text(
+                            'Cancel reservation',
+                            style: TextStyle(color: Colors.red.shade600),
+                          ),
+                        ),
+                    ],
                   ),
+                ),
               ],
             ),
           ],
         ),
       ),
     );
+  }
+
+  String _routeLabel(RouteModel route) {
+    final startCity = _cities
+        .firstWhere((c) => c.cityId == route.startCityId, orElse: () => CityModel.empty());
+    final endCity = _cities
+        .firstWhere((c) => c.cityId == route.endCityId, orElse: () => CityModel.empty());
+    if (startCity.cityId != -1 && endCity.cityId != -1) {
+      return '${startCity.name} → ${endCity.name}';
+    }
+    if (route.description != null && route.description!.trim().isNotEmpty) {
+      return route.description!.trim();
+    }
+    return 'Selected route';
+  }
+
+  String _formatDateTime(DateTime dt) =>
+      '${dt.day.toString().padLeft(2, '0')}.'
+      '${dt.month.toString().padLeft(2, '0')}.'
+      '${dt.year} ${dt.hour.toString().padLeft(2, '0')}:'
+      '${dt.minute.toString().padLeft(2, '0')}h';
+
+  Future<void> _showWeatherForReservation(Reservation r) async {
+    List<RouteModel> routes = const <RouteModel>[];
+    try {
+      // Refresh routes live in case admin added/edited routes after this tab was loaded.
+      routes = await _api.getRoutesForYacht(r.yachtId);
+      _routesByYachtId[r.yachtId] = routes;
+    } catch (_) {
+      routes = _routesByYachtId[r.yachtId] ?? const <RouteModel>[];
+    }
+    if (routes.isEmpty) {
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Weather'),
+          content: const Text('Weather forecast is not available for this yacht yet.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('OK'),
+            )
+          ],
+        ),
+      );
+      return;
+    }
+
+    try {
+      final weatherByRoute = <MapEntry<RouteModel, List<WeatherForecastModel>>>[];
+      for (final route in routes) {
+        final forecasts = await _api.getWeatherForRoute(
+          route.routeId,
+          tripStart: r.startDate,
+          tripEnd: r.endDate,
+        );
+        if (forecasts.isNotEmpty) {
+          weatherByRoute.add(MapEntry(route, forecasts));
+        }
+      }
+
+      if (!mounted) return;
+      if (weatherByRoute.isEmpty) {
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Text('Weather'),
+            content: const Text(
+              'Weather forecast is not available yet for this reservation.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('OK'),
+              )
+            ],
+          ),
+        );
+        return;
+      }
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Weather forecast'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ...weatherByRoute.map(
+                    (entry) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Route: ${_routeLabel(entry.key)}',
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 8),
+                          ...entry.value.map(
+                            (f) => Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.grey.shade300),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(10),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      if (f.forecastDate != null)
+                                        Row(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            const Icon(Icons.calendar_today_outlined, size: 16),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: Text(
+                                                'Date & time: ${_formatDateTime(f.forecastDate!)}',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      if (f.windSpeed != null)
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.air, size: 16),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: Text('Wind: ${f.windSpeed} km/h'),
+                                            ),
+                                          ],
+                                        ),
+                                      if (f.temperature != null)
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.thermostat, size: 16),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: Text('Temperature: ${f.temperature}°C'),
+                                            ),
+                                          ],
+                                        ),
+                                      if (f.condition != null)
+                                        Row(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            const Icon(Icons.wb_sunny_outlined, size: 16),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: Text('Condition: ${f.condition}'),
+                                            ),
+                                          ],
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load weather: $e')),
+      );
+    }
   }
 
   Future<void> _confirmCancel(Reservation r) async {

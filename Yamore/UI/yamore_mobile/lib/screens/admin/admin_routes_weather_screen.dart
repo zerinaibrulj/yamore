@@ -60,16 +60,17 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
       final cities = results[1] as List<CityModel>;
       final yachts = (results[2] as PagedYachtOverview).resultList;
       final reservations = (results[3] as PagedReservations).resultList;
-      final upcomingConfirmed = reservations
+      final confirmedReservations = reservations
           .where((r) =>
-              (r.status ?? '').toLowerCase() == 'confirmed' &&
-              r.endDate.isAfter(DateTime.now()))
+              (r.status ?? '').toLowerCase() == 'confirmed')
           .toList()
         ..sort((a, b) => a.startDate.compareTo(b.startDate));
       final availableRoutes = _onlyUpcomingConfirmed
           ? routes
               .where((route) =>
-                  upcomingConfirmed.any((r) => r.yachtId == route.yachtId))
+                  confirmedReservations.any((r) =>
+                      r.yachtId == route.yachtId &&
+                      !_isReservationPast(r)))
               .toList()
           : routes;
       RouteModel? selected = _selectedRoute;
@@ -90,7 +91,7 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
         _routes = availableRoutes;
         _cities = cities;
         _yachts = yachts;
-        _reservations = upcomingConfirmed;
+        _reservations = confirmedReservations;
         _selectedRoute = selected;
         _selectedReservationContext = _reservationContextsForSelectedRoute
                 .contains(_selectedReservationContext)
@@ -120,6 +121,8 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
       ..sort((a, b) => a.startDate.compareTo(b.startDate));
   }
 
+  bool _isReservationPast(Reservation r) => r.endDate.isBefore(DateTime.now());
+
   String _formatDateTime(DateTime dt) =>
       '${dt.day.toString().padLeft(2, '0')}.'
       '${dt.month.toString().padLeft(2, '0')}.'
@@ -127,12 +130,10 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
       '${dt.minute.toString().padLeft(2, '0')}h';
 
   String _reservationContextLabel(Reservation r) {
-    // Prefer the real booking timestamp; fall back to trip start if not available.
-    final bookedAt = r.createdAt;
-    if (bookedAt != null) {
-      return 'Booked: ${_formatDateTime(bookedAt)}';
-    }
-    return 'Trip start: ${_formatDateTime(r.startDate)}';
+    final from = _formatDateTime(r.startDate);
+    final to = _formatDateTime(r.endDate);
+    final past = _isReservationPast(r);
+    return past ? '$from  –  $to (passed)' : '$from  –  $to';
   }
 
   @override
@@ -299,8 +300,12 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
                       fontSize: 16, fontWeight: FontWeight.w700),
                 ),
                 FilledButton.icon(
-                  onPressed:
-                      route == null ? null : () => _openNewForecastDialog(route),
+                  onPressed: route == null
+                      ? null
+                      : (_selectedReservationContext != null &&
+                              _isReservationPast(_selectedReservationContext!))
+                          ? null
+                          : () => _openNewForecastDialog(route),
                   icon: const Icon(Icons.add, size: 18),
                   label: const Text('Add forecast'),
                 ),
@@ -404,15 +409,43 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
               .map(
                 (r) => DropdownMenuItem<Reservation>(
                   value: r,
+                  enabled: !_isReservationPast(r),
                   child: Text(
                     _reservationContextLabel(r),
                     overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: _isReservationPast(r)
+                          ? Colors.grey.shade500
+                          : Colors.black87,
+                    ),
                   ),
                 ),
               )
               .toList(),
-          onChanged: (v) => setState(() => _selectedReservationContext = v),
+          onChanged: (v) {
+            if (v == null) return;
+            if (_isReservationPast(v)) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Weather forecast can only be added for active/upcoming reservation periods.',
+                  ),
+                ),
+              );
+              return;
+            }
+            setState(() => _selectedReservationContext = v);
+          },
         ),
+        if (_selectedReservationContext != null &&
+            _isReservationPast(_selectedReservationContext!))
+          const Padding(
+            padding: EdgeInsets.only(top: 6),
+            child: Text(
+              'Selected reservation period has passed. Adding forecast is disabled.',
+              style: TextStyle(fontSize: 12, color: Colors.redAccent),
+            ),
+          ),
       ],
     );
   }
