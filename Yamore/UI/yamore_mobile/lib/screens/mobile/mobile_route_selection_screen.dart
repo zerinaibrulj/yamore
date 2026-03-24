@@ -227,7 +227,7 @@ class _MobileRouteSelectionScreenState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Weather forecast details are available on the day of sailing.',
+              'Weather forecast details are published by the operator, typically on or near the departure day.',
               style: TextStyle(fontSize: 13),
             ),
             SizedBox(height: 10),
