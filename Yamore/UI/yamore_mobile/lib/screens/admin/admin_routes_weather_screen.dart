@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/city.dart';
+import '../../models/reservation.dart';
 import '../../models/route.dart';
 import '../../models/weather_forecast.dart';
 import '../../models/yacht_overview.dart';
@@ -31,8 +32,11 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
   List<RouteModel> _routes = [];
   List<CityModel> _cities = [];
   List<YachtOverview> _yachts = [];
+  List<Reservation> _reservations = [];
   RouteModel? _selectedRoute;
   List<WeatherForecastModel> _forecasts = [];
+  bool _onlyUpcomingConfirmed = true;
+  Reservation? _selectedReservationContext;
 
   @override
   void initState() {
@@ -50,13 +54,31 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
         _api.getRoutes(page: 0, pageSize: 200),
         _api.getCities(),
         _api.getYachtOverviewForAdmin(pageSize: 200),
+        _api.getReservations(page: 0, pageSize: 500, status: 'Confirmed'),
       ]);
       final routes = results[0] as List<RouteModel>;
       final cities = results[1] as List<CityModel>;
       final yachts = (results[2] as PagedYachtOverview).resultList;
+      final reservations = (results[3] as PagedReservations).resultList;
+      final upcomingConfirmed = reservations
+          .where((r) =>
+              (r.status ?? '').toLowerCase() == 'confirmed' &&
+              r.endDate.isAfter(DateTime.now()))
+          .toList()
+        ..sort((a, b) => a.startDate.compareTo(b.startDate));
+      final availableRoutes = _onlyUpcomingConfirmed
+          ? routes
+              .where((route) =>
+                  upcomingConfirmed.any((r) => r.yachtId == route.yachtId))
+              .toList()
+          : routes;
       RouteModel? selected = _selectedRoute;
-      if (selected == null && routes.isNotEmpty) {
-        selected = routes.first;
+      if (selected != null &&
+          !availableRoutes.any((r) => r.routeId == selected!.routeId)) {
+        selected = null;
+      }
+      if (selected == null && availableRoutes.isNotEmpty) {
+        selected = availableRoutes.first;
       }
       List<WeatherForecastModel> forecasts = [];
       if (selected != null) {
@@ -65,10 +87,17 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
       }
       if (!mounted) return;
       setState(() {
-        _routes = routes;
+        _routes = availableRoutes;
         _cities = cities;
         _yachts = yachts;
+        _reservations = upcomingConfirmed;
         _selectedRoute = selected;
+        _selectedReservationContext = _reservationContextsForSelectedRoute
+                .contains(_selectedReservationContext)
+            ? _selectedReservationContext
+            : (_reservationContextsForSelectedRoute.isNotEmpty
+                ? _reservationContextsForSelectedRoute.first
+                : null);
         _forecasts = forecasts;
         _loading = false;
       });
@@ -83,6 +112,28 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
 
   CityModel? _cityById(int id) =>
       _cities.firstWhere((c) => c.cityId == id, orElse: () => CityModel.empty());
+
+  List<Reservation> get _reservationContextsForSelectedRoute {
+    final route = _selectedRoute;
+    if (route == null) return const [];
+    return _reservations.where((r) => r.yachtId == route.yachtId).toList()
+      ..sort((a, b) => a.startDate.compareTo(b.startDate));
+  }
+
+  String _formatDateTime(DateTime dt) =>
+      '${dt.day.toString().padLeft(2, '0')}.'
+      '${dt.month.toString().padLeft(2, '0')}.'
+      '${dt.year} ${dt.hour.toString().padLeft(2, '0')}:'
+      '${dt.minute.toString().padLeft(2, '0')}h';
+
+  String _reservationContextLabel(Reservation r) {
+    // Prefer the real booking timestamp; fall back to trip start if not available.
+    final bookedAt = r.createdAt;
+    if (bookedAt != null) {
+      return 'Booked: ${_formatDateTime(bookedAt)}';
+    }
+    return 'Trip start: ${_formatDateTime(r.startDate)}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -145,11 +196,27 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              title: const Text(
+                'Show only routes with upcoming confirmed reservations',
+                style: TextStyle(fontSize: 12),
+              ),
+              value: _onlyUpcomingConfirmed,
+              onChanged: (v) {
+                setState(() => _onlyUpcomingConfirmed = v);
+                _loadAll();
+              },
+            ),
             const SizedBox(height: 12),
             if (_routes.isEmpty)
-              const Text(
-                'No routes defined yet.',
-                style: TextStyle(fontSize: 13),
+              Text(
+                _onlyUpcomingConfirmed
+                    ? 'No routes currently have upcoming confirmed reservations.'
+                    : 'No routes defined yet.',
+                style: const TextStyle(fontSize: 13),
               )
             else
               Expanded(
@@ -240,6 +307,10 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
               ],
             ),
             const SizedBox(height: 12),
+            if (route != null) ...[
+              _buildReservationContextCard(),
+              const SizedBox(height: 12),
+            ],
             if (route == null)
               const Text(
                 'Select a route on the left to manage forecasts.',
@@ -298,6 +369,51 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildReservationContextCard() {
+    final contexts = _reservationContextsForSelectedRoute;
+    if (contexts.isEmpty) {
+      return const Text(
+        'No upcoming confirmed reservations for this yacht. You can still add a forecast manually.',
+        style: TextStyle(fontSize: 12),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Upcoming confirmed reservations',
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<Reservation>(
+          value: _selectedReservationContext != null &&
+                  contexts.any((r) =>
+                      r.reservationId == _selectedReservationContext!.reservationId)
+              ? contexts.firstWhere((r) =>
+                  r.reservationId == _selectedReservationContext!.reservationId)
+              : contexts.first,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            labelText: 'Use reservation date/time to prefill forecast',
+          ),
+          items: contexts
+              .map(
+                (r) => DropdownMenuItem<Reservation>(
+                  value: r,
+                  child: Text(
+                    _reservationContextLabel(r),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              )
+              .toList(),
+          onChanged: (v) => setState(() => _selectedReservationContext = v),
+        ),
+      ],
     );
   }
 
@@ -497,7 +613,10 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
   }
 
   Future<void> _openNewForecastDialog(RouteModel route) async {
-    await _openForecastDialog(route: route);
+    await _openForecastDialog(
+      route: route,
+      prefilledDate: _selectedReservationContext?.startDate,
+    );
   }
 
   Future<void> _openEditForecastDialog(
@@ -508,9 +627,10 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
   Future<void> _openForecastDialog({
     required RouteModel route,
     WeatherForecastModel? existing,
+    DateTime? prefilledDate,
   }) async {
     final isEdit = existing != null;
-    DateTime? date = existing?.forecastDate ?? DateTime.now();
+    DateTime? date = existing?.forecastDate ?? prefilledDate ?? DateTime.now();
     TimeOfDay time =
         TimeOfDay.fromDateTime(date ?? DateTime.now());
     double? temp = existing?.temperature;
