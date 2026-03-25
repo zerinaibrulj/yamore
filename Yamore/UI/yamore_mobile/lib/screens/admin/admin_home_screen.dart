@@ -349,6 +349,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     }
     final top = data.take(8).toList();
     final maxCount = top.map((e) => e.reservationCount).fold<int>(0, (a, b) => a > b ? a : b);
+    // Keep axis tick values “round” so we don't show awkward decimals
+    // (e.g. 3.6) on the Y axis.
+    final maxY = (maxCount.toDouble() + 1).clamp(1.0, double.infinity);
 
     return Card(
       elevation: 2,
@@ -378,14 +381,18 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                         ],
                       ),
                   ],
-                  maxY: (maxCount.toDouble() * 1.2).clamp(1, double.infinity),
+                  maxY: maxY,
                   gridData: const FlGridData(show: false),
                   borderData: FlBorderData(show: false),
                   titlesData: FlTitlesData(
                     topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                     rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                     leftTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: true, reservedSize: 36),
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 36,
+                        interval: 1,
+                      ),
                     ),
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
@@ -446,13 +453,28 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                       Expanded(
                         child: Text(
                           y.yachtName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(fontWeight: FontWeight.w500),
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Text('Bookings: ${y.bookingCount}'),
+                      // Fixed-width columns so the “Bookings:” values align nicely.
+                      SizedBox(
+                        width: 110,
+                        child: Text(
+                          'Bookings: ${y.bookingCount}',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
                       const SizedBox(width: 12),
-                      Text('€${y.totalRevenue.toStringAsFixed(0)}'),
+                      SizedBox(
+                        width: 120,
+                        child: Text(
+                          '€${y.totalRevenue.toStringAsFixed(0)}',
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                      ),
                     ],
                   );
                 },
