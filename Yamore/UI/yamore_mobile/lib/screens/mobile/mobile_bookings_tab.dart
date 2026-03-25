@@ -409,6 +409,39 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
       '${dt.year} ${dt.hour.toString().padLeft(2, '0')}:'
       '${dt.minute.toString().padLeft(2, '0')}h';
 
+  DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  List<WeatherForecastModel> _forecastsForReservationDates(
+    Iterable<WeatherForecastModel> forecasts,
+    DateTime startDate,
+    DateTime endDate,
+  ) {
+    var from = _dateOnly(startDate);
+    var to = _dateOnly(endDate);
+    if (to.isBefore(from)) {
+      final temp = from;
+      from = to;
+      to = temp;
+    }
+
+    final filtered = forecasts.where((f) {
+      final d = f.forecastDate;
+      if (d == null) return false;
+      final day = _dateOnly(d);
+      return !day.isBefore(from) && !day.isAfter(to);
+    }).toList();
+
+    filtered.sort((a, b) {
+      final da = a.forecastDate;
+      final db = b.forecastDate;
+      if (da == null && db == null) return 0;
+      if (da == null) return 1;
+      if (db == null) return -1;
+      return da.compareTo(db);
+    });
+    return filtered;
+  }
+
   Future<void> _showWeatherForReservation(Reservation r) async {
     List<RouteModel> routes = const <RouteModel>[];
     try {
@@ -441,13 +474,16 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
     try {
       final weatherByRoute = <MapEntry<RouteModel, List<WeatherForecastModel>>>[];
       for (final route in routes) {
-        final forecasts = await _api.getWeatherForRoute(
-          route.routeId,
-          tripStart: r.startDate,
-          tripEnd: r.endDate,
+        // Load all forecasts for the route, then keep all entries that match
+        // reservation calendar dates (inclusive), regardless of forecast time.
+        final allRouteForecasts = await _api.getWeatherForRoute(route.routeId);
+        final matchingDates = _forecastsForReservationDates(
+          allRouteForecasts,
+          r.startDate,
+          r.endDate,
         );
-        if (forecasts.isNotEmpty) {
-          weatherByRoute.add(MapEntry(route, forecasts));
+        if (matchingDates.isNotEmpty) {
+          weatherByRoute.add(MapEntry(route, matchingDates));
         }
       }
 
