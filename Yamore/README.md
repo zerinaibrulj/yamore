@@ -76,17 +76,19 @@ Use these accounts during evaluation:
 
 - Desktop/Admin:
   - Username: `zerina`
-  - Password: `zerina123`
+  - Password: `Zerina123!`
 - Mobile/Users:
   - Username: `zara`
-  - Password: `zara123`
+  - Password: `Zara123!`
   - Username: `arman`
-  - Password: `arman123`
+  - Password: `Arman123!`
   - Username: `faris`
   - Password: `Faris123!`
 - Additional roles (Yacht Owner):
   - Username: `antonio`
   - Password: `Antonio123!`
+  - Username: `julian`
+  - Password: `Julian123!`
 
 If your seeded users differ, adjust this section before submission so evaluators can log in immediately.
 
