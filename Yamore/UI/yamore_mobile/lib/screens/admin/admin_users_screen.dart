@@ -609,7 +609,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     );
     if (sent == true && messageController.text.trim().isNotEmpty) {
       try {
-        await _api.sendNotification(
+        await _api.sendWarningToUserAndOwners(
           userId: user.userId,
           message: messageController.text.trim(),
         );

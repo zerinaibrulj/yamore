@@ -17,6 +17,7 @@ import '../models/service_model.dart';
 import '../models/reservation.dart';
 import '../models/route.dart';
 import '../models/weather_forecast.dart';
+import '../models/notification.dart';
 
 class ApiService {
   final String baseUrl;
@@ -683,6 +684,53 @@ class ApiService {
     if (response.statusCode != 200 && response.statusCode != 201) {
       throw ApiException(response.statusCode, response.body);
     }
+  }
+
+  Future<void> sendWarningToUserAndOwners({
+    required int userId,
+    required String message,
+  }) async {
+    final uri = Uri.parse('$baseUrl/Notification/warning-to-user-and-owners');
+    final response = await http.post(
+      uri,
+      headers: _headers,
+      body: jsonEncode({
+        'UserId': userId,
+        'Message': message,
+      }),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  Future<PagedNotifications> getNotifications({
+    required int userId,
+    int page = 0,
+    int pageSize = 20,
+    bool? isRead,
+  }) async {
+    final query = <String, String>{
+      'Page': page.toString(),
+      'PageSize': pageSize.toString(),
+      'UserId': userId.toString(),
+    };
+    if (isRead != null) {
+      query['IsRead'] = isRead.toString();
+    }
+
+    final uri = Uri.parse('$baseUrl/Notification').replace(
+      queryParameters: query,
+    );
+
+    final response = await http.get(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+
+    return PagedNotifications.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
   // ── Reviews ──

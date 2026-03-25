@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../models/user.dart';
+import '../../models/notification.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
 
@@ -41,6 +42,10 @@ class _MobileProfileTabState extends State<MobileProfileTab> {
   bool _showNewPassword = false;
   bool _showConfirmPassword = false;
 
+  bool _notificationsLoading = false;
+  List<NotificationModel> _notifications = const [];
+  String? _notificationsError;
+
   AppUser get _user => widget.user;
 
   @override
@@ -50,7 +55,50 @@ class _MobileProfileTabState extends State<MobileProfileTab> {
     _lastNameCtrl = TextEditingController(text: _user.lastName);
     _emailCtrl = TextEditingController(text: _user.email ?? '');
     _phoneCtrl = TextEditingController(text: _user.phone ?? '');
+
+    _loadNotifications();
   }
+
+  Future<void> _loadNotifications() async {
+    if (!mounted) return;
+    if (_notificationsLoading) return;
+    setState(() {
+      _notificationsLoading = true;
+      _notificationsError = null;
+    });
+    try {
+      final paged = await _api.getNotifications(
+        userId: _user.userId,
+        page: 0,
+        pageSize: 10,
+        isRead: false,
+      );
+      if (!mounted) return;
+      setState(() {
+        _notifications = paged.resultList;
+        _notificationsLoading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _notificationsLoading = false;
+        _notificationsError = e.body;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _notificationsLoading = false;
+        _notificationsError = '$e';
+      });
+    }
+  }
+
+  String _formatDateTime(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}.'
+      '${d.month.toString().padLeft(2, '0')}.'
+      '${d.year} '
+      '${d.hour.toString().padLeft(2, '0')}:'
+      '${d.minute.toString().padLeft(2, '0')}';
 
   @override
   void dispose() {
@@ -192,11 +240,14 @@ class _MobileProfileTabState extends State<MobileProfileTab> {
   @override
   Widget build(BuildContext context) {
     final user = _user;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return RefreshIndicator(
+      onRefresh: _loadNotifications,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           const SizedBox(height: 16),
           Center(
             child: CircleAvatar(
@@ -429,6 +480,63 @@ class _MobileProfileTabState extends State<MobileProfileTab> {
           const SizedBox(height: 24),
 
           const Text(
+            'Notifications',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            elevation: 1,
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: _notificationsLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _notificationsError != null
+                      ? Text(
+                          'Failed to load notifications: $_notificationsError',
+                          style: TextStyle(color: Colors.red.shade700, fontSize: 12),
+                        )
+                      : _notifications.isEmpty
+                          ? const Text('No new notifications.')
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${_notifications.length} new notification${_notifications.length == 1 ? '' : 's'}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.grey.shade800,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                ..._notifications.map(
+                                  (n) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 10),
+                                    child: ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      leading: const Icon(Icons.notifications_active_outlined,
+                                          color: AppTheme.primaryBlue),
+                                      title: Text(
+                                        n.message,
+                                        maxLines: 3,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(fontWeight: FontWeight.w600),
+                                      ),
+                                      subtitle: n.createdAt != null
+                                          ? Text(_formatDateTime(n.createdAt!))
+                                          : null,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          const Text(
             'Account',
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
@@ -460,7 +568,8 @@ class _MobileProfileTabState extends State<MobileProfileTab> {
               ),
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
