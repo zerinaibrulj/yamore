@@ -322,6 +322,7 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
 
   Future<void> _saveReview(int rating, String? comment) async {
     if (!_canReview || rating <= 0) return;
+    final isNewReview = _myReview == null;
     final reservationId =
         _myReview?.reservationId ?? _myReservationsForYacht.first.reservationId;
     setState(() => _savingReview = true);
@@ -354,8 +355,22 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
         _savingReview = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Review saved.')),
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Review saved'),
+            content: Text(
+              isNewReview
+                  ? 'Your review has been submitted successfully.'
+                  : 'Your review changes have been saved successfully.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
         );
       }
     } catch (e) {
