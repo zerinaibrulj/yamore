@@ -29,6 +29,9 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
   String? _error;
   String _filterStatus = 'All';
 
+  static const int _pageSize = 10;
+  int _page = 0;
+
   final Map<int, YachtDetail> _yachtCache = {};
   final Map<int, AppUser> _guestCache = {};
 
@@ -40,51 +43,90 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
     _loadReservations();
   }
 
+  Future<void> _applyStatusFilter() async {
+    final list = _filterStatus == 'All'
+        ? _allReservations
+        : _allReservations
+            .where((r) =>
+                (r.status ?? '').toLowerCase() == _filterStatus.toLowerCase())
+            .toList();
+
+    // Preload yacht and guest details for nicer display.
+    final yachtIds = list.map((r) => r.yachtId).toSet();
+    final userIds = list.map((r) => r.userId).toSet();
+
+    await Future.wait([
+      ...yachtIds
+          .where((id) => !_yachtCache.containsKey(id))
+          .map((id) async {
+        try {
+          final d = await _api.getYachtById(id);
+          _yachtCache[id] = d;
+        } catch (_) {}
+      }),
+      ...userIds
+          .where((id) => !_guestCache.containsKey(id))
+          .map((id) async {
+        try {
+          final u = await _api.getUserById(id);
+          _guestCache[id] = u;
+        } catch (_) {}
+      }),
+    ]);
+
+    if (!mounted) return;
+    setState(() {
+      _reservations = list;
+      _page = 0;
+      _loading = false;
+    });
+  }
+
   Future<void> _loadReservations() async {
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final result = await _api.getReservations(pageSize: 200);
-      final all = result.resultList;
-      final list = _filterStatus == 'All'
-          ? all
-          : all
-              .where((r) =>
-                  (r.status ?? '').toLowerCase() == _filterStatus.toLowerCase())
-              .toList();
+      // Owner-specific: only reservations whose `yachtId` belongs to this owner.
+      final myYachtsPaged = await _api.getMyYachts(page: 0, pageSize: 200);
+      final myYachtIds = myYachtsPaged.resultList.map((y) => y.yachtId).toSet();
 
-      // Preload yacht and guest details for nicer display.
-      final yachtIds = list.map((r) => r.yachtId).toSet();
-      final userIds = list.map((r) => r.userId).toSet();
-
-      await Future.wait([
-        ...yachtIds
-            .where((id) => !_yachtCache.containsKey(id))
-            .map((id) async {
-          try {
-            final d = await _api.getYachtById(id);
-            _yachtCache[id] = d;
-          } catch (_) {}
-        }),
-        ...userIds
-            .where((id) => !_guestCache.containsKey(id))
-            .map((id) async {
-          try {
-            final u = await _api.getUserById(id);
-            _guestCache[id] = u;
-          } catch (_) {}
-        }),
-      ]);
-
-      if (mounted) {
+      if (myYachtIds.isEmpty) {
+        if (!mounted) return;
         setState(() {
-          _reservations = list;
-          _allReservations = all;
+          _allReservations = [];
+          _reservations = [];
+          _page = 0;
           _loading = false;
         });
+        return;
       }
+
+      final ownerReservations = <Reservation>[];
+      const batchSize = 200;
+      var page = 0;
+      while (true) {
+        final result = await _api.getReservations(page: page, pageSize: batchSize);
+        final batch = result.resultList
+            .where((r) => myYachtIds.contains(r.yachtId))
+            .toList();
+        ownerReservations.addAll(batch);
+
+        if (result.resultList.isEmpty) break;
+        if (result.count != null && (page + 1) * batchSize >= result.count!) break;
+        page++;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _allReservations = ownerReservations;
+        _reservations = [];
+        _loading = true;
+        _page = 0;
+      });
+
+      await _applyStatusFilter();
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -291,9 +333,14 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
                   child: FilterChip(
                     label: Text(s),
                     selected: selected,
-                    onSelected: (_) {
-                      setState(() => _filterStatus = s);
-                      _loadReservations();
+                    onSelected: (_) async {
+                      if (_loading) return;
+                      setState(() {
+                        _filterStatus = s;
+                        _loading = true;
+                        _error = null;
+                      });
+                      await _applyStatusFilter();
                     },
                     selectedColor: AppTheme.primaryBlue.withOpacity(0.15),
                     labelStyle: TextStyle(
@@ -341,11 +388,20 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      itemCount: _reservations.length,
-      itemBuilder: (context, index) {
-        final r = _reservations[index];
+    final total = _reservations.length;
+    final totalPages = (total / _pageSize).ceil();
+    final start = _page * _pageSize;
+    final end = (start + _pageSize).clamp(0, total);
+    final pageItems = _reservations.sublist(start, end);
+
+    return Column(
+      children: [
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            itemCount: pageItems.length,
+            itemBuilder: (context, index) {
+              final r = pageItems[index];
         final yacht = _yachtCache[r.yachtId];
         final guest = _guestCache[r.userId];
         final color = _statusColor(r.status);
@@ -413,7 +469,35 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
             ),
           ),
         );
-      },
+            },
+          ),
+        ),
+        if (totalPages > 1)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  onPressed: _page > 0
+                      ? () => setState(() => _page = _page - 1)
+                      : null,
+                  icon: const Icon(Icons.chevron_left),
+                ),
+                Text(
+                  'Page ${_page + 1} of $totalPages',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                IconButton(
+                  onPressed: _page < totalPages - 1
+                      ? () => setState(() => _page = _page + 1)
+                      : null,
+                  icon: const Icon(Icons.chevron_right),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 
