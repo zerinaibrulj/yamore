@@ -87,8 +87,10 @@ public class MessageHandler
 
         await SendEmailAsync(
             msg.UserEmail!,
-            "Payment confirmed",
-            $"Payment of €{msg.Amount:N2} for reservation #{msg.ReservationId} has been confirmed.");
+            msg.IsConfirmed ? "Payment confirmed" : "Payment received",
+            msg.IsConfirmed
+                ? $"Payment of EUR {msg.Amount:N2} for reservation #{msg.ReservationId} has been confirmed."
+                : $"Payment for reservation #{msg.ReservationId} was recorded with status '{msg.PaymentStatus ?? "pending"}'.");
     }
 
     private Task HandleReviewSubmittedAsync(string payloadJson)
@@ -123,23 +125,16 @@ public class MessageHandler
         var from = _configuration["Smtp:FromAddress"] ?? "noreply@yamore.example";
         var fromName = _configuration["Smtp:FromDisplayName"] ?? "Yamore";
 
-        try
-        {
-            using var client = new SmtpClient(host, port);
-            client.EnableSsl = useSsl;
-            if (!string.IsNullOrWhiteSpace(userName) && !string.IsNullOrWhiteSpace(password))
-                client.Credentials = new NetworkCredential(userName, password);
+        using var client = new SmtpClient(host, port);
+        client.EnableSsl = useSsl;
+        if (!string.IsNullOrWhiteSpace(userName) && !string.IsNullOrWhiteSpace(password))
+            client.Credentials = new NetworkCredential(userName, password);
 
-            var mail = new MailMessage(from, to, subject, body) { IsBodyHtml = false };
-            mail.From = new MailAddress(from, fromName);
+        var mail = new MailMessage(from, to, subject, body) { IsBodyHtml = false };
+        mail.From = new MailAddress(from, fromName);
 
-            await client.SendMailAsync(mail);
-            _logger.LogInformation("Email sent to {To}, subject: {Subject}", to, subject);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to send email to {To}", to);
-        }
+        await client.SendMailAsync(mail);
+        _logger.LogInformation("Email sent to {To}, subject: {Subject}", to, subject);
     }
 
     private static bool _isValidEmail(string? email)

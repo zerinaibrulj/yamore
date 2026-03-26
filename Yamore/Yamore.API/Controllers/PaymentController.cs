@@ -100,6 +100,7 @@ namespace Yamore.API.Controllers
 
             string paymentMethod;
             string status;
+            var isConfirmed = false;
 
             if (!string.IsNullOrWhiteSpace(request.PaymentIntentId))
             {
@@ -118,6 +119,7 @@ namespace Yamore.API.Controllers
                 // marking the Reservation as confirmed.
                 status = "pending";
                 reservation.Status = "Confirmed";
+                isConfirmed = true;
             }
             else
             {
@@ -149,6 +151,8 @@ namespace Yamore.API.Controllers
                 ReservationId = payment.ReservationId,
                 Amount = payment.Amount,
                 PaymentMethod = paymentMethod,
+                PaymentStatus = status,
+                IsConfirmed = isConfirmed,
                 UserEmail = user?.Email,
             };
             _messagePublisher.Publish(MessageEnvelope.PaymentCompleted, JsonSerializer.Serialize(payMsg));

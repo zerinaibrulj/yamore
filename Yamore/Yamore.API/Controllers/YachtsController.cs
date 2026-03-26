@@ -36,6 +36,7 @@ namespace Yamore.API.Controllers
         }
 
         [HttpPut("{id}/edit")]
+        [Authorize(Roles = "Admin,YachtOwner")]
         public Yacht Edit(int id)
         {
             return _yachtsService.Edit(id);
@@ -51,7 +52,9 @@ namespace Yamore.API.Controllers
         public PagedResponse<YachtOverviewDto> GetRecommendations([FromQuery] int? userId, [FromQuery] int page = 0, [FromQuery] int pageSize = 10)
         {
             var currentUserId = User?.FindFirstValue(ClaimTypes.NameIdentifier);
-            var id = userId ?? (int.TryParse(currentUserId, out var uid) ? (int?)uid : null);
+            var currentId = int.TryParse(currentUserId, out var uid) ? (int?)uid : null;
+            var isAdmin = User?.IsInRole("Admin") == true;
+            var id = isAdmin ? (userId ?? currentId) : currentId;
             return _yachtsService.GetRecommendations(id, page, pageSize);
         }
 

@@ -14,6 +14,9 @@ public class RabbitMQConsumer : IDisposable
     private IConnection? _connection;
     private IModel? _channel;
     private string? _consumerTag;
+    private readonly object _sync = new();
+
+    public bool IsRunning => _connection?.IsOpen == true && _channel?.IsOpen == true && !string.IsNullOrWhiteSpace(_consumerTag);
 
     public RabbitMQConsumer(
         ILogger<RabbitMQConsumer> logger,
@@ -27,6 +30,12 @@ public class RabbitMQConsumer : IDisposable
 
     public void Start()
     {
+        lock (_sync)
+        {
+            if (IsRunning)
+                return;
+        }
+
         var hostName = _configuration["RabbitMQ:HostName"];
         if (string.IsNullOrWhiteSpace(hostName))
         {
@@ -101,7 +110,7 @@ public class RabbitMQConsumer : IDisposable
 
     public void Dispose()
     {
-        _channel?.Close();
-        _connection?.Close();
+        try { _channel?.Close(); } catch { }
+        try { _connection?.Close(); } catch { }
     }
 }

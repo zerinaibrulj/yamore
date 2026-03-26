@@ -17,6 +17,14 @@ public class WorkerService : BackgroundService
         _consumer.Start();
 
         while (!stoppingToken.IsCancellationRequested)
-            await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+        {
+            if (!_consumer.IsRunning)
+            {
+                _logger.LogWarning("RabbitMQ consumer is not running. Retrying connection...");
+                _consumer.Start();
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+        }
     }
 }
