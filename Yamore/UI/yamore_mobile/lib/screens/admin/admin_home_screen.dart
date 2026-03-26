@@ -514,10 +514,16 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     await Printing.layoutPdf(
       onLayout: (format) async {
         final doc = pw.Document();
+        final baseFont = await PdfGoogleFonts.notoSansRegular();
+        final boldFont = await PdfGoogleFonts.notoSansBold();
 
         doc.addPage(
           pw.MultiPage(
             margin: const pw.EdgeInsets.all(24),
+            theme: pw.ThemeData.withFont(
+              base: baseFont,
+              bold: boldFont,
+            ),
             build: (context) => [
               pw.Header(
                 level: 0,
