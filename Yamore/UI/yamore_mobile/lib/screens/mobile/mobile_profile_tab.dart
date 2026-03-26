@@ -100,6 +100,15 @@ class _MobileProfileTabState extends State<MobileProfileTab> {
       '${d.hour.toString().padLeft(2, '0')}:'
       '${d.minute.toString().padLeft(2, '0')}';
 
+  bool _isStrongPassword(String value) {
+    if (value.length < 8 || value.length > 128) return false;
+    final hasLower = RegExp(r'[a-z]').hasMatch(value);
+    final hasUpper = RegExp(r'[A-Z]').hasMatch(value);
+    final hasDigit = RegExp(r'[0-9]').hasMatch(value);
+    final hasSpecial = RegExp(r'[^a-zA-Z0-9]').hasMatch(value);
+    return hasLower && hasUpper && hasDigit && hasSpecial;
+  }
+
   @override
   void dispose() {
     _firstNameCtrl.dispose();
@@ -171,8 +180,11 @@ class _MobileProfileTabState extends State<MobileProfileTab> {
       _showError('Validation error', 'Please enter a new password.');
       return;
     }
-    if (newPw.length < 6) {
-      _showError('Validation error', 'New password must be at least 6 characters.');
+    if (!_isStrongPassword(newPw)) {
+      _showError(
+        'Validation error',
+        'New password must be at least 8 characters long and include uppercase, lowercase, digit, and special character.',
+      );
       return;
     }
     if (newPw != confirmPw) {

@@ -964,10 +964,62 @@ class _UserDialogState extends State<_UserDialog> {
                     );
                     return;
                   }
+                  if (firstName.length < 2 || firstName.length > 50) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('First name must be between 2 and 50 characters.'),
+                      ),
+                    );
+                    return;
+                  }
+                  if (lastName.length < 2 || lastName.length > 50) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Last name must be between 2 and 50 characters.'),
+                      ),
+                    );
+                    return;
+                  }
+                  if (!_isUsernameValid) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          "Username must be 3-32 characters and contain only letters, numbers, '.', '_' or '-'.",
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+                  if (_emailController.text.trim().isNotEmpty && !_isEmailValid) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please enter a valid email address.'),
+                      ),
+                    );
+                    return;
+                  }
+                  if (_phoneController.text.trim().isNotEmpty && !_isPhoneValid) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please enter a valid phone number.'),
+                      ),
+                    );
+                    return;
+                  }
                   if (!isEdit && password.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                           content: Text('Password is required when creating a user.')),
+                    );
+                    return;
+                  }
+                  if (password.isNotEmpty && !_isPasswordValid) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Password must be at least 8 characters long and include uppercase, lowercase, digit, and special character.',
+                        ),
+                      ),
                     );
                     return;
                   }

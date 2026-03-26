@@ -31,6 +31,10 @@ class _RegisterScreenState extends State<RegisterScreen>
   late AnimationController _animController;
   late Animation<double> _fadeAnimation;
 
+  static final RegExp _usernameRegex = RegExp(r'^[a-zA-Z0-9._-]{3,32}$');
+  static final RegExp _phoneRegex = RegExp(r'^\+?[0-9\s\-()]{7,20}$');
+  static final RegExp _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
   @override
   void initState() {
     super.initState();
@@ -98,6 +102,15 @@ class _RegisterScreenState extends State<RegisterScreen>
         });
       }
     }
+  }
+
+  bool _isStrongPassword(String value) {
+    if (value.length < 8 || value.length > 128) return false;
+    final hasLower = RegExp(r'[a-z]').hasMatch(value);
+    final hasUpper = RegExp(r'[A-Z]').hasMatch(value);
+    final hasDigit = RegExp(r'[0-9]').hasMatch(value);
+    final hasSpecial = RegExp(r'[^a-zA-Z0-9]').hasMatch(value);
+    return hasLower && hasUpper && hasDigit && hasSpecial;
   }
 
   @override
@@ -209,10 +222,17 @@ class _RegisterScreenState extends State<RegisterScreen>
                                       filled: true,
                                     ),
                                     textInputAction: TextInputAction.next,
-                                    validator: (v) =>
-                                        (v == null || v.trim().isEmpty)
-                                            ? 'Required'
-                                            : null,
+                                    validator: (v) {
+                                      final value = (v ?? '').trim();
+                                      if (value.isEmpty) return 'First name is required.';
+                                      if (value.length < 2) {
+                                        return 'First name must be at least 2 characters long.';
+                                      }
+                                      if (value.length > 50) {
+                                        return 'First name must be at most 50 characters long.';
+                                      }
+                                      return null;
+                                    },
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -227,10 +247,17 @@ class _RegisterScreenState extends State<RegisterScreen>
                                       filled: true,
                                     ),
                                     textInputAction: TextInputAction.next,
-                                    validator: (v) =>
-                                        (v == null || v.trim().isEmpty)
-                                            ? 'Required'
-                                            : null,
+                                    validator: (v) {
+                                      final value = (v ?? '').trim();
+                                      if (value.isEmpty) return 'Last name is required.';
+                                      if (value.length < 2) {
+                                        return 'Last name must be at least 2 characters long.';
+                                      }
+                                      if (value.length > 50) {
+                                        return 'Last name must be at most 50 characters long.';
+                                      }
+                                      return null;
+                                    },
                                   ),
                                 ),
                               ],
@@ -249,11 +276,15 @@ class _RegisterScreenState extends State<RegisterScreen>
                               keyboardType: TextInputType.emailAddress,
                               textInputAction: TextInputAction.next,
                               validator: (v) {
-                                if (v == null || v.trim().isEmpty) {
-                                  return 'Required';
+                                final value = (v ?? '').trim();
+                                if (value.isEmpty) {
+                                  return null; // Optional; backend validates when provided.
                                 }
-                                if (!v.contains('@') || !v.contains('.')) {
-                                  return 'Enter a valid email';
+                                if (value.length > 100) {
+                                  return 'Email must be at most 100 characters long.';
+                                }
+                                if (!_emailRegex.hasMatch(value)) {
+                                  return 'Please enter a valid email address (example: name@example.com).';
                                 }
                                 return null;
                               },
@@ -271,6 +302,14 @@ class _RegisterScreenState extends State<RegisterScreen>
                               ),
                               keyboardType: TextInputType.phone,
                               textInputAction: TextInputAction.next,
+                              validator: (v) {
+                                final value = (v ?? '').trim();
+                                if (value.isEmpty) return null; // Optional
+                                if (!_phoneRegex.hasMatch(value)) {
+                                  return 'Please enter a valid phone number (7-20 digits; allowed: +, spaces, -, parentheses).';
+                                }
+                                return null;
+                              },
                             ),
                             const SizedBox(height: 14),
                             TextFormField(
@@ -290,11 +329,12 @@ class _RegisterScreenState extends State<RegisterScreen>
                                     RegExp(r'\s')),
                               ],
                               validator: (v) {
-                                if (v == null || v.trim().isEmpty) {
-                                  return 'Required';
+                                final value = (v ?? '').trim();
+                                if (value.isEmpty) {
+                                  return 'Username is required.';
                                 }
-                                if (v.trim().length < 3) {
-                                  return 'At least 3 characters';
+                                if (!_usernameRegex.hasMatch(value)) {
+                                  return "Username must be 3-32 characters and contain only letters, numbers, '.', '_' or '-'.";
                                 }
                                 return null;
                               },
@@ -320,9 +360,11 @@ class _RegisterScreenState extends State<RegisterScreen>
                               ),
                               textInputAction: TextInputAction.next,
                               validator: (v) {
-                                if (v == null || v.isEmpty) return 'Required';
-                                if (v.length < 4) {
-                                  return 'At least 4 characters';
+                                if (v == null || v.isEmpty) {
+                                  return 'Password is required.';
+                                }
+                                if (!_isStrongPassword(v)) {
+                                  return 'Password must be at least 8 characters long and include uppercase, lowercase, digit, and special character.';
                                 }
                                 return null;
                               },
@@ -349,9 +391,11 @@ class _RegisterScreenState extends State<RegisterScreen>
                               ),
                               textInputAction: TextInputAction.done,
                               validator: (v) {
-                                if (v == null || v.isEmpty) return 'Required';
+                                if (v == null || v.isEmpty) {
+                                  return 'Confirm password is required.';
+                                }
                                 if (v != _passwordCtrl.text) {
-                                  return 'Passwords do not match';
+                                  return 'Password and confirmation password must match.';
                                 }
                                 return null;
                               },
