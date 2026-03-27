@@ -475,26 +475,48 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
         if (totalPages > 1)
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  onPressed: _page > 0
-                      ? () => setState(() => _page = _page - 1)
-                      : null,
-                  icon: const Icon(Icons.chevron_left),
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey.shade300),
                 ),
-                Text(
-                  'Page ${_page + 1} of $totalPages',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      onPressed: _page > 0
+                          ? () => setState(() => _page = _page - 1)
+                          : null,
+                      icon: const Icon(Icons.chevron_left, size: 16),
+                      constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                      padding: EdgeInsets.zero,
+                    ),
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        'Page ${_page + 1} of $totalPages',
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _page < totalPages - 1
+                          ? () => setState(() => _page = _page + 1)
+                          : null,
+                      icon: const Icon(Icons.chevron_right, size: 16),
+                      constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ],
                 ),
-                IconButton(
-                  onPressed: _page < totalPages - 1
-                      ? () => setState(() => _page = _page + 1)
-                      : null,
-                  icon: const Icon(Icons.chevron_right),
-                ),
-              ],
+              ),
             ),
           ),
       ],

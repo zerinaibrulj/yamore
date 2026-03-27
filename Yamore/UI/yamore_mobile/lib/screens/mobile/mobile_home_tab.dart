@@ -552,30 +552,53 @@ extension on _MobileHomeTabState {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-      child: Row(
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        runSpacing: 8,
         children: [
           Text(
             'Showing $from-$to of $total',
             style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
           ),
-          const Spacer(),
-          IconButton(
-            onPressed: current > 0
-                ? _goToPreviousPage
-                : null,
-            icon: const Icon(Icons.chevron_left),
-            tooltip: 'Previous page',
-          ),
-          Text(
-            '${current + 1}/$totalPages',
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-          IconButton(
-            onPressed: current < totalPages - 1
-                ? _goToNextPage
-                : null,
-            icon: const Icon(Icons.chevron_right),
-            tooltip: 'Next page',
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  onPressed: current > 0 ? _goToPreviousPage : null,
+                  icon: const Icon(Icons.chevron_left, size: 16),
+                  constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                  padding: EdgeInsets.zero,
+                  tooltip: 'Previous page',
+                ),
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '${current + 1}/$totalPages',
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
+                  ),
+                ),
+                IconButton(
+                  onPressed: current < totalPages - 1 ? _goToNextPage : null,
+                  icon: const Icon(Icons.chevron_right, size: 16),
+                  constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                  padding: EdgeInsets.zero,
+                  tooltip: 'Next page',
+                ),
+              ],
+            ),
           ),
         ],
       ),
