@@ -402,17 +402,32 @@ extension on _MobileHomeTabState {
                 },
               ),
               const Spacer(),
-              DropdownButton<int>(
-                value: _itemsPerPage,
-                underline: const SizedBox.shrink(),
-                items: const [
-                  DropdownMenuItem(value: 5, child: Text('5 / page')),
-                  DropdownMenuItem(value: 10, child: Text('10 / page')),
-                ],
-                onChanged: (v) {
-                  if (v == null) return;
-                  _updateItemsPerPage(v);
-                },
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    value: _itemsPerPage,
+                    icon: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 18,
+                      color: Colors.grey.shade700,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                    items: const [
+                      DropdownMenuItem(value: 5, child: Text('5 / page')),
+                      DropdownMenuItem(value: 10, child: Text('10 / page')),
+                    ],
+                    onChanged: (v) {
+                      if (v == null) return;
+                      _updateItemsPerPage(v);
+                    },
+                  ),
+                ),
               ),
             ],
           ),

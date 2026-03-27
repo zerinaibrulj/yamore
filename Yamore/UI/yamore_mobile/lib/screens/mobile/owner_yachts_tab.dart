@@ -436,6 +436,7 @@ class _OwnerYachtsTabState extends State<OwnerYachtsTab> {
                   const SizedBox(height: 12),
                 ],
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _statChip(Icons.people_outline, '${yacht.capacity}',
                         'Guests'),
@@ -516,12 +517,17 @@ class _OwnerYachtsTabState extends State<OwnerYachtsTab> {
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 15, color: AppTheme.primaryBlue),
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(icon, size: 15, color: AppTheme.primaryBlue),
+          ),
           const SizedBox(width: 5),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.start,
             children: [
               Text(value,
                   style: const TextStyle(
