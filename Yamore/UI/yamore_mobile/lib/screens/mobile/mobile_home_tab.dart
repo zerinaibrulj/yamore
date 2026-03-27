@@ -49,6 +49,8 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
   Set<int> _favoriteIds = {};
   String _selectedType = 'All'; // All, Sailing, Motor, Catamaran
   bool _sortAscending = true;
+  int _itemsPerPage = 10;
+  int _currentPage = 0;
 
   @override
   void initState() {
@@ -120,6 +122,7 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
 
   @override
   Widget build(BuildContext context) {
+    final pagedYachts = _pagedYachts;
     return RefreshIndicator(
       onRefresh: _loadInitial,
       child: CustomScrollView(
@@ -156,7 +159,7 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
-                    final yacht = _filteredYachts[index];
+                    final yacht = pagedYachts[index];
                     final isFav = _favoriteIds.contains(yacht.yachtId);
                     return _YachtCard(
                       yacht: yacht,
@@ -167,13 +170,65 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
                       onTap: () => _openYachtDetails(yacht),
                     );
                   },
-                  childCount: _filteredYachts.length,
+                  childCount: pagedYachts.length,
                 ),
               ),
+            ),
+          if (!_loading && _error == null && _filteredYachts.isNotEmpty)
+            SliverToBoxAdapter(
+              child: _buildPaginationControls(),
             ),
         ],
       ),
     );
+  }
+
+  void _toggleSortOrder() {
+    setState(() => _sortAscending = !_sortAscending);
+  }
+
+  void _updateItemsPerPage(int value) {
+    setState(() {
+      _itemsPerPage = value;
+      _currentPage = 0;
+    });
+  }
+
+  void _setFilteredYachts(List<YachtOverview> list) {
+    setState(() {
+      _filteredYachts = list;
+      _currentPage = 0;
+    });
+  }
+
+  void _goToPreviousPage() {
+    setState(() => _currentPage = _currentPage - 1);
+  }
+
+  void _goToNextPage() {
+    setState(() => _currentPage = _currentPage + 1);
+  }
+
+  void _setDateRange(DateTimeRange picked) {
+    setState(() => _dateRange = picked);
+  }
+
+  void _setGuests(int selected) {
+    setState(() => _guests = selected);
+  }
+
+  void _setSelectedType(String selected) {
+    setState(() => _selectedType = selected);
+  }
+
+  void _setFavorite(int yachtId, bool makeFavorite) {
+    setState(() {
+      if (makeFavorite) {
+        _favoriteIds.add(yachtId);
+      } else {
+        _favoriteIds.remove(yachtId);
+      }
+    });
   }
 }
 
@@ -342,8 +397,21 @@ extension on _MobileHomeTabState {
                 icon: Icons.swap_vert,
                 label: _sortAscending ? 'Price ↑' : 'Price ↓',
                 onTap: () {
-                  setState(() => _sortAscending = !_sortAscending);
+                  _toggleSortOrder();
                   _applyFilters();
+                },
+              ),
+              const Spacer(),
+              DropdownButton<int>(
+                value: _itemsPerPage,
+                underline: const SizedBox.shrink(),
+                items: const [
+                  DropdownMenuItem(value: 5, child: Text('5 / page')),
+                  DropdownMenuItem(value: 10, child: Text('10 / page')),
+                ],
+                onChanged: (v) {
+                  if (v == null) return;
+                  _updateItemsPerPage(v);
                 },
               ),
             ],
@@ -444,9 +512,59 @@ extension on _MobileHomeTabState {
     list.sort((a, b) =>
         _sortAscending ? a.pricePerDay.compareTo(b.pricePerDay) : b.pricePerDay.compareTo(a.pricePerDay));
 
-    setState(() {
-      _filteredYachts = list;
-    });
+    _setFilteredYachts(list);
+  }
+
+  int get _totalPages {
+    if (_filteredYachts.isEmpty) return 1;
+    return (_filteredYachts.length / _itemsPerPage).ceil();
+  }
+
+  List<YachtOverview> get _pagedYachts {
+    if (_filteredYachts.isEmpty) return const [];
+    final safePage = _currentPage.clamp(0, _totalPages - 1);
+    final start = safePage * _itemsPerPage;
+    final end = (start + _itemsPerPage).clamp(0, _filteredYachts.length);
+    return _filteredYachts.sublist(start, end);
+  }
+
+  Widget _buildPaginationControls() {
+    final total = _filteredYachts.length;
+    final totalPages = _totalPages;
+    final current = _currentPage.clamp(0, totalPages - 1);
+    final from = total == 0 ? 0 : (current * _itemsPerPage) + 1;
+    final to = ((current * _itemsPerPage) + _itemsPerPage).clamp(0, total);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+      child: Row(
+        children: [
+          Text(
+            'Showing $from-$to of $total',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+          ),
+          const Spacer(),
+          IconButton(
+            onPressed: current > 0
+                ? _goToPreviousPage
+                : null,
+            icon: const Icon(Icons.chevron_left),
+            tooltip: 'Previous page',
+          ),
+          Text(
+            '${current + 1}/$totalPages',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          IconButton(
+            onPressed: current < totalPages - 1
+                ? _goToNextPage
+                : null,
+            icon: const Icon(Icons.chevron_right),
+            tooltip: 'Next page',
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _pickDates() async {
@@ -465,7 +583,7 @@ extension on _MobileHomeTabState {
       ),
     );
     if (picked != null) {
-      setState(() => _dateRange = picked);
+      _setDateRange(picked);
       await _loadInitial();
     }
   }
@@ -498,19 +616,13 @@ extension on _MobileHomeTabState {
       ),
     );
     if (selected != null) {
-      setState(() => _guests = selected);
+      _setGuests(selected);
       await _loadInitial();
     }
   }
 
   Future<void> _toggleFavorite(int yachtId, bool makeFavorite) async {
-    setState(() {
-      if (makeFavorite) {
-        _favoriteIds.add(yachtId);
-      } else {
-        _favoriteIds.remove(yachtId);
-      }
-    });
+    _setFavorite(yachtId, makeFavorite);
     await FavoritesService.saveFavorites(widget.user.userId, _favoriteIds);
   }
 
@@ -561,7 +673,7 @@ extension on _MobileHomeTabState {
       ),
     );
     if (selected != null) {
-      setState(() => _selectedType = selected);
+      _setSelectedType(selected);
       _applyFilters();
     }
   }
