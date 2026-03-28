@@ -1,17 +1,21 @@
-# yamore_mobile
+# yamore_mobile (Flutter)
 
-A new Flutter project.
+Client for Yamore: admin/desktop and mobile flows.
 
-## Getting Started
+## API URL
 
-This project is a starting point for a Flutter application.
+- **Local development:** run as usual — no flags required:
+  ```bash
+  flutter pub get
+  flutter run
+  ```
+  - Windows / iOS simulator / web: defaults to **`http://localhost:5096`**
+  - Android emulator: defaults to **`http://10.0.2.2:5096`** (reaches the API on your PC)
 
-A few resources to get you started if this is your first Flutter project:
+- **Staging / production / custom host:** override at build time:
+  ```bash
+  flutter run --dart-define=API_BASE_URL=https://your-api.example.com
+  flutter build apk --dart-define=API_BASE_URL=https://your-api.example.com
+  ```
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Full stack (Docker, ports, test users): **[../../README.md](../../README.md)** (`Yamore/README.md`).

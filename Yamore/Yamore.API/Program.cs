@@ -167,7 +167,12 @@ builder.Services.AddAuthentication("BasicAuthentication")
 
 var app = builder.Build();
 
-
+// Apply EF Core migrations so a fresh Docker SQL volume gets tables (avoids "Invalid object name").
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<_220245Context>();
+    db.Database.Migrate();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

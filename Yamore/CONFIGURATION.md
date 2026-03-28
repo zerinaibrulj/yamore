@@ -62,17 +62,17 @@ If **Smtp:Host** is empty, the worker still runs and processes messages (logging
 
 | Source | Key | Description |
 |--------|-----|-------------|
-| **dart-define** | `API_BASE_URL` | API base URL (overrides defaults) |
+| **dart-define** | `API_BASE_URL` | Optional. Overrides the dev default (see below). Use for staging/production URLs. |
 
-**Run with custom API address:**
+**Defaults when `API_BASE_URL` is omitted:**
+- Android emulator: `http://10.0.2.2:5096`
+- Other platforms (Windows, iOS simulator, web, …): `http://localhost:5096`
+
+**Override examples:**
 ```bash
-flutter run -d windows --dart-define=API_BASE_URL=http://localhost:5096
+flutter run -d windows --dart-define=API_BASE_URL=https://api.yourdomain.com
 flutter run -d chrome --dart-define=API_BASE_URL=https://api.yourdomain.com
 ```
-
-If `API_BASE_URL` is not set, the app uses:
-- Android emulator: `http://10.0.2.2:5096`
-- Other platforms: `http://localhost:5096`
 
 ---
 
@@ -81,6 +81,6 @@ If `API_BASE_URL` is not set, the app uses:
 1. **RabbitMQ** must be running (e.g. Docker: `docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management`).
 2. **Start the API:** `cd Yamore.API && dotnet run`
 3. **Start the Worker:** `cd Yamore.Worker && dotnet run` (in a separate terminal or container).
-4. **Flutter:** `flutter run -d windows` or with `--dart-define=API_BASE_URL=...` if the API is not on localhost.
+4. **Flutter:** `flutter run -d windows` (defaults to `http://localhost:5096`) or pass `--dart-define=API_BASE_URL=...` for a non-default API.
 
 The API publishes messages (e.g. reservation created, payment completed) to the queue; the Worker consumes them and performs logging and optional email.

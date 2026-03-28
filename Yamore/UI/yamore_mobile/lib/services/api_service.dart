@@ -25,7 +25,7 @@ class ApiService {
   final String? password;
 
   ApiService({
-    this.baseUrl = 'http://localhost:5096',
+    required this.baseUrl,
     this.username,
     this.password,
   });

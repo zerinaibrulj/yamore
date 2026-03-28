@@ -12,7 +12,7 @@ class AuthService {
   String? _username;
   String? _password;
 
-  AuthService({this.baseUrl = 'http://localhost:5096'});
+  AuthService({required this.baseUrl});
 
   AppUser? get currentUser => _currentUser;
   String? get username => _username;
