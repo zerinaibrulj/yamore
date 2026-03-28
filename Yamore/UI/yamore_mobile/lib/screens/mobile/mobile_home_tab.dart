@@ -61,10 +61,37 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
   @override
   void didUpdateWidget(covariant MobileHomeTab oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.user.userId != widget.user.userId) {
+      _loadInitial();
+      return;
+    }
     if (oldWidget.showOnlyFavorites != widget.showOnlyFavorites) {
       // Re-apply filters when switching between Home and Favorites tabs.
       _applyFilters();
     }
+  }
+
+  /// Favorites are stored by id, but the overview API returns a capped, filtered page.
+  /// Load any saved favorite not present in [apiList] so they still appear after restart.
+  Future<List<YachtOverview>> _mergeFavoriteYachtsFromDetail(
+    List<YachtOverview> apiList,
+    Set<int> favoriteIds,
+  ) async {
+    if (favoriteIds.isEmpty) return apiList;
+    final have = apiList.map((y) => y.yachtId).toSet();
+    final missing = favoriteIds.difference(have);
+    if (missing.isEmpty) return apiList;
+    final extras = <YachtOverview>[];
+    for (final id in missing) {
+      try {
+        final d = await _api.getYachtById(id);
+        if (d.yachtId != null) {
+          extras.add(YachtOverview.fromYachtDetail(d));
+        }
+      } catch (_) {}
+    }
+    if (extras.isEmpty) return apiList;
+    return [...apiList, ...extras];
   }
 
   Future<void> _loadInitial() async {
@@ -72,6 +99,7 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
       _loading = true;
       _error = null;
     });
+    final favs = await FavoritesService.loadFavorites(widget.user.userId);
     try {
       final results = await Future.wait([
         _api.getYachtOverviewForAdmin(
@@ -82,23 +110,23 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
         ),
         _api.getCities(),
         _api.getYachtCategories(),
-        FavoritesService.loadFavorites(widget.user.userId),
         _api.getRecommendations(userId: widget.user.userId, pageSize: 10),
       ]);
       final overview = results[0] as PagedYachtOverview;
       final cities = results[1] as List<CityModel>;
       final cats = results[2] as List<YachtCategoryModel>;
-      final favs = results[3] as Set<int>;
-      final recPage = results[4] as PagedYachtOverview;
+      final recPage = results[3] as PagedYachtOverview;
+      final merged =
+          await _mergeFavoriteYachtsFromDetail(overview.resultList, favs);
       if (mounted) {
         setState(() {
-          _allYachts = overview.resultList;
+          _allYachts = merged;
           _cities = cities;
           _categories = cats;
-          _favoriteIds = favs;
+          _favoriteIds = {...favs};
           _recommended = recPage.resultList.isNotEmpty
               ? recPage.resultList
-              : _fallbackRecommended(overview.resultList);
+              : _fallbackRecommended(merged);
           _applyFilters();
           _loading = false;
         });
@@ -106,6 +134,7 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
     } catch (e) {
       if (mounted) {
         setState(() {
+          _favoriteIds = {...favs};
           _recommended = [];
           _error = 'Failed to load yachts: $e';
           _loading = false;
@@ -469,6 +498,20 @@ extension on _MobileHomeTabState {
   }
 
   void _applyFilters() {
+    if (widget.showOnlyFavorites) {
+      var list =
+          _allYachts.where((y) => _favoriteIds.contains(y.yachtId)).toList();
+      final name = _searchNameCtrl.text.trim().toLowerCase();
+      if (name.isNotEmpty) {
+        list = list.where((y) => y.name.toLowerCase().contains(name)).toList();
+      }
+      list.sort((a, b) => _sortAscending
+          ? a.pricePerDay.compareTo(b.pricePerDay)
+          : b.pricePerDay.compareTo(a.pricePerDay));
+      _setFilteredYachts(list);
+      return;
+    }
+
     var list = [..._allYachts];
     final dest = _destinationCtrl.text.trim().toLowerCase();
     final name = _searchNameCtrl.text.trim().toLowerCase();
@@ -516,11 +559,6 @@ extension on _MobileHomeTabState {
       if (allowed.isNotEmpty) {
         list = list.where((y) => allowed.contains(y.categoryId)).toList();
       }
-    }
-
-    // Favorites-only mode (Favorites tab)
-    if (widget.showOnlyFavorites) {
-      list = list.where((y) => _favoriteIds.contains(y.yachtId)).toList();
     }
 
     // Sort by price

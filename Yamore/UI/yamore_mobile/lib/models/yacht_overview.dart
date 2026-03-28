@@ -1,3 +1,5 @@
+import 'yacht_detail.dart';
+
 class YachtOverview {
   final int yachtId;
   final String name;
@@ -32,6 +34,24 @@ class YachtOverview {
     this.averageRating,
     this.reviewCount = 0,
   });
+
+  /// From full yacht detail when the overview list omits this yacht (pagination or filters).
+  factory YachtOverview.fromYachtDetail(YachtDetail d) {
+    final id = d.yachtId;
+    if (id == null) {
+      throw ArgumentError('yachtId is required');
+    }
+    return YachtOverview(
+      yachtId: id,
+      name: d.name,
+      capacity: d.capacity,
+      pricePerDay: d.pricePerDay,
+      categoryId: d.categoryId,
+      yearBuilt: d.yearBuilt > 0 ? d.yearBuilt : null,
+      length: d.length > 0 ? d.length : null,
+      ownerId: d.ownerId,
+    );
+  }
 
   factory YachtOverview.fromJson(Map<String, dynamic> json) {
     return YachtOverview(

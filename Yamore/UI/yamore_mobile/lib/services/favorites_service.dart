@@ -6,7 +6,12 @@ class FavoritesService {
   static Future<Set<int>> loadFavorites(int userId) async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getStringList(_keyForUser(userId)) ?? const <String>[];
-    return raw.map(int.parse).toSet();
+    final out = <int>{};
+    for (final s in raw) {
+      final v = int.tryParse(s);
+      if (v != null) out.add(v);
+    }
+    return out;
   }
 
   static Future<void> saveFavorites(int userId, Set<int> ids) async {
