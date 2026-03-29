@@ -12,8 +12,8 @@ using Yamore.Services.Database;
 namespace Yamore.Services.Migrations
 {
     [DbContext(typeof(_220245Context))]
-    [Migration("20260307151735_AddYachtAvailabilityServiceCategoryYachtDocumentReviewFields")]
-    partial class AddYachtAvailabilityServiceCategoryYachtDocumentReviewFields
+    [Migration("20260329121525_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -365,30 +365,6 @@ namespace Yamore.Services.Migrations
                     b.ToTable("ServiceCategories");
                 });
 
-            modelBuilder.Entity("Yamore.Services.Database.SpecialRequest", b =>
-                {
-                    b.Property<int>("RequestId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RequestId"));
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<int>("ReservationId")
-                        .HasColumnType("int");
-
-                    b.HasKey("RequestId")
-                        .HasName("PK__SpecialR__33A8517A69D944E8");
-
-                    b.HasIndex("ReservationId");
-
-                    b.ToTable("SpecialRequests");
-                });
-
             modelBuilder.Entity("Yamore.Services.Database.User", b =>
                 {
                     b.Property<int>("UserId")
@@ -614,48 +590,70 @@ namespace Yamore.Services.Migrations
                     b.ToTable("YachtCategories");
                 });
 
-            modelBuilder.Entity("Yamore.Services.Database.YachtDocument", b =>
+            modelBuilder.Entity("Yamore.Services.Database.YachtImage", b =>
                 {
-                    b.Property<int>("YachtDocumentId")
+                    b.Property<int>("YachtImageId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("YachtDocumentId"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("YachtImageId"));
 
-                    b.Property<string>("DocumentType")
+                    b.Property<string>("ContentType")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("DateAdded")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("(getdate())");
 
                     b.Property<string>("FileName")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<string>("FileUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                    b.Property<byte[]>("ImageData")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
 
-                    b.Property<string>("Notes")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                    b.Property<bool>("IsThumbnail")
+                        .HasColumnType("bit");
 
-                    b.Property<DateTime?>("VerifiedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("VerifiedByUserId")
+                    b.Property<int>("SortOrder")
                         .HasColumnType("int");
 
                     b.Property<int>("YachtId")
                         .HasColumnType("int");
 
-                    b.HasKey("YachtDocumentId")
-                        .HasName("PK_YachtDocuments");
-
-                    b.HasIndex("VerifiedByUserId");
+                    b.HasKey("YachtImageId");
 
                     b.HasIndex("YachtId");
 
-                    b.ToTable("YachtDocuments");
+                    b.ToTable("YachtImages");
+                });
+
+            modelBuilder.Entity("Yamore.Services.Database.YachtService", b =>
+                {
+                    b.Property<int>("YachtServiceId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("YachtServiceId"));
+
+                    b.Property<int>("ServiceId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("YachtId")
+                        .HasColumnType("int");
+
+                    b.HasKey("YachtServiceId");
+
+                    b.HasIndex("ServiceId");
+
+                    b.HasIndex("YachtId", "ServiceId")
+                        .IsUnique();
+
+                    b.ToTable("YachtServices");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.City", b =>
@@ -794,17 +792,6 @@ namespace Yamore.Services.Migrations
                     b.Navigation("ServiceCategory");
                 });
 
-            modelBuilder.Entity("Yamore.Services.Database.SpecialRequest", b =>
-                {
-                    b.HasOne("Yamore.Services.Database.Reservation", "Reservation")
-                        .WithMany("SpecialRequests")
-                        .HasForeignKey("ReservationId")
-                        .IsRequired()
-                        .HasConstraintName("FK__SpecialRe__Reser__6C190EBB");
-
-                    b.Navigation("Reservation");
-                });
-
             modelBuilder.Entity("Yamore.Services.Database.UserRole", b =>
                 {
                     b.HasOne("Yamore.Services.Database.Role", "Role")
@@ -874,22 +861,32 @@ namespace Yamore.Services.Migrations
                     b.Navigation("Yacht");
                 });
 
-            modelBuilder.Entity("Yamore.Services.Database.YachtDocument", b =>
+            modelBuilder.Entity("Yamore.Services.Database.YachtImage", b =>
                 {
-                    b.HasOne("Yamore.Services.Database.User", "VerifiedByUser")
-                        .WithMany("YachtDocumentsVerified")
-                        .HasForeignKey("VerifiedByUserId")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("FK_YachtDocuments_Users");
-
                     b.HasOne("Yamore.Services.Database.Yacht", "Yacht")
-                        .WithMany("YachtDocuments")
+                        .WithMany("YachtImages")
                         .HasForeignKey("YachtId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("FK_YachtDocuments_Yachts");
+                        .IsRequired();
 
-                    b.Navigation("VerifiedByUser");
+                    b.Navigation("Yacht");
+                });
+
+            modelBuilder.Entity("Yamore.Services.Database.YachtService", b =>
+                {
+                    b.HasOne("Yamore.Services.Database.Service", "Service")
+                        .WithMany("YachtServices")
+                        .HasForeignKey("ServiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Yamore.Services.Database.Yacht", "Yacht")
+                        .WithMany("YachtServices")
+                        .HasForeignKey("YachtId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Service");
 
                     b.Navigation("Yacht");
                 });
@@ -915,8 +912,6 @@ namespace Yamore.Services.Migrations
                     b.Navigation("ReservationServices");
 
                     b.Navigation("Reviews");
-
-                    b.Navigation("SpecialRequests");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.Role", b =>
@@ -932,6 +927,8 @@ namespace Yamore.Services.Migrations
             modelBuilder.Entity("Yamore.Services.Database.Service", b =>
                 {
                     b.Navigation("ReservationServices");
+
+                    b.Navigation("YachtServices");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.ServiceCategory", b =>
@@ -949,8 +946,6 @@ namespace Yamore.Services.Migrations
 
                     b.Navigation("UserRoles");
 
-                    b.Navigation("YachtDocumentsVerified");
-
                     b.Navigation("Yachts");
                 });
 
@@ -964,7 +959,9 @@ namespace Yamore.Services.Migrations
 
                     b.Navigation("YachtAvailabilities");
 
-                    b.Navigation("YachtDocuments");
+                    b.Navigation("YachtImages");
+
+                    b.Navigation("YachtServices");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.YachtCategory", b =>

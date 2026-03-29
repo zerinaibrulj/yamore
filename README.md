@@ -1,62 +1,197 @@
 # Yamore
 
-Yacht reservation platform: **Flutter** client, **.NET 8** API, **SQL Server**, **RabbitMQ** worker, optional **Stripe** and **SMTP**.
+**Seminar project for the course Software Development 2**
 
-## Repository layout
-
-| Path | What it is |
-|------|------------|
-| **`Yamore/`** | Main solution: API, services, worker, `docker-compose.yml`, detailed docs |
-| **`Yamore/UI/yamore_mobile`** | Flutter app (admin desktop + mobile flows) |
-
-**Start here for setup:** [Yamore/README.md](Yamore/README.md) — Docker Compose, local run, test accounts, Stripe/SMTP, troubleshooting.
+📍 Faculty of Information Technology, Mostar
 
 ---
 
-## Quick start (Docker)
+## 📖 About the project
 
-1. Install **Docker Desktop** (Windows: use **WSL2 backend** if you hit TLS or networking issues with Linux containers).
-2. Open a terminal in the **`Yamore`** folder (the one that contains `docker-compose.yml`).
-3. Optional: copy `Yamore/.env.example` → `Yamore/.env` and set Stripe/SMTP if you need card payments or emails.
-4. Run:
+**Yamore** is a yacht reservation platform: guests browse and book yachts, owners manage listings, and administrators use reporting and moderation tools.
+
+It includes:
+
+- 🛥️ **Yacht listings** with categories, locations, availability, and images  
+- 📅 **Reservations** and booking history (mobile)  
+- 💳 **Payments** (Stripe card checkout when configured, or pay on arrival)  
+- 📊 **Admin dashboard** with statistics and export/print  
+- 💡 **Recommendations** for destinations and yachts  
+- 🐰 **RabbitMQ** — API publishes messages; **Worker** sends email notifications (reservation created, payment confirmed)
+
+---
+
+## 🚀 Instructions for running
+
+### Prerequisites
+
+- **Docker Desktop** (Windows: WSL2 backend recommended)  
+- **Flutter SDK** (stable) — for desktop and mobile clients  
+- **.NET SDK 8** — only if you run the API without Docker  
+
+---
+
+### Backend (Docker — recommended)
+
+1. Clone this repository and open a terminal in the **`Yamore`** folder (the one that contains `docker-compose.yml`).  
+   Running `docker compose` from the wrong path causes build errors (e.g. **MSB1009**).
+
+2. **Optional — Stripe (card payments):** copy `Yamore/.env.example` → `Yamore/.env` and set `STRIPE_SECRET_KEY` and `STRIPE_PUBLISHABLE_KEY` (test keys). Without this, bookings still work with **Pay on arrival**.
+
+3. **Optional — email (Worker):** in `.env`, set `SMTP_HOST`, `SMTP_USER_NAME`, `SMTP_PASSWORD`, `SMTP_FROM_ADDRESS` (see `.env.example`). If SMTP is empty, reservations still work; the worker skips sending email.
+
+4. Start the stack:
 
 ```bash
 cd Yamore
 docker compose up -d --build
 ```
 
-5. Wait until containers are healthy (first SQL Server pull can take several minutes).
-6. API: **http://localhost:5096** (Swagger in Development: `/swagger`).
-7. Run the Flutter app (defaults to `http://localhost:5096` on Windows; Android emulator uses `http://10.0.2.2:5096` automatically):
+5. Wait until containers are healthy (first SQL Server image pull can take several minutes).
+
+**What starts:**
+
+| Service    | URL / port |
+|------------|------------|
+| API        | `http://localhost:5096` — Swagger: `/swagger` |
+| SQL Server | `localhost:1433` |
+| RabbitMQ   | broker `localhost:5672`, management UI `http://localhost:15672` (`guest` / `guest`) |
+
+**Database:** On startup the API runs **EF Core migrations** and applies an **automatic demo seed** the first time the database is empty (see credentials below).  
+**Volumes:** SQL Server and RabbitMQ use Docker volumes so data persists across `docker compose down` (not `down -v`).
+
+To stop: `docker compose down` from the same `Yamore` folder.
+
+---
+
+### Desktop application (Flutter)
+
+1. Enable **developer mode** on Windows if required for Flutter tooling.  
+2. From the repo, go to the Flutter project:
 
 ```bash
 cd Yamore/UI/yamore_mobile
 flutter pub get
+flutter run -d windows
+```
+
+The app defaults to the API at **`http://localhost:5096`**.  
+Override if needed:
+
+```bash
+flutter run -d windows --dart-define=API_BASE_URL=http://localhost:5096
+```
+
+---
+
+### Mobile application (Android)
+
+1. Start the backend (Docker or local API on port **5096**).  
+2. From `Yamore/UI/yamore_mobile`:
+
+```bash
+flutter pub get
 flutter run
 ```
 
-Use `--dart-define=API_BASE_URL=...` only if the API is not on the default host/port.
+The project defaults the API to **`http://10.0.2.2:5096`** on the Android emulator (host `localhost` from the emulator).  
+Override if needed:
+
+```bash
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5096
+```
+
+⚠️ Uninstall any older build of the app from the emulator if you see install conflicts.
 
 ---
 
-## If Docker misbehaves
+## 🔐 Login credentials (Docker first run)
 
-Common causes and fixes are documented in **[Yamore/README.md](Yamore/README.md)** under *Docker troubleshooting*, including:
+After a **clean** database (e.g. first `docker compose up`, or after `docker compose down -v`), the API seeds **demo users** automatically (only when the `Roles` table is empty).
 
-- Running compose from the **wrong directory** (build context / missing project file).
-- **Ports** already in use (`1433`, `5096`, `5672`).
-- SQL **TLS / handshake** errors (host and Docker settings).
-- **Empty database / invalid object name** — the API applies EF migrations on startup so a new volume gets schema; if migration still fails, see the troubleshooting section.
+**Shared password for all demo accounts:** `Demo123!`
+
+| Role | Username | Password | Use case |
+|------|----------|----------|----------|
+| 👑 Administrator | `demo.admin` | `Demo123!` | Desktop admin, Swagger, protected admin endpoints |
+| 🛥️ Yacht owner | `demo.owner` | `Demo123!` | Owner flows; sample yachts are seeded for this user |
+| 👤 End user | `demo.user` | `Demo123!` | Mobile booking and guest flows |
+
+- **Desktop / Swagger:** API base URL **`http://localhost:5096`**  
+- **Android emulator:** API base URL **`http://10.0.2.2:5096`**
 
 ---
 
-## Configuration (no secrets in source)
+## 🐰 Microservice functionality (RabbitMQ)
 
-- **Backend:** connection string, RabbitMQ, Stripe, SMTP → `appsettings`, environment variables, or `Yamore/.env` for Compose. See [Yamore/CONFIGURATION.md](Yamore/CONFIGURATION.md).
-- **Flutter:** optional **`--dart-define=API_BASE_URL=...`** to override the dev default (`Yamore/README.md`).
+Yamore uses a **RabbitMQ** architecture: the **API** publishes messages; the **Worker** consumes them and sends **email** when SMTP is configured.
+
+Typical flow:
+
+1. User creates a **reservation** → message `ReservationCreated` → optional email *Reservation received*.  
+2. User completes **card payment** (Stripe configured) → message `PaymentCompleted` → optional email *Payment confirmed*.
+
+Check Worker logs: `docker compose logs -f worker` (from the `Yamore` folder).
 
 ---
 
-## Test logins
+## 🛠️ Technologies
 
-See **Test credentials** in [Yamore/README.md](Yamore/README.md) (admin, end users, yacht owners).
+| Layer | Technology |
+|-------|------------|
+| Backend | ASP.NET Core (.NET 8) |
+| Frontend | Flutter (desktop + mobile) |
+| Database | SQL Server |
+| Message broker | RabbitMQ |
+| Containerization | Docker Compose (API, Worker, SQL Server, RabbitMQ) |
+| Payments (optional) | Stripe |
+
+Further configuration: **`Yamore/CONFIGURATION.md`**. Payment testing: **`Yamore/PAYMENTS.md`**.
+
+---
+
+## 📁 Repository layout
+
+| Path | Description |
+|------|-------------|
+| `Yamore/` | Solution: API, services, worker, `docker-compose.yml` |
+| `Yamore/UI/yamore_mobile` | Flutter app |
+
+---
+
+## Docker vs Visual Studio database mode
+
+- **Docker Compose run** (`docker compose up` from `Yamore/`): uses container SQL Server and runs migrations + demo seed (`SKIP_EF_DATABASE_MIGRATE=false`, `SKIP_DEMO_SEED=false` in compose).
+- **Visual Studio Development run**: by default skips migrate/seed (`appsettings.Development.json`) so you can connect to your real database without demo data interfering.
+- To use your real DB in Visual Studio, set `ConnectionStrings:DefaultConnection` in User Secrets (recommended) or `appsettings.Development.json`.
+
+---
+
+## Run without Docker (optional)
+
+1. Run SQL Server and RabbitMQ locally (or RabbitMQ via Docker).  
+2. Set `ConnectionStrings:DefaultConnection` and secrets (User Secrets or environment variables).  
+3. Start `Yamore.API` and `Yamore.Worker` in separate terminals (`dotnet run`).  
+4. Run Flutter from `Yamore/UI/yamore_mobile` as above.
+
+Details: **`Yamore/CONFIGURATION.md`**.
+
+---
+
+## Troubleshooting (short)
+
+| Issue | What to try |
+|-------|-------------|
+| **MSB1009** / project not found | Run `docker compose` only from the **`Yamore`** folder. |
+| Ports in use | Free `1433`, `5096`, `5672` or change ports in `docker-compose.yml`. |
+| Flutter cannot reach API | Ensure API is running; desktop → `localhost:5096`, Android emulator → `10.0.2.2:5096`. |
+| **Invalid object name** / migration errors | Check `docker compose logs api`. For a broken SQL volume vs migrations: `docker compose down -v` then `up -d --build` (wipes Docker DB data only). |
+| **Payment configuration missing** | Add Stripe keys to `.env` and restart the `api` service, or use pay on arrival. |
+
+---
+
+## Notes for evaluators
+
+- Swagger: `http://localhost:5096/swagger` (when enabled, e.g. Docker with `ENABLE_SWAGGER=true`).  
+- RabbitMQ UI: `http://localhost:15672` (`guest` / `guest`).  
+- Stripe test mode: configure keys from `.env.example`, then follow **`Yamore/PAYMENTS.md`** for test cards.

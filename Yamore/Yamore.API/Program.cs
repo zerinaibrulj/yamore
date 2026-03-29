@@ -21,6 +21,12 @@ using Microsoft.Data.SqlClient;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Linux Docker containers: bind 0.0.0.0:8080 so host port 5096→8080 forwarding works (fixes "connection refused" from Windows).
+if (File.Exists("/.dockerenv"))
+{
+    builder.WebHost.UseUrls("http://0.0.0.0:8080");
+}
+
 // Configure Mapster mappings.
 // 1) Avoid cycles between User and UserRole.
 TypeAdapterConfig<Yamore.Services.Database.UserRole, Yamore.Model.UserRole>
@@ -220,7 +226,7 @@ using (var scope = app.Services.CreateScope())
                         "The Docker SQL volume has tables from an older run, but EF migration history does not match. " +
                         "Reset only the database volume (not your project files): from the Yamore folder run " +
                         "\"docker compose down -v\" then \"docker compose up -d --build\". " +
-                        "Or see Yamore/README.md → Docker troubleshooting.");
+                        "Or see README.md at the repository root → Docker troubleshooting.");
                     throw;
                 }
 
@@ -232,6 +238,27 @@ using (var scope = app.Services.CreateScope())
 
                 Thread.Sleep(TimeSpan.FromSeconds(3));
             }
+        }
+
+        var skipDemoSeed = string.Equals(
+            app.Configuration["SKIP_DEMO_SEED"],
+            "true",
+            StringComparison.OrdinalIgnoreCase);
+        if (!skipDemoSeed)
+        {
+            try
+            {
+                DemoDataSeeder.SeedIfEmpty(db, startupLogger);
+            }
+            catch (Exception ex)
+            {
+                startupLogger.LogError(ex, "Demo database seed failed.");
+                throw;
+            }
+        }
+        else
+        {
+            startupLogger.LogWarning("SKIP_DEMO_SEED=true: skipping demo seed.");
         }
     }
 }

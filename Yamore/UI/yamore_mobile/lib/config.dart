@@ -11,7 +11,7 @@ import 'dart:io' show Platform;
 /// - **Android emulator** → `http://10.0.2.2:5096` (host machine’s Docker/API)
 /// - **Other platforms** (Windows, iOS simulator, web, etc.) → `http://localhost:5096`
 ///
-/// See `Yamore/README.md` for Docker (API mapped to port 5096).
+/// See repository root `README.md` for Docker (API mapped to port 5096).
 class AppConfig {
   static String get apiBaseUrl {
     const fromEnv = String.fromEnvironment('API_BASE_URL', defaultValue: '');

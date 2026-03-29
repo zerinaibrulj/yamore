@@ -43,7 +43,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("CountryId");
 
-                    b.ToTable("Cities");
+                    b.ToTable("Cities", (string)null);
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.Country", b =>
@@ -62,7 +62,7 @@ namespace Yamore.Services.Migrations
                     b.HasKey("CountryId")
                         .HasName("PK__Countrie__10D1609FFB858505");
 
-                    b.ToTable("Countries");
+                    b.ToTable("Countries", (string)null);
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.Notification", b =>
@@ -96,7 +96,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Notifications");
+                    b.ToTable("Notifications", (string)null);
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.Payment", b =>
@@ -129,7 +129,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("ReservationId");
 
-                    b.ToTable("Payments");
+                    b.ToTable("Payments", (string)null);
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.Reservation", b =>
@@ -171,7 +171,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("YachtId");
 
-                    b.ToTable("Reservations");
+                    b.ToTable("Reservations", (string)null);
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.ReservationService", b =>
@@ -196,7 +196,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("ServiceId");
 
-                    b.ToTable("ReservationServices");
+                    b.ToTable("ReservationServices", (string)null);
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.Review", b =>
@@ -249,7 +249,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("YachtId");
 
-                    b.ToTable("Reviews");
+                    b.ToTable("Reviews", (string)null);
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.Role", b =>
@@ -269,7 +269,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasKey("RoleId");
 
-                    b.ToTable("Roles");
+                    b.ToTable("Roles", (string)null);
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.Route", b =>
@@ -305,7 +305,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("YachtId");
 
-                    b.ToTable("Routes");
+                    b.ToTable("Routes", (string)null);
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.Service", b =>
@@ -336,7 +336,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("ServiceCategoryId");
 
-                    b.ToTable("Services");
+                    b.ToTable("Services", (string)null);
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.ServiceCategory", b =>
@@ -359,7 +359,7 @@ namespace Yamore.Services.Migrations
                     b.HasKey("ServiceCategoryId")
                         .HasName("PK_ServiceCategories");
 
-                    b.ToTable("ServiceCategories");
+                    b.ToTable("ServiceCategories", (string)null);
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.User", b =>
@@ -411,7 +411,7 @@ namespace Yamore.Services.Migrations
                         .IsUnique()
                         .HasFilter("[Email] IS NOT NULL");
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.UserRole", b =>
@@ -437,7 +437,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("UserRoles");
+                    b.ToTable("UserRoles", (string)null);
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.WeatherForecast", b =>
@@ -469,7 +469,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("RouteId");
 
-                    b.ToTable("WeatherForecasts");
+                    b.ToTable("WeatherForecasts", (string)null);
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.Yacht", b =>
@@ -533,7 +533,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("OwnerId");
 
-                    b.ToTable("Yachts");
+                    b.ToTable("Yachts", (string)null);
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.YachtAvailability", b =>
@@ -565,7 +565,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("YachtId");
 
-                    b.ToTable("YachtAvailabilities");
+                    b.ToTable("YachtAvailabilities", (string)null);
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.YachtCategory", b =>
@@ -584,7 +584,7 @@ namespace Yamore.Services.Migrations
                     b.HasKey("CategoryId")
                         .HasName("PK__YachtCat__19093A0B21D26F14");
 
-                    b.ToTable("YachtCategories");
+                    b.ToTable("YachtCategories", (string)null);
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.YachtImage", b =>
@@ -626,7 +626,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("YachtId");
 
-                    b.ToTable("YachtImages");
+                    b.ToTable("YachtImages", (string)null);
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.YachtService", b =>
@@ -650,7 +650,7 @@ namespace Yamore.Services.Migrations
                     b.HasIndex("YachtId", "ServiceId")
                         .IsUnique();
 
-                    b.ToTable("YachtServices");
+                    b.ToTable("YachtServices", (string)null);
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.City", b =>
