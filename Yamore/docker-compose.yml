@@ -39,7 +39,12 @@ services:
         condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_HTTP_PORTS: "8080"
+      # Ensures Swagger UI is registered even if the runtime treats the container as non-Development.
+      ENABLE_SWAGGER: "true"
+      # API is only exposed as HTTP on host port 5096; avoid redirect to HTTPS that breaks Swagger/browser.
+      DISABLE_HTTPS_REDIRECT: "true"
+      # Listen on all interfaces (not only loopback) so Docker port publish 5096→8080 works from the host.
+      ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=220245;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;"
       RabbitMQ__HostName: rabbitmq
       RabbitMQ__Port: "5672"
@@ -47,6 +52,8 @@ services:
       RabbitMQ__Password: guest
       RabbitMQ__VirtualHost: /
       RabbitMQ__QueueName: yamore-tasks
+      # If the API exits with code 139, set to "true" temporarily to test whether Migrate() is involved; then apply migrations from the host with dotnet ef.
+      # SKIP_EF_DATABASE_MIGRATE: "true"
       # Set in Yamore/.env (see .env.example) — required for card payments in the mobile app
       Stripe__SecretKey: "${STRIPE_SECRET_KEY:-}"
       Stripe__PublishableKey: "${STRIPE_PUBLISHABLE_KEY:-}"

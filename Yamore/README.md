@@ -134,6 +134,7 @@ If SMTP is configured, logs should also contain:
 | **Invalid object name (208)** | Usually DB empty or migration failed. Check `docker compose logs api` — migrations run at startup. Ensure `sqlserver` is **healthy** before `api` starts (`depends_on` in compose). Retry: `docker compose restart api`. |
 | **API exits or worker loops** | `docker compose logs -f api` and `docker compose logs -f worker`. RabbitMQ must be up; Worker waits for RabbitMQ. |
 | **Flutter can’t reach API** | Start the API (`docker compose` or `dotnet run`). On Windows, default URL is `http://localhost:5096`. Use `--dart-define=API_BASE_URL=...` only if the API is elsewhere. |
+| **API crash: “There is already an object named 'Roles'” (2714)** | The **SQL Server volume** still has tables from an old run, but **EF thinks** it must create them again. **Dev fix (deletes Docker DB data only):** `docker compose down -v` then `docker compose up -d --build`. Your **source code on disk is unchanged**. |
 
 ## Notes for Evaluators
 

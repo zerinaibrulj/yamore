@@ -15,6 +15,8 @@ using Yamore.Services.Interfaces;
 using Yamore.Services.Services;
 using Yamore.Services.YachtStateMachine;
 using Yamore.API.Services;
+using Microsoft.Extensions.Logging;
+using Microsoft.Data.SqlClient;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -168,22 +170,91 @@ builder.Services.AddAuthentication("BasicAuthentication")
 var app = builder.Build();
 
 // Apply EF Core migrations so a fresh Docker SQL volume gets tables (avoids "Invalid object name").
+// Set SKIP_EF_DATABASE_MIGRATE=true to skip (diagnostics only). Retries help if SQL is slow right after healthcheck.
+var skipMigrate = string.Equals(
+    app.Configuration["SKIP_EF_DATABASE_MIGRATE"],
+    "true",
+    StringComparison.OrdinalIgnoreCase);
+
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<_220245Context>();
-    db.Database.Migrate();
+    var loggerFactory = scope.ServiceProvider.GetRequiredService<ILoggerFactory>();
+    var startupLogger = loggerFactory.CreateLogger("Startup");
+
+    if (skipMigrate)
+    {
+        startupLogger.LogWarning(
+            "SKIP_EF_DATABASE_MIGRATE=true: skipping Database.Migrate(). Apply migrations manually if the database is empty.");
+    }
+    else
+    {
+        var db = scope.ServiceProvider.GetRequiredService<_220245Context>();
+        for (var attempt = 1; attempt <= 10; attempt++)
+        {
+            try
+            {
+                db.Database.Migrate();
+                if (attempt > 1)
+                {
+                    startupLogger.LogInformation("Database.Migrate succeeded on attempt {Attempt}.", attempt);
+                }
+
+                break;
+            }
+            catch (Exception ex)
+            {
+                SqlException? sqlEx = null;
+                for (var e = ex; e != null; e = e.InnerException)
+                {
+                    if (e is SqlException s)
+                    {
+                        sqlEx = s;
+                        break;
+                    }
+                }
+
+                if (sqlEx?.Number == 2714)
+                {
+                    startupLogger.LogCritical(
+                        "Database.Migrate failed: object already exists (SQL error 2714). " +
+                        "The Docker SQL volume has tables from an older run, but EF migration history does not match. " +
+                        "Reset only the database volume (not your project files): from the Yamore folder run " +
+                        "\"docker compose down -v\" then \"docker compose up -d --build\". " +
+                        "Or see Yamore/README.md → Docker troubleshooting.");
+                    throw;
+                }
+
+                startupLogger.LogWarning(ex, "Database.Migrate attempt {Attempt}/10 failed.", attempt);
+                if (attempt == 10)
+                {
+                    throw;
+                }
+
+                Thread.Sleep(TimeSpan.FromSeconds(3));
+            }
+        }
+    }
 }
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// Swagger: Development locally, or Docker Compose (ENABLE_SWAGGER=true) so http://localhost:5096/swagger works reliably.
+var enableSwagger = app.Environment.IsDevelopment()
+    || string.Equals(
+        Environment.GetEnvironmentVariable("ENABLE_SWAGGER"),
+        "true",
+        StringComparison.OrdinalIgnoreCase);
+if (enableSwagger)
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-// Android emulator calls the local API over http://10.0.2.2:5096 in Development.
-// Forcing HTTPS redirection there can cause connection-aborted errors on login.
-if (!app.Environment.IsDevelopment())
+// Android emulator / Docker HTTP port mapping: HTTPS redirect breaks http://localhost:5096.
+var disableHttpsRedirect = string.Equals(
+    Environment.GetEnvironmentVariable("DISABLE_HTTPS_REDIRECT"),
+    "true",
+    StringComparison.OrdinalIgnoreCase);
+if (!app.Environment.IsDevelopment() && !disableHttpsRedirect)
 {
     app.UseHttpsRedirection();
 }
