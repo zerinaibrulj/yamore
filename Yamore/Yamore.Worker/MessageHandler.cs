@@ -121,14 +121,23 @@ public class MessageHandler
 
         var userName = _configuration["Smtp:UserName"];
         var password = _configuration["Smtp:Password"];
-        var useSsl = _configuration.GetValue<bool>("Smtp:UseSsl");
+        var useSsl = _configuration.GetValue("Smtp:UseSsl", true);
         var from = _configuration["Smtp:FromAddress"] ?? "noreply@yamore.example";
         var fromName = _configuration["Smtp:FromDisplayName"] ?? "Yamore";
 
+        if (string.IsNullOrWhiteSpace(userName) || string.IsNullOrWhiteSpace(password))
+        {
+            _logger.LogWarning(
+                "Smtp:Host is set but Smtp:UserName or Smtp:Password is empty. Most providers (Gmail, Outlook) require both. Skipping email to {To}",
+                to);
+            return;
+        }
+
         using var client = new SmtpClient(host, port);
+        // Required for explicit mailbox login; otherwise some servers return 5.7.0 Authentication Required.
+        client.UseDefaultCredentials = false;
         client.EnableSsl = useSsl;
-        if (!string.IsNullOrWhiteSpace(userName) && !string.IsNullOrWhiteSpace(password))
-            client.Credentials = new NetworkCredential(userName, password);
+        client.Credentials = new NetworkCredential(userName, password);
 
         var mail = new MailMessage(from, to, subject, body) { IsBodyHtml = false };
         mail.From = new MailAddress(from, fromName);
