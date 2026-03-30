@@ -64,6 +64,8 @@ services:
       # Set in Yamore/.env (see .env.example) — required for card payments in the mobile app
       Stripe__SecretKey: "${STRIPE_SECRET_KEY:-}"
       Stripe__PublishableKey: "${STRIPE_PUBLISHABLE_KEY:-}"
+      # Optional: real inbox for demo.admin / demo.owner / demo.user so Worker emails are deliverable (Gmail etc.)
+      DemoSeed__NotificationEmail: "${DEMO_NOTIFICATION_EMAIL:-}"
     ports:
       - "5096:8080"
 

@@ -8,12 +8,15 @@ namespace Yamore.Services.Database;
 /// Inserts minimal demo data on a completely empty database (no roles yet) so
 /// docker compose up works for reviewers without manual registration.
 /// Idempotent: skipped if any role already exists.
+/// Optional <paramref name="notificationEmail"/>: when set (e.g. from env DEMO_NOTIFICATION_EMAIL in Docker),
+/// demo users get Gmail "+" aliases derived from this address (distinct emails, but all deliver to the same inbox).
+/// This avoids @yamore.local bounces and also respects the unique Users.Email constraint.
 /// </summary>
 public static class DemoDataSeeder
 {
     public const string DemoPassword = "Demo123!";
 
-    public static void SeedIfEmpty(_220245Context db, ILogger logger)
+    public static void SeedIfEmpty(_220245Context db, ILogger logger, string? notificationEmail = null)
     {
         if (db.Roles.AsNoTracking().Any())
         {
@@ -21,6 +24,16 @@ public static class DemoDataSeeder
         }
 
         logger.LogInformation("Database has no roles; applying demo seed data for first-time run.");
+
+        var baseEmail = string.IsNullOrWhiteSpace(notificationEmail)
+            ? null
+            : notificationEmail.Trim();
+        if (baseEmail != null)
+        {
+            logger.LogInformation(
+                "Demo seed will derive demo.admin/demo.owner/demo.user emails from notification base: {Email}",
+                baseEmail);
+        }
 
         var roles = new[]
         {
@@ -73,9 +86,27 @@ public static class DemoDataSeeder
             };
         }
 
-        var adminUser = MakeUser("demo.admin", "admin@yamore.local", "Demo", "Admin");
-        var ownerUser = MakeUser("demo.owner", "owner@yamore.local", "Demo", "Owner");
-        var endUser = MakeUser("demo.user", "user@yamore.local", "Demo", "User");
+        static string CreateAlias(string? baseAddr, string tag, string fallback)
+        {
+            if (string.IsNullOrWhiteSpace(baseAddr))
+                return fallback;
+
+            var atIndex = baseAddr.IndexOf('@');
+            if (atIndex <= 0 || atIndex >= baseAddr.Length - 1)
+                return fallback;
+
+            var local = baseAddr[..atIndex];
+            var domain = baseAddr[(atIndex + 1)..];
+            return $"{local}+{tag}@{domain}";
+        }
+
+        var adminAddr = CreateAlias(baseEmail, "admin", "admin@yamore.local");
+        var ownerAddr = CreateAlias(baseEmail, "owner", "owner@yamore.local");
+        var userAddr = CreateAlias(baseEmail, "user", "user@yamore.local");
+
+        var adminUser = MakeUser("demo.admin", adminAddr, "Demo", "Admin");
+        var ownerUser = MakeUser("demo.owner", ownerAddr, "Demo", "Owner");
+        var endUser = MakeUser("demo.user", userAddr, "Demo", "User");
         db.Users.AddRange(adminUser, ownerUser, endUser);
         db.SaveChanges();
 

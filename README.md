@@ -120,6 +120,10 @@ After a **clean** database (e.g. first `docker compose up`, or after `docker com
 - **Desktop / Swagger:** API base URL **`http://localhost:5096`**  
 - **Android emulator:** API base URL **`http://10.0.2.2:5096`**
 
+**Deliverable email for demo users (Docker):** In `Yamore/.env` set `DEMO_NOTIFICATION_EMAIL=your.real@gmail.com` (same value is used for all three seeded accounts’ `Email` so Gmail accepts delivery). Recreate the stack with a **fresh** DB for this to apply (`docker compose down -v` then `up -d --build`), or run SQL to update `Users.Email` for `demo.user` / `demo.admin` / `demo.owner` if you keep the volume.
+
+**Why logs showed `user@yamore.local`:** That is the seeded **`demo.user`** (often `UserId=3`). Emails go to the **`Email` stored for the user who made the reservation**, not “whoever you think is logged in” if the app session is still the demo account.
+
 ---
 
 ## 🐰 Microservice functionality (RabbitMQ)

@@ -248,7 +248,8 @@ using (var scope = app.Services.CreateScope())
         {
             try
             {
-                DemoDataSeeder.SeedIfEmpty(db, startupLogger);
+                var demoNotifyEmail = app.Configuration["DemoSeed:NotificationEmail"];
+                DemoDataSeeder.SeedIfEmpty(db, startupLogger, demoNotifyEmail);
             }
             catch (Exception ex)
             {
