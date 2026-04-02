@@ -674,7 +674,6 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
     double? temp = existing?.temperature;
     double? wind = existing?.windSpeed;
     final condCtrl = TextEditingController(text: existing?.condition ?? '');
-
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -815,7 +814,32 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
+            onPressed: () async {
+              if (date == null ||
+                  temp == null ||
+                  wind == null ||
+                  condCtrl.text.trim().isEmpty) {
+                await showDialog<void>(
+                  context: ctx,
+                  builder: (dialogCtx) => AlertDialog(
+                    title: const Text('Invalid data'),
+                    content: const Text(
+                      'Please enter valid forecast data before clicking Create.',
+                    ),
+                    actions: [
+                      FilledButton(
+                        onPressed: () => Navigator.of(dialogCtx).pop(),
+                        child: const Text('OK'),
+                      ),
+                    ],
+                  ),
+                );
+                return;
+              }
+              if (ctx.mounted) {
+                Navigator.of(ctx).pop(true);
+              }
+            },
             child: Text(isEdit ? 'Save' : 'Create'),
           ),
         ],

@@ -706,6 +706,25 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
   List<YachtAvailability> _availabilities = [];
   bool _availLoading = false;
 
+  Future<void> _showInvalidDataDialog() async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Invalid data'),
+        content: const Text(
+          'Please enter valid data in all required fields before creating or saving the yacht.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1059,7 +1078,10 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      await _showInvalidDataDialog();
+      return;
+    }
     setState(() => _saving = true);
 
     final detail = YachtDetail(

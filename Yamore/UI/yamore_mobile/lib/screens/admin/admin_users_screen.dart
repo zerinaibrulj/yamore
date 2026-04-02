@@ -781,6 +781,23 @@ class _UserDialogState extends State<_UserDialog> {
   bool _saving = false;
   String _selectedRole = 'User';
 
+  Future<void> _showInvalidDataDialog(String message) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Invalid data'),
+        content: Text(message),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -957,10 +974,9 @@ class _UserDialogState extends State<_UserDialog> {
                   final password = _passwordController.text;
 
                   if (firstName.isEmpty || lastName.isEmpty || username.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content:
-                              Text('First name, last name and username are required.')),
+                    await _showInvalidDataDialog(
+                      'Please enter valid data before creating a user. '
+                      'First name, last name and username are required.',
                     );
                     return;
                   }
