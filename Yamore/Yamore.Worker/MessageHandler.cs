@@ -7,8 +7,9 @@ using Yamore.Model.Messages;
 namespace Yamore.Worker;
 
 /// <summary>
-/// Processes messages from RabbitMQ: logging and optional email (when Smtp is configured).
-/// All configuration from appsettings (Smtp:Host, RabbitMQ:*, etc.).
+/// Processes messages from RabbitMQ: logging and optional email (when SMTP is configured).
+/// SMTP and RabbitMQ credentials come from environment variables (e.g. Smtp__Host, RabbitMQ__UserName)
+/// or other configuration providers — not from committed appsettings.
 /// </summary>
 public class MessageHandler
 {

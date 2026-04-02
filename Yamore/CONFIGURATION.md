@@ -8,13 +8,13 @@ All configuration is stored in configuration files (appsettings, environment var
 
 | Key | Description | Example / where to set |
 |-----|-------------|------------------------|
-| **ConnectionStrings:DefaultConnection** | SQL Server connection string | `appsettings.json` (empty in repo), `appsettings.Development.json`, or env |
-| **Stripe:SecretKey** | Stripe secret key (never commit) | User Secrets, env, or appsettings.Development.json |
-| **Stripe:PublishableKey** | Stripe publishable key | `appsettings.Development.json` or env |
-| **RabbitMQ:HostName** | RabbitMQ server host | `appsettings.json` / `appsettings.Development.json` |
-| **RabbitMQ:Port** | RabbitMQ port | Default 5672 |
-| **RabbitMQ:UserName** | RabbitMQ user | Default guest |
-| **RabbitMQ:Password** | RabbitMQ password | Default guest |
+| **ConnectionStrings:DefaultConnection** | SQL Server connection string | User Secrets, env `ConnectionStrings__DefaultConnection`, or empty placeholder in appsettings (never commit real credentials) |
+| **Stripe:SecretKey** | Stripe secret key | Env `Stripe__SecretKey` or User Secrets only |
+| **Stripe:PublishableKey** | Stripe publishable key | Env `Stripe__PublishableKey` or User Secrets only |
+| **RabbitMQ:HostName** | RabbitMQ server host | `appsettings.json` (non-secret defaults) or env `RabbitMQ__HostName` |
+| **RabbitMQ:Port** | RabbitMQ port | appsettings or env `RabbitMQ__Port` (default 5672) |
+| **RabbitMQ:UserName** | RabbitMQ user | Env `RabbitMQ__UserName` or User Secrets; if unset, client defaults to guest for local dev |
+| **RabbitMQ:Password** | RabbitMQ password | Env `RabbitMQ__Password` or User Secrets; if unset, client defaults to guest for local dev |
 | **RabbitMQ:VirtualHost** | RabbitMQ vhost | Default / |
 | **RabbitMQ:QueueName** | Queue name for worker | Default yamore-tasks |
 | **AllowedHosts** | CORS / host configuration | appsettings |
@@ -28,7 +28,7 @@ dotnet user-secrets set "Stripe:SecretKey" "sk_test_..."
 dotnet user-secrets set "Stripe:PublishableKey" "pk_test_..."
 ```
 
-**Docker Compose:** set `STRIPE_SECRET_KEY` and `STRIPE_PUBLISHABLE_KEY` in `Yamore/.env` (see `.env.example`). Compose maps them to `Stripe__SecretKey` and `Stripe__PublishableKey` for the API container.
+**Docker Compose:** set `STRIPE_SECRET_KEY` and `STRIPE_PUBLISHABLE_KEY` in `Yamore/.env` (see `.env.example`). Compose maps them to `Stripe__SecretKey` and `Stripe__PublishableKey` for the API container. The database connection string is set in `docker-compose.yml` as `ConnectionStrings__DefaultConnection` for the API service.
 
 **Docker Compose (Worker email):** set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER_NAME`, `SMTP_PASSWORD`, `SMTP_FROM_ADDRESS`, `SMTP_FROM_DISPLAY_NAME`, and optionally `SMTP_USE_SSL` in `Yamore/.env`. Maps to `Smtp__*` on the worker container. If `SMTP_HOST` is empty, the worker still runs but skips sending mail.
 
@@ -40,21 +40,21 @@ dotnet user-secrets set "Stripe:PublishableKey" "pk_test_..."
 
 | Key | Description | Example / where to set |
 |-----|-------------|------------------------|
-| **RabbitMQ:HostName** | Same as API (must match) | appsettings.json / appsettings.Development.json |
-| **RabbitMQ:Port** | Same as API | 5672 |
-| **RabbitMQ:UserName** | Same as API | guest |
-| **RabbitMQ:Password** | Same as API | guest |
+| **RabbitMQ:HostName** | Same as API (must match) | appsettings (defaults) or env `RabbitMQ__HostName` |
+| **RabbitMQ:Port** | Same as API | appsettings or env `RabbitMQ__Port` |
+| **RabbitMQ:UserName** | Same as API | Env `RabbitMQ__UserName`; if unset, defaults to guest in code |
+| **RabbitMQ:Password** | Same as API | Env `RabbitMQ__Password`; if unset, defaults to guest in code |
 | **RabbitMQ:VirtualHost** | Same as API | / |
 | **RabbitMQ:QueueName** | Same as API | yamore-tasks |
-| **Smtp:Host** | SMTP server for emails | appsettings |
-| **Smtp:Port** | SMTP port | 587 |
-| **Smtp:UserName** | SMTP login | Optional |
-| **Smtp:Password** | SMTP password | User Secrets in production |
-| **Smtp:UseSsl** | Use SSL/TLS | true |
-| **Smtp:FromAddress** | Sender email | noreply@yourdomain.com |
-| **Smtp:FromDisplayName** | Sender display name | Yamore |
+| **Smtp:Host** | SMTP server for emails | **Env only** (`Smtp__Host`) — not stored in committed appsettings |
+| **Smtp:Port** | SMTP port | Env `Smtp__Port` (e.g. 587) |
+| **Smtp:UserName** | SMTP login | Env `Smtp__UserName` |
+| **Smtp:Password** | SMTP password | Env `Smtp__Password` |
+| **Smtp:UseSsl** | Use SSL/TLS | Env `Smtp__UseSsl` (default true in code if unset) |
+| **Smtp:FromAddress** | Sender email | Env `Smtp__FromAddress` |
+| **Smtp:FromDisplayName** | Sender display name | Env `Smtp__FromDisplayName` |
 
-If **Smtp:Host** is empty, the worker still runs and processes messages (logging only; no email sent).
+If **Smtp:Host** is not set in the environment, the worker still runs and processes messages (logging only; no email sent).
 
 ---
 

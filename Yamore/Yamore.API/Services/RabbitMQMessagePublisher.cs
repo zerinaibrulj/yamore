@@ -6,7 +6,8 @@ using Yamore.Model.Messages;
 namespace Yamore.API.Services;
 
 /// <summary>
-/// Sends message envelopes to the configured RabbitMQ queue. All settings from configuration (RabbitMQ:HostName, etc.).
+/// Sends message envelopes to the configured RabbitMQ queue. Configure via environment variables
+/// (RabbitMQ__HostName, RabbitMQ__UserName, etc.) or User Secrets — avoid committing credentials in appsettings.
 /// </summary>
 public class RabbitMQMessagePublisher : IMessagePublisher, IDisposable
 {

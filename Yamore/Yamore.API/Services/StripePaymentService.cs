@@ -4,7 +4,8 @@ namespace Yamore.API.Services;
 
 /// <summary>
 /// Handles Stripe PaymentIntent creation and verification for card payments.
-/// Configure Stripe:SecretKey and Stripe:PublishableKey in appsettings or User Secrets.
+/// Configure Stripe:SecretKey and Stripe:PublishableKey via environment variables (Stripe__SecretKey, Stripe__PublishableKey)
+/// or User Secrets — do not commit keys in appsettings.json.
 /// </summary>
 public class StripePaymentService
 {
