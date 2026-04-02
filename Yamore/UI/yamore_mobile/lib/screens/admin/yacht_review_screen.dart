@@ -752,7 +752,7 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
           _selectedOwner =
               widget.owners.firstWhere((o) => o.userId == y!.ownerId);
         } catch (e) {
-          debugPrint('Failed to match existing owner ${y.ownerId}: $e');
+          debugPrint('Failed to match existing owner ${y?.ownerId}: $e');
           _selectedOwner = widget.owners.first;
         }
       } else {
