@@ -1120,6 +1120,7 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                 Row(children: [
                   Expanded(
                     child: DropdownButtonFormField<int>(
+                      isExpanded: true,
                       value: _yearBuilt,
                       decoration:
                           _inputDeco('Year', icon: Icons.calendar_today),
@@ -1148,6 +1149,7 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                 Row(children: [
                   Expanded(
                     child: DropdownButtonFormField<int>(
+                      isExpanded: true,
                       value: _capacity,
                       decoration:
                           _inputDeco('Capacity', icon: Icons.people_outline),
@@ -1163,6 +1165,7 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: DropdownButtonFormField<int>(
+                      isExpanded: true,
                       value: _cabins,
                       decoration: _inputDeco('Cabins',
                           icon: Icons.king_bed_outlined),
@@ -1178,6 +1181,7 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: DropdownButtonFormField<int>(
+                      isExpanded: true,
                       value: _bathrooms,
                       decoration: _inputDeco('Bathrooms',
                           icon: Icons.bathtub_outlined),
@@ -1212,6 +1216,7 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                 ),
                 const SizedBox(height: 14),
                 DropdownButtonFormField<int>(
+                  isExpanded: true,
                   value: _locationId,
                   decoration: _inputDeco('Location',
                       icon: Icons.location_on_outlined),
@@ -1224,6 +1229,7 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                 ),
                 const SizedBox(height: 14),
                 DropdownButtonFormField<int>(
+                  isExpanded: true,
                   value: _categoryId,
                   decoration: _inputDeco('Category',
                       icon: Icons.category_outlined),

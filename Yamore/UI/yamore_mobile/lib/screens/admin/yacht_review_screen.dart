@@ -428,6 +428,7 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
             SizedBox(
               width: 220,
               child: DropdownButtonFormField<int>(
+                isExpanded: true,
                 value: _selectedSearchLocationId,
                 decoration: const InputDecoration(
                   labelText: 'Location',
@@ -1199,6 +1200,7 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<AppUser>(
+                  isExpanded: true,
                   value: _selectedOwner,
                   decoration: const InputDecoration(
                     labelText: 'Owner',
@@ -1226,6 +1228,7 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                     Expanded(
                       flex: 1,
                       child: DropdownButtonFormField<int>(
+                        isExpanded: true,
                         value: int.tryParse(_year.text),
                         decoration: const InputDecoration(
                           labelText: 'Year',
@@ -1268,6 +1271,7 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                     Expanded(
                       flex: 1,
                       child: DropdownButtonFormField<int>(
+                        isExpanded: true,
                         value: int.tryParse(_capacity.text),
                         decoration: const InputDecoration(
                           labelText: 'Capacity',
@@ -1295,6 +1299,7 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                     Expanded(
                       flex: 1,
                       child: DropdownButtonFormField<int>(
+                        isExpanded: true,
                         value: int.tryParse(_cabins.text),
                         decoration: const InputDecoration(
                           labelText: 'Cabins',
@@ -1318,6 +1323,7 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                     Expanded(
                       flex: 1,
                       child: DropdownButtonFormField<int>(
+                        isExpanded: true,
                         value: _bathrooms.text.isEmpty
                             ? null
                             : int.tryParse(_bathrooms.text),
@@ -1364,6 +1370,7 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<int>(
+                  isExpanded: true,
                   value: int.tryParse(_locationId.text),
                   decoration: const InputDecoration(
                     labelText: 'Location',
@@ -1384,6 +1391,7 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<int>(
+                  isExpanded: true,
                   value: int.tryParse(_categoryId.text),
                   decoration: const InputDecoration(
                     labelText: 'Category',
