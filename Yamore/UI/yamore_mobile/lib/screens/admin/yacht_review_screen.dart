@@ -116,8 +116,12 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
       setState(() {
         _owners = owners;
       });
-    } catch (_) {
-      // keep working even if lookups fail
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load lookup data: $e')),
+        );
+      }
     }
   }
 
@@ -747,7 +751,8 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
         try {
           _selectedOwner =
               widget.owners.firstWhere((o) => o.userId == y!.ownerId);
-        } catch (_) {
+        } catch (e) {
+          debugPrint('Failed to match existing owner ${y.ownerId}: $e');
           _selectedOwner = widget.owners.first;
         }
       } else {
@@ -767,7 +772,13 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
     try {
       final imgs = await widget.api.getYachtImages(widget.initial!.yachtId!);
       if (mounted) setState(() => _images = imgs);
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load yacht images: $e')),
+        );
+      }
+    }
     if (mounted) setState(() => _imagesLoading = false);
   }
 
@@ -784,9 +795,10 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
     final countBefore = _images.length;
     try {
       await widget.api.uploadYachtImage(widget.initial!.yachtId!, path);
-    } catch (_) {
+    } catch (e) {
       // The POST may fail on the client side even if the server saved the
       // image (Windows desktop http quirk). We reload and check below.
+      debugPrint('Image upload reported an error: $e');
     }
     await _loadImages();
     if (mounted) {
@@ -810,14 +822,36 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
     try {
       await widget.api.deleteYachtImage(img.yachtImageId);
       await _loadImages();
-    } catch (_) {}
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Image deleted successfully.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete image: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _setThumbnail(YachtImageModel img) async {
     try {
       await widget.api.setYachtImageThumbnail(img.yachtImageId);
       await _loadImages();
-    } catch (_) {}
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cover image updated successfully.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to set cover image: $e')),
+        );
+      }
+    }
   }
 
   // ── Availability ──
@@ -830,7 +864,13 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
         pageSize: 50,
       );
       if (mounted) setState(() => _availabilities = result.resultList);
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load availability periods: $e')),
+        );
+      }
+    }
     if (mounted) setState(() => _availLoading = false);
   }
 
@@ -957,6 +997,11 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
           note: noteCtrl.text.trim().isEmpty ? null : noteCtrl.text.trim(),
         );
         await _loadAvailabilities();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Availability period added successfully.')),
+          );
+        }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -972,7 +1017,18 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
     try {
       await widget.api.deleteYachtAvailability(a.yachtAvailabilityId);
       await _loadAvailabilities();
-    } catch (_) {}
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Availability period deleted successfully.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete availability period: $e')),
+        );
+      }
+    }
   }
 
   String _fmtDate(DateTime dt) {

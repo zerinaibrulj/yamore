@@ -123,6 +123,13 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
 
   bool _isReservationPast(Reservation r) => r.endDate.isBefore(DateTime.now());
 
+  void _showSuccess(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   String _formatDateTime(DateTime dt) =>
       '${dt.day.toString().padLeft(2, '0')}.'
       '${dt.month.toString().padLeft(2, '0')}.'
@@ -565,10 +572,25 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
               if (yachtId == null ||
                   startCityId == null ||
                   endCityId == null) {
+                await showDialog<void>(
+                  context: ctx,
+                  builder: (dialogCtx) => AlertDialog(
+                    title: const Text('Invalid data'),
+                    content: const Text(
+                      'Please select yacht, start city, and end city before clicking Create.',
+                    ),
+                    actions: [
+                      FilledButton(
+                        onPressed: () => Navigator.of(dialogCtx).pop(),
+                        child: const Text('OK'),
+                      ),
+                    ],
+                  ),
+                );
                 return;
               }
               Navigator.of(ctx).pop(true);
@@ -594,6 +616,7 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
                 ? null
                 : descCtrl.text.trim(),
           );
+          _showSuccess('Route created successfully.');
         } else {
           await _api.updateRoute(
             routeId: existing.routeId,
@@ -605,6 +628,7 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
                 ? null
                 : descCtrl.text.trim(),
           );
+          _showSuccess('Route updated successfully.');
         }
         await _loadAll();
       } catch (e) {
@@ -641,6 +665,7 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
       try {
         await _api.deleteRoute(route.routeId);
         await _loadAll();
+        _showSuccess('Route deleted successfully.');
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -858,6 +883,7 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
                 : condCtrl.text.trim(),
             windSpeed: wind,
           );
+          _showSuccess('Forecast created successfully.');
         } else {
           await _api.updateWeatherForecast(
             forecastId: existing.forecastId,
@@ -869,6 +895,7 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
                 : condCtrl.text.trim(),
             windSpeed: wind,
           );
+          _showSuccess('Forecast updated successfully.');
         }
         await _loadAll();
       } catch (e) {
@@ -905,6 +932,7 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
       try {
         await _api.deleteWeatherForecast(forecast.forecastId);
         await _loadAll();
+        _showSuccess('Forecast deleted successfully.');
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(

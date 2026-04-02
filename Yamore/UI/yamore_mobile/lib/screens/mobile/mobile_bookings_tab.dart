@@ -62,13 +62,16 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
       List<CityModel> cities = [];
       try {
         cities = await _api.getCities();
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Failed to load cities for bookings: $e');
+      }
       final details = await Future.wait(
         yachtIds.map((id) async {
           try {
             final d = await _api.getYachtById(id);
             return MapEntry(id, d);
-          } catch (_) {
+          } catch (e) {
+            debugPrint('Failed to load yacht $id for bookings: $e');
             return MapEntry<int, YachtDetail?>(id, null);
           }
         }),
@@ -83,7 +86,8 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
           try {
             final r = await _api.getRoutesForYacht(id);
             return MapEntry(id, r);
-          } catch (_) {
+          } catch (e) {
+            debugPrint('Failed to load routes for yacht $id: $e');
             return MapEntry<int, List<RouteModel>>(id, const []);
           }
         }),
@@ -448,7 +452,8 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
       // Refresh routes live in case admin added/edited routes after this tab was loaded.
       routes = await _api.getRoutesForYacht(r.yachtId);
       _routesByYachtId[r.yachtId] = routes;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Failed to refresh routes for yacht ${r.yachtId}: $e');
       routes = _routesByYachtId[r.yachtId] ?? const <RouteModel>[];
     }
     if (routes.isEmpty) {

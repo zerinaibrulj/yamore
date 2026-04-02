@@ -88,7 +88,9 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
         if (d.yachtId != null) {
           extras.add(YachtOverview.fromYachtDetail(d));
         }
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Failed to load favorite yacht detail $id: $e');
+      }
     }
     if (extras.isEmpty) return apiList;
     return [...apiList, ...extras];
@@ -698,8 +700,29 @@ extension on _MobileHomeTabState {
   }
 
   Future<void> _toggleFavorite(int yachtId, bool makeFavorite) async {
+    final before = Set<int>.from(_favoriteIds);
     _setFavorite(yachtId, makeFavorite);
-    await FavoritesService.saveFavorites(widget.user.userId, _favoriteIds);
+    try {
+      await FavoritesService.saveFavorites(widget.user.userId, _favoriteIds);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              makeFavorite
+                  ? 'Yacht added to favorites.'
+                  : 'Yacht removed from favorites.',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _favoriteIds = before);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update favorites: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _openFilterSheet() async {

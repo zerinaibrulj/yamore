@@ -92,7 +92,9 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
         try {
           final u = await widget.api.getUserById(id);
           if (u.displayName.isNotEmpty) names[id] = u.displayName;
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('Failed to load review author $id: $e');
+        }
       }
       if (!mounted) return;
       setState(() {

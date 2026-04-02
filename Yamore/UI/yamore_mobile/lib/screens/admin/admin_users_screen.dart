@@ -474,8 +474,18 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     try {
       if (active) {
         await _api.suspendUser(user.userId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${user.displayName} has been suspended.')),
+          );
+        }
       } else {
         await _api.activateUser(user.userId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${user.displayName} has been activated.')),
+          );
+        }
       }
       await _loadUsers();
     } catch (e) {

@@ -696,7 +696,13 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
     try {
       final imgs = await widget.api.getYachtImages(widget.existing!.yachtId!);
       if (mounted) setState(() => _images = imgs);
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load yacht images: $e')),
+        );
+      }
+    }
     if (mounted) setState(() => _imagesLoading = false);
   }
 
@@ -713,7 +719,9 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
     final countBefore = _images.length;
     try {
       await widget.api.uploadYachtImage(widget.existing!.yachtId!, path);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Image upload reported an error: $e');
+    }
     await _loadImages();
     if (mounted) {
       if (_images.length > countBefore) {
@@ -737,14 +745,36 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
     try {
       await widget.api.deleteYachtImage(img.yachtImageId);
       await _loadImages();
-    } catch (_) {}
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Image deleted successfully.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete image: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _setThumbnail(YachtImageModel img) async {
     try {
       await widget.api.setYachtImageThumbnail(img.yachtImageId);
       await _loadImages();
-    } catch (_) {}
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cover image updated successfully.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to set cover image: $e')),
+        );
+      }
+    }
   }
 
   // ── Availability ──
@@ -757,7 +787,13 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
         pageSize: 50,
       );
       if (mounted) setState(() => _availabilities = result.resultList);
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load availability periods: $e')),
+        );
+      }
+    }
     if (mounted) setState(() => _availLoading = false);
   }
 
@@ -878,6 +914,11 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
           note: noteCtrl.text.trim().isEmpty ? null : noteCtrl.text.trim(),
         );
         await _loadAvailabilities();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Availability period added successfully.')),
+          );
+        }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -893,7 +934,18 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
     try {
       await widget.api.deleteYachtAvailability(a.yachtAvailabilityId);
       await _loadAvailabilities();
-    } catch (_) {}
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Availability period deleted successfully.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete availability period: $e')),
+        );
+      }
+    }
   }
 
   String _fmtDate(DateTime dt) =>
@@ -914,7 +966,13 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
           _assignedServiceIds = (results[1] as List<int>).toSet();
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load yacht services: $e')),
+        );
+      }
+    }
     if (mounted) setState(() => _servicesLoading = false);
   }
 

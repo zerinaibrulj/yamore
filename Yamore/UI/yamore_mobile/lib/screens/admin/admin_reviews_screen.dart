@@ -54,7 +54,8 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
         try {
           final yacht = await _api.getYachtById(id);
           return MapEntry(id, yacht.name.isNotEmpty ? yacht.name : 'Unknown yacht');
-        } catch (_) {
+        } catch (e) {
+          debugPrint('Failed to load yacht $id for review list: $e');
           return MapEntry(id, 'Unknown yacht');
         }
       });
@@ -63,7 +64,8 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
           final user = await _api.getUserById(id);
           final name = user.displayName;
           return MapEntry(id, name.isNotEmpty ? name : 'Guest user');
-        } catch (_) {
+        } catch (e) {
+          debugPrint('Failed to load user $id for review list: $e');
           return MapEntry(id, 'Guest user');
         }
       });
@@ -134,6 +136,11 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
       try {
         await _api.deleteReview(review.reviewId);
         await _loadReviews();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Review deleted successfully.')),
+          );
+        }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -198,8 +205,26 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () {
-              if (controller.text.trim().isNotEmpty) {
+            onPressed: () async {
+              if (controller.text.trim().isEmpty) {
+                await showDialog<void>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Invalid data'),
+                    content: const Text(
+                      'Please enter a response message before sending.',
+                    ),
+                    actions: [
+                      FilledButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        child: const Text('OK'),
+                      ),
+                    ],
+                  ),
+                );
+                return;
+              }
+              if (context.mounted) {
                 Navigator.of(context).pop(true);
               }
             },
@@ -212,6 +237,11 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
       try {
         await _api.respondToReview(review.reviewId, controller.text.trim());
         await _loadReviews();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Response sent successfully.')),
+          );
+        }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

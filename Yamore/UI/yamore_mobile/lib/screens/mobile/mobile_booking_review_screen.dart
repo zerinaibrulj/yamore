@@ -369,7 +369,11 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
         if (clientSecret == null || clientSecret.isEmpty) {
           if (!mounted) return;
           setState(() => _saving = false);
-          try { await widget.api.cancelReservation(reservation.reservationId); } catch (_) {}
+          try {
+            await widget.api.cancelReservation(reservation.reservationId);
+          } catch (e) {
+            debugPrint('Failed to auto-cancel reservation after payment setup failure: $e');
+          }
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -385,7 +389,11 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
         if (publishableKey.isEmpty) {
           if (!mounted) return;
           setState(() => _saving = false);
-          try { await widget.api.cancelReservation(reservation.reservationId); } catch (_) {}
+          try {
+            await widget.api.cancelReservation(reservation.reservationId);
+          } catch (e) {
+            debugPrint('Failed to auto-cancel reservation after missing Stripe key: $e');
+          }
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Payment configuration missing. Please try Pay on arrival.')),
@@ -405,7 +413,11 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
         } on StripeException catch (e) {
           if (!mounted) return;
           setState(() => _saving = false);
-          try { await widget.api.cancelReservation(reservation.reservationId); } catch (_) {}
+          try {
+            await widget.api.cancelReservation(reservation.reservationId);
+          } catch (e) {
+            debugPrint('Failed to auto-cancel reservation after Stripe exception: $e');
+          }
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Payment cancelled or failed: ${e.error?.localizedMessage ?? e.toString()}')),
@@ -415,7 +427,11 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
         } catch (e) {
           if (!mounted) return;
           setState(() => _saving = false);
-          try { await widget.api.cancelReservation(reservation.reservationId); } catch (_) {}
+          try {
+            await widget.api.cancelReservation(reservation.reservationId);
+          } catch (e) {
+            debugPrint('Failed to auto-cancel reservation after payment runtime error: $e');
+          }
           if (!mounted) return;
           final msg = e.toString();
           if (msg.contains('MissingPluginException') || msg.contains('flutter.stripe')) {

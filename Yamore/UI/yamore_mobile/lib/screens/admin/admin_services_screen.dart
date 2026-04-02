@@ -71,11 +71,44 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
     super.dispose();
   }
 
+  void _showSuccess(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Future<void> _showValidationDialog(String message) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Invalid data'),
+        content: Text(message),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _loadAllCategories() async {
     try {
       final result = await _api.getServiceCategories(pageSize: 100);
       if (mounted) setState(() => _allCategories = result.resultList);
-    } catch (_) {}
+    } catch (e) {
+      _showError('Failed to load category list: $e');
+    }
   }
 
   // ── Categories ──
@@ -145,8 +178,14 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () {
-              if (nameCtrl.text.trim().isNotEmpty) {
+            onPressed: () async {
+              if (nameCtrl.text.trim().isEmpty) {
+                await _showValidationDialog(
+                  'Please enter a valid category name before saving.',
+                );
+                return;
+              }
+              if (context.mounted) {
                 Navigator.of(context).pop(true);
               }
             },
@@ -163,12 +202,9 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
         );
         await _loadCategories();
         await _loadAllCategories();
+        _showSuccess('Category added successfully.');
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to add category: $e')),
-          );
-        }
+        _showError('Failed to add category: $e');
       }
     }
     nameCtrl.dispose();
@@ -212,8 +248,14 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () {
-              if (nameCtrl.text.trim().isNotEmpty) {
+            onPressed: () async {
+              if (nameCtrl.text.trim().isEmpty) {
+                await _showValidationDialog(
+                  'Please enter a valid category name before saving.',
+                );
+                return;
+              }
+              if (context.mounted) {
                 Navigator.of(context).pop(true);
               }
             },
@@ -231,12 +273,9 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
         );
         await _loadCategories();
         await _loadAllCategories();
+        _showSuccess('Category updated successfully.');
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to update category: $e')),
-          );
-        }
+        _showError('Failed to update category: $e');
       }
     }
     nameCtrl.dispose();
@@ -267,12 +306,9 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
         await _api.deleteServiceCategory(cat.serviceCategoryId);
         await _loadCategories();
         await _loadAllCategories();
+        _showSuccess('Category deleted successfully.');
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete category: $e')),
-          );
-        }
+        _showError('Failed to delete category: $e');
       }
     }
   }
@@ -324,6 +360,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
     );
     if (result == true) {
       await _loadServices();
+      _showSuccess('Service added successfully.');
     }
   }
 
@@ -346,6 +383,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
     );
     if (result == true) {
       await _loadServices();
+      _showSuccess('Service updated successfully.');
     }
   }
 
@@ -372,12 +410,9 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
       try {
         await _api.deleteService(svc.serviceId);
         await _loadServices();
+        _showSuccess('Service deleted successfully.');
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete service: $e')),
-          );
-        }
+        _showError('Failed to delete service: $e');
       }
     }
   }
@@ -433,8 +468,14 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () {
-              if (nameCtrl.text.trim().isNotEmpty) {
+            onPressed: () async {
+              if (nameCtrl.text.trim().isEmpty) {
+                await _showValidationDialog(
+                  'Please enter a valid yacht category name before saving.',
+                );
+                return;
+              }
+              if (context.mounted) {
                 Navigator.of(context).pop(true);
               }
             },
@@ -447,12 +488,9 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
       try {
         await _api.insertYachtCategory(name: nameCtrl.text.trim());
         await _loadYachtCategories();
+        _showSuccess('Yacht category added successfully.');
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to add yacht category: $e')),
-          );
-        }
+        _showError('Failed to add yacht category: $e');
       }
     }
     nameCtrl.dispose();
@@ -481,8 +519,14 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () {
-              if (nameCtrl.text.trim().isNotEmpty) {
+            onPressed: () async {
+              if (nameCtrl.text.trim().isEmpty) {
+                await _showValidationDialog(
+                  'Please enter a valid yacht category name before saving.',
+                );
+                return;
+              }
+              if (context.mounted) {
                 Navigator.of(context).pop(true);
               }
             },
@@ -495,12 +539,9 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
       try {
         await _api.updateYachtCategory(cat.categoryId, name: nameCtrl.text.trim());
         await _loadYachtCategories();
+        _showSuccess('Yacht category updated successfully.');
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to update yacht category: $e')),
-          );
-        }
+        _showError('Failed to update yacht category: $e');
       }
     }
     nameCtrl.dispose();
@@ -529,12 +570,9 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
       try {
         await _api.deleteYachtCategory(cat.categoryId);
         await _loadYachtCategories();
+        _showSuccess('Yacht category deleted successfully.');
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete yacht category: $e')),
-          );
-        }
+        _showError('Failed to delete yacht category: $e');
       }
     }
   }
@@ -1086,7 +1124,14 @@ class _ServiceDialogState extends State<_ServiceDialog> {
   }
 
   Future<void> _save() async {
-    if (_nameCtrl.text.trim().isEmpty) return;
+    if (_nameCtrl.text.trim().isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Service name is required.')),
+        );
+      }
+      return;
+    }
     final rawPrice = _priceCtrl.text.trim();
     if (rawPrice.isNotEmpty && double.tryParse(rawPrice) == null) {
       ScaffoldMessenger.of(context).showSnackBar(

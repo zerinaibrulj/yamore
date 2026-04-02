@@ -93,11 +93,8 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
   }
 
   String _countryName(int countryId) {
-    try {
-      return _countries.firstWhere((c) => c.countryId == countryId).name;
-    } catch (_) {
-      return '—';
-    }
+    final match = _countries.where((c) => c.countryId == countryId);
+    return match.isEmpty ? '—' : match.first.name;
   }
 
   List<CountryModel> get _filteredCountries {
@@ -139,6 +136,23 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
             Expanded(child: Text(message, style: const TextStyle(fontSize: 15))),
           ],
         ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showValidationPopup(String message) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Invalid data'),
+        content: Text(message),
         actions: [
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(),
@@ -427,8 +441,16 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(
-            onPressed: () {
-              if (nameCtrl.text.trim().isNotEmpty) Navigator.pop(ctx, true);
+            onPressed: () async {
+              if (nameCtrl.text.trim().isEmpty) {
+                await _showValidationPopup(
+                  'Please enter a valid country name before saving.',
+                );
+                return;
+              }
+              if (ctx.mounted) {
+                Navigator.pop(ctx, true);
+              }
             },
             child: const Text('Save'),
           ),
@@ -467,8 +489,16 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(
-            onPressed: () {
-              if (nameCtrl.text.trim().isNotEmpty) Navigator.pop(ctx, true);
+            onPressed: () async {
+              if (nameCtrl.text.trim().isEmpty) {
+                await _showValidationPopup(
+                  'Please enter a valid country name before saving.',
+                );
+                return;
+              }
+              if (ctx.mounted) {
+                Navigator.pop(ctx, true);
+              }
             },
             child: const Text('Save'),
           ),
@@ -564,8 +594,14 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
             FilledButton(
-              onPressed: () {
-                if (nameCtrl.text.trim().isNotEmpty && selectedCountryId != null) {
+              onPressed: () async {
+                if (nameCtrl.text.trim().isEmpty || selectedCountryId == null) {
+                  await _showValidationPopup(
+                    'Please select a country and enter a valid city name before saving.',
+                  );
+                  return;
+                }
+                if (ctx.mounted) {
                   Navigator.pop(ctx, true);
                 }
               },
@@ -658,8 +694,16 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(
-            onPressed: () {
-              if (nameCtrl.text.trim().isNotEmpty) Navigator.pop(ctx, true);
+            onPressed: () async {
+              if (nameCtrl.text.trim().isEmpty) {
+                await _showValidationPopup(
+                  'Please enter a valid city name before saving.',
+                );
+                return;
+              }
+              if (ctx.mounted) {
+                Navigator.pop(ctx, true);
+              }
             },
             child: const Text('Save'),
           ),

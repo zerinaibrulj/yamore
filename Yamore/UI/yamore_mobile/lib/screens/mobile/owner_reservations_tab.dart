@@ -62,7 +62,9 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
         try {
           final d = await _api.getYachtById(id);
           _yachtCache[id] = d;
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('Failed to preload yacht $id: $e');
+        }
       }),
       ...userIds
           .where((id) => !_guestCache.containsKey(id))
@@ -70,7 +72,9 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
         try {
           final u = await _api.getUserById(id);
           _guestCache[id] = u;
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('Failed to preload guest $id: $e');
+        }
       }),
     ]);
 
@@ -157,6 +161,11 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
       try {
         await _api.cancelReservation(r.reservationId);
         await _loadReservations();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Reservation cancelled successfully.')),
+          );
+        }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -188,6 +197,11 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
       try {
         await _api.confirmReservation(r.reservationId);
         await _loadReservations();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Reservation confirmed successfully.')),
+          );
+        }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
