@@ -161,7 +161,7 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
           SliverToBoxAdapter(child: _buildHero()),
           if (!widget.showOnlyFavorites && _recommended.isNotEmpty)
             SliverToBoxAdapter(child: _buildRecommendedStrip()),
-          const SliverToBoxAdapter(child: SizedBox(height: 12)),
+          const SliverToBoxAdapter(child: SizedBox(height: 6)),
           SliverToBoxAdapter(child: _buildListHeader()),
           if (_loading)
             const SliverFillRemaining(
@@ -367,7 +367,7 @@ extension on _MobileHomeTabState {
 
   Widget _buildRecommendedStrip() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 0, 4),
+      padding: const EdgeInsets.fromLTRB(20, 12, 0, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -377,23 +377,27 @@ extension on _MobileHomeTabState {
           ),
           const SizedBox(height: 6),
           SizedBox(
-            height: 240,
+            height: 184,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: _recommended.length,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (context, index) {
                 final y = _recommended[index];
-                return SizedBox(
-                  width: 220,
-                  child: _YachtCard(
-                    yacht: y,
-                    api: _api,
-                    isFavorite: false,
-                    onToggleFavorite: () {},
-                    showFavoriteIcon: false,
-                    compact: true,
-                    onTap: () => _openYachtDetails(y),
+                return Align(
+                  alignment: Alignment.topCenter,
+                  heightFactor: 1,
+                  child: SizedBox(
+                    width: 220,
+                    child: _YachtCard(
+                      yacht: y,
+                      api: _api,
+                      isFavorite: false,
+                      onToggleFavorite: () {},
+                      showFavoriteIcon: false,
+                      compact: true,
+                      onTap: () => _openYachtDetails(y),
+                    ),
                   ),
                 );
               },
@@ -406,7 +410,7 @@ extension on _MobileHomeTabState {
 
   Widget _buildListHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -823,8 +827,8 @@ class _YachtCardState extends State<_YachtCard> {
   Widget build(BuildContext context) {
     final yacht = widget.yacht;
     final compact = widget.compact;
-    final imageHeight = compact ? 120.0 : 180.0;
-    final contentPadding = compact ? 8.0 : 14.0;
+    final imageHeight = compact ? 112.0 : 180.0;
+    final contentPadding = compact ? 0.0 : 14.0;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovering = true),
@@ -858,7 +862,9 @@ class _YachtCardState extends State<_YachtCard> {
                   else
                     _placeholderImage(height: imageHeight),
                   Padding(
-                    padding: EdgeInsets.all(contentPadding),
+                    padding: compact
+                        ? const EdgeInsets.fromLTRB(8, 6, 8, 6)
+                        : EdgeInsets.all(contentPadding),
                     child: compact
                         ? Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -869,18 +875,19 @@ class _YachtCardState extends State<_YachtCard> {
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
-                                  fontSize: 15,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w700,
-                                  height: 1.2,
+                                  height: 1.15,
                                 ),
                               ),
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 3),
                               Text(
                                 '€${yacht.pricePerDay.toStringAsFixed(2)}/day',
                                 style: const TextStyle(
-                                  fontSize: 14,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                   color: Color(0xFF1a237e),
+                                  height: 1.1,
                                 ),
                               ),
                             ],
