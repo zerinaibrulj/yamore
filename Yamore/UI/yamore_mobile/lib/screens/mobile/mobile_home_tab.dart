@@ -377,7 +377,7 @@ extension on _MobileHomeTabState {
           ),
           const SizedBox(height: 6),
           SizedBox(
-            height: 230,
+            height: 240,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: _recommended.length,
@@ -392,6 +392,7 @@ extension on _MobileHomeTabState {
                     isFavorite: false,
                     onToggleFavorite: () {},
                     showFavoriteIcon: false,
+                    compact: true,
                     onTap: () => _openYachtDetails(y),
                   ),
                 );
@@ -797,6 +798,8 @@ class _YachtCard extends StatefulWidget {
   final bool isFavorite;
   final VoidCallback onToggleFavorite;
   final bool showFavoriteIcon;
+  /// Shorter card for horizontal "Recommended" strip (avoids vertical overflow).
+  final bool compact;
   final VoidCallback? onTap;
 
   const _YachtCard({
@@ -805,6 +808,7 @@ class _YachtCard extends StatefulWidget {
     required this.isFavorite,
     required this.onToggleFavorite,
     this.showFavoriteIcon = true,
+    this.compact = false,
     this.onTap,
   });
 
@@ -818,13 +822,19 @@ class _YachtCardState extends State<_YachtCard> {
   @override
   Widget build(BuildContext context) {
     final yacht = widget.yacht;
+    final compact = widget.compact;
+    final imageHeight = compact ? 120.0 : 180.0;
+    final contentPadding = compact ? 8.0 : 14.0;
+
     return MouseRegion(
       onEnter: (_) => setState(() => _hovering = true),
       onExit: (_) => setState(() => _hovering = false),
       child: InkWell(
         onTap: widget.onTap,
         child: Card(
-          margin: const EdgeInsets.only(bottom: 14),
+          margin: compact
+              ? EdgeInsets.zero
+              : const EdgeInsets.only(bottom: 14),
           elevation: _hovering ? 6 : 2,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -832,91 +842,125 @@ class _YachtCardState extends State<_YachtCard> {
           child: Stack(
             children: [
               Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (yacht.thumbnailImageId != null)
                     Image.network(
                       widget.api.yachtImageUrl(yacht.thumbnailImageId!),
-                      height: 180,
+                      height: imageHeight,
                       width: double.infinity,
                       fit: BoxFit.cover,
                       headers: widget.api.authHeaders,
-                      errorBuilder: (_, __, ___) => _placeholderImage(),
+                      errorBuilder: (_, __, ___) =>
+                          _placeholderImage(height: imageHeight),
                     )
                   else
-                    _placeholderImage(),
+                    _placeholderImage(height: imageHeight),
                   Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          yacht.name,
-                          style: const TextStyle(
-                              fontSize: 17, fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(height: 4),
-                        if (yacht.locationName != null)
-                          Row(
+                    padding: EdgeInsets.all(contentPadding),
+                    child: compact
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.location_on_outlined,
-                                  size: 15, color: Colors.grey.shade600),
-                              const SizedBox(width: 4),
                               Text(
-                                yacht.locationName!,
-                                style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey.shade600),
-                              ),
-                            ],
-                          ),
-                        const SizedBox(height: 6),
-                        if (yacht.averageRating != null &&
-                            yacht.reviewCount > 0)
-                          Row(
-                            children: [
-                              const Icon(Icons.star,
-                                  size: 16, color: Color(0xFFFFC107)),
-                              const SizedBox(width: 4),
-                              Text(
-                                yacht.averageRating!.toStringAsFixed(1),
+                                yacht.name,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.2,
+                                ),
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(height: 6),
                               Text(
-                                '(${yacht.reviewCount})',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade600),
+                                '€${yacht.pricePerDay.toStringAsFixed(2)}/day',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF1a237e),
+                                ),
+                              ),
+                            ],
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                yacht.name,
+                                style: const TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w700),
+                              ),
+                              const SizedBox(height: 4),
+                              if (yacht.locationName != null)
+                                Row(
+                                  children: [
+                                    Icon(Icons.location_on_outlined,
+                                        size: 15,
+                                        color: Colors.grey.shade600),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        yacht.locationName!,
+                                        style: TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.grey.shade600),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              const SizedBox(height: 6),
+                              if (yacht.averageRating != null &&
+                                  yacht.reviewCount > 0)
+                                Row(
+                                  children: [
+                                    const Icon(Icons.star,
+                                        size: 16,
+                                        color: Color(0xFFFFC107)),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      yacht.averageRating!
+                                          .toStringAsFixed(1),
+                                      style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '(${yacht.reviewCount})',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade600),
+                                    ),
+                                  ],
+                                ),
+                              if (yacht.averageRating != null &&
+                                  yacht.reviewCount > 0)
+                                const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  _chip(Icons.people_outline,
+                                      '${yacht.capacity} guests'),
+                                  const SizedBox(width: 8),
+                                  if (yacht.yearBuilt != null)
+                                    _chip(Icons.calendar_today_outlined,
+                                        '${yacht.yearBuilt}'),
+                                  const Spacer(),
+                                  Text(
+                                    '€${yacht.pricePerDay.toStringAsFixed(2)}/day',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF1a237e),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        if (yacht.averageRating != null &&
-                            yacht.reviewCount > 0)
-                          const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            _chip(Icons.people_outline,
-                                '${yacht.capacity} guests'),
-                            const SizedBox(width: 8),
-                            if (yacht.yearBuilt != null)
-                              _chip(Icons.calendar_today_outlined,
-                                  '${yacht.yearBuilt}'),
-                            const Spacer(),
-                            Text(
-                              '€${yacht.pricePerDay.toStringAsFixed(2)}/day',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF1a237e),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
                   ),
                 ],
               ),
@@ -967,9 +1011,9 @@ class _YachtCardState extends State<_YachtCard> {
     );
   }
 
-  static Widget _placeholderImage() {
+  static Widget _placeholderImage({double height = 180}) {
     return Container(
-      height: 180,
+      height: height,
       width: double.infinity,
       color: Colors.grey.shade200,
       child: Column(
