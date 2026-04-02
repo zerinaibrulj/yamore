@@ -243,102 +243,103 @@ class _CustomDateRangePickerDialogState extends State<CustomDateRangePickerDialo
             ),
             const SizedBox(height: 10),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Row(
-                children: _weekdays
-                    .map(
-                      (d) => Expanded(
-                        child: Center(
-                          child: Text(
-                            d,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                        ),
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  const cellSize = 40.0;
+                  // Same column width for weekday labels and day cells (no fixed 7×40
+                  // grid centered under a full-width Expanded row — that caused misalignment).
+                  final cellW = constraints.maxWidth / 7;
+                  final cellH = cellW.clamp(36.0, 46.0);
                   final leadingEmpty = firstWeekday - 1;
                   final totalCells = leadingEmpty + daysInMonth;
                   final rows = (totalCells / 7).ceil();
+
                   return Column(
                     mainAxisSize: MainAxisSize.min,
-                    children: List.generate(rows, (row) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Row(
-                          children: List.generate(7, (col) {
-                            final cellIndex = row * 7 + col;
-                            if (cellIndex < leadingEmpty) {
-                              return const SizedBox(
-                                  width: cellSize, height: cellSize);
-                            }
-                            final day = cellIndex - leadingEmpty + 1;
-                            if (day > daysInMonth) {
-                              return const SizedBox(
-                                  width: cellSize, height: cellSize);
-                            }
-                            final date = DateTime(year, month, day);
-                            final isPast = date.isBefore(today);
-                            final inRange = _isInRange(date);
-                            final isStart = _isRangeStart(date);
-                            final isEnd = _isRangeEnd(date);
-                            final canTap = !isPast;
+                    children: [
+                      Row(
+                        children: _weekdays.map((d) {
+                          return SizedBox(
+                            width: cellW,
+                            child: Center(
+                              child: Text(
+                                d,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 6),
+                      ...List.generate(rows, (row) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Row(
+                            children: List.generate(7, (col) {
+                              final cellIndex = row * 7 + col;
+                              if (cellIndex < leadingEmpty) {
+                                return SizedBox(width: cellW, height: cellH);
+                              }
+                              final day = cellIndex - leadingEmpty + 1;
+                              if (day > daysInMonth) {
+                                return SizedBox(width: cellW, height: cellH);
+                              }
+                              final date = DateTime(year, month, day);
+                              final isPast = date.isBefore(today);
+                              final inRange = _isInRange(date);
+                              final isStart = _isRangeStart(date);
+                              final isEnd = _isRangeEnd(date);
+                              final canTap = !isPast;
 
-                            return SizedBox(
-                              width: cellSize,
-                              height: cellSize,
-                              child: Padding(
-                                padding: const EdgeInsets.all(2),
-                                child: Material(
-                                  color: isPast
-                                      ? Colors.grey.shade100
-                                      : inRange
-                                          ? (isStart || isEnd
-                                              ? AppTheme.primaryBlue
-                                              : AppTheme.primaryBlue.withOpacity(0.14))
-                                          : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: InkWell(
-                                    onTap: canTap
-                                        ? () => _onDayTap(date)
-                                        : null,
+                              return SizedBox(
+                                width: cellW,
+                                height: cellH,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(2),
+                                  child: Material(
+                                    color: isPast
+                                        ? Colors.grey.shade100
+                                        : inRange
+                                            ? (isStart || isEnd
+                                                ? AppTheme.primaryBlue
+                                                : AppTheme.primaryBlue
+                                                    .withOpacity(0.14))
+                                            : Colors.transparent,
                                     borderRadius: BorderRadius.circular(10),
-                                    child: Center(
-                                      child: Text(
-                                        '$day',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: isPast
-                                              ? Colors.grey
-                                              : (isStart || isEnd)
-                                                  ? Colors.white
-                                                  : inRange
-                                                      ? AppTheme.primaryBlue
-                                                      : Colors.black87,
+                                    child: InkWell(
+                                      onTap: canTap
+                                          ? () => _onDayTap(date)
+                                          : null,
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: Center(
+                                        child: Text(
+                                          '$day',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: isPast
+                                                ? Colors.grey
+                                                : (isStart || isEnd)
+                                                    ? Colors.white
+                                                    : inRange
+                                                        ? AppTheme.primaryBlue
+                                                        : Colors.black87,
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            );
-                          }),
-                        ),
-                      );
-                    }),
+                              );
+                            }),
+                          ),
+                        );
+                      }),
+                    ],
                   );
                 },
               ),
