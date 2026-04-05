@@ -710,6 +710,8 @@ extension on _MobileHomeTabState {
     try {
       await FavoritesService.saveFavorites(widget.user.userId, _favoriteIds);
       if (!mounted) return;
+      // Favorites tab lists _filteredYachts; recompute so removed yachts disappear immediately.
+      _applyFilters();
       if (makeFavorite) {
         await showDialog<void>(
           context: context,
