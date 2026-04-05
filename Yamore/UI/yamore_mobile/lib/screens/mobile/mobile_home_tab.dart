@@ -709,14 +709,39 @@ extension on _MobileHomeTabState {
     _setFavorite(yachtId, makeFavorite);
     try {
       await FavoritesService.saveFavorites(widget.user.userId, _favoriteIds);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              makeFavorite
-                  ? 'Yacht added to favorites.'
-                  : 'Yacht removed from favorites.',
+      if (!mounted) return;
+      if (makeFavorite) {
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            icon: Icon(Icons.favorite, color: AppTheme.primaryBlue, size: 32),
+            title: const Text('Added to favorites'),
+            content: const Text(
+              'This yacht has been successfully added to your favorites.',
             ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            icon: Icon(Icons.favorite_border, color: Colors.grey.shade700, size: 32),
+            title: const Text('Removed from favorites'),
+            content: const Text(
+              'This yacht has been removed from your favorites.',
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('OK'),
+              ),
+            ],
           ),
         );
       }

@@ -12,8 +12,13 @@ namespace Yamore.Services.Database;
 /// demo users get Gmail "+" aliases derived from this address (distinct emails, but all deliver to the same inbox).
 /// This avoids @yamore.local bounces and also respects the unique Users.Email constraint.
 /// </summary>
+/// <remarks>
+/// <see cref="DemoPassword"/> is fixed <b>demo seed data</b> for the seeded accounts only (demo.admin / demo.owner / demo.user).
+/// It is not infrastructure configuration (unlike SMTP, DB connection strings, or API keys) and must not be used for real users in production.
+/// </remarks>
 public static class DemoDataSeeder
 {
+    /// <summary>Password assigned only to seeded demo users — sample data, not app configuration.</summary>
     public const string DemoPassword = "Demo123!";
 
     public static void SeedIfEmpty(_220245Context db, ILogger logger, string? notificationEmail = null)
