@@ -11,6 +11,7 @@ import '../../models/yacht_category.dart';
 import '../../models/user.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/custom_date_range_picker_dialog.dart';
 
 class YachtReviewScreen extends StatefulWidget {
   final AuthService authService;
@@ -897,30 +898,19 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                   children: [
                     OutlinedButton.icon(
                       onPressed: () async {
-                        final picked = await showDateRangePicker(
-                          context: ctx,
-                          firstDate: DateTime.now(),
-                          lastDate: DateTime.now().add(const Duration(days: 730)),
-                          builder: (context, child) {
-                            return Theme(
-                              data: Theme.of(context).copyWith(
-                                colorScheme: Theme.of(context).colorScheme.copyWith(
-                                  primary: AppTheme.primaryBlue,
-                                ),
-                                dialogTheme: const DialogThemeData(
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.all(Radius.circular(16)),
-                                  ),
-                                ),
-                              ),
-                              child: Center(
-                                child: ConstrainedBox(
-                                  constraints: const BoxConstraints(maxWidth: 500, maxHeight: 550),
-                                  child: child!,
-                                ),
-                              ),
+                        final now = DateTime.now();
+                        final initial = range ??
+                            DateTimeRange(
+                              start: now.add(const Duration(days: 1)),
+                              end: now.add(const Duration(days: 4)),
                             );
-                          },
+                        final picked = await showDialog<DateTimeRange>(
+                          context: ctx,
+                          builder: (_) => CustomDateRangePickerDialog(
+                            initialRange: initial,
+                            firstDate: DateTime(now.year, now.month, now.day),
+                            lastDate: now.add(const Duration(days: 730)),
+                          ),
                         );
                         if (picked != null) {
                           setLocalState(() => range = picked);
@@ -995,8 +985,14 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
         );
         await _loadAvailabilities();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Availability period added successfully.')),
+          await _showSuccessDialog(
+            context,
+            title: isBlocked
+                ? 'Unavailable period added'
+                : 'Available period added',
+            message: isBlocked
+                ? 'The yacht has been marked as unavailable for the selected period.'
+                : 'The yacht has been marked as available for the selected period.',
           );
         }
       } catch (e) {
@@ -1015,8 +1011,11 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
       await widget.api.deleteYachtAvailability(a.yachtAvailabilityId);
       await _loadAvailabilities();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Availability period deleted successfully.')),
+        await _showSuccessDialog(
+          context,
+          title: 'Availability removed',
+          message:
+              'The selected availability period has been removed successfully.',
         );
       }
     } catch (e) {
@@ -1207,9 +1206,9 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
   Widget? _buildValidationIcon(bool isValid, String value) {
     if (value.trim().isEmpty) return null;
     return SizedBox(
-      width: 24,
+      width: 28,
       child: Align(
-        alignment: Alignment.center,
+        alignment: Alignment.centerRight,
         child: Icon(
           isValid ? Icons.check_circle : Icons.cancel,
           color: isValid ? Colors.green : Colors.red.shade400,
