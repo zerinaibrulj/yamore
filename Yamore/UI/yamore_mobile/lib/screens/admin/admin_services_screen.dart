@@ -314,6 +314,9 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
     if (confirmed == true) {
       try {
         await _api.deleteServiceCategory(cat.serviceCategoryId);
+        if (_categories.length == 1 && _catPage > 0) {
+          _catPage -= 1;
+        }
         await _loadCategories();
         await _loadAllCategories();
         await _showSuccess('Category deleted successfully.');
@@ -419,6 +422,9 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
     if (confirmed == true) {
       try {
         await _api.deleteService(svc.serviceId);
+        if (_services.length == 1 && _svcPage > 0) {
+          _svcPage -= 1;
+        }
         await _loadServices();
         await _showSuccess('Service deleted successfully.');
       } catch (e) {
@@ -579,6 +585,9 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
     if (confirmed == true) {
       try {
         await _api.deleteYachtCategory(cat.categoryId);
+        if (_yachtCategories.length == 1 && _ycPage > 0) {
+          _ycPage -= 1;
+        }
         await _loadYachtCategories();
         await _showSuccess('Yacht category deleted successfully.');
       } catch (e) {

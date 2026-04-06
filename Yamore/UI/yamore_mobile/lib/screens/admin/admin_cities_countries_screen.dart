@@ -461,8 +461,8 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
       try {
         await _api.insertCountry(name: nameCtrl.text.trim());
         if (mounted) {
+          await _loadCountries();
           await _showSuccessPopup('Country added successfully.');
-          _loadCountries();
         }
       } catch (e) {
         if (mounted) {
@@ -509,9 +509,9 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
       try {
         await _api.updateCountry(c.countryId, name: nameCtrl.text.trim());
         if (mounted) {
+          await _loadCountries();
+          await _loadCities();
           await _showSuccessPopup('Country updated successfully.');
-          _loadCountries();
-          _loadCities();
         }
       } catch (e) {
         if (mounted) {
@@ -542,9 +542,9 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
       try {
         await _api.deleteCountry(c.countryId);
         if (mounted) {
+          await _loadCountries();
+          await _loadCities();
           await _showSuccessPopup('Country deleted successfully.');
-          _loadCountries();
-          _loadCities();
         }
       } catch (e) {
         if (mounted) {
@@ -635,8 +635,8 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
       try {
         await _api.insertCity(countryId: selectedCountryId!, name: name);
         if (mounted) {
+          await _loadCities();
           await _showSuccessPopup('City added successfully.');
-          _loadCities();
         }
       } catch (e) {
         if (mounted) {
@@ -733,8 +733,8 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
       try {
         await _api.updateCity(city.cityId, countryId: city.countryId, name: name);
         if (mounted) {
+          await _loadCities();
           await _showSuccessPopup('City updated successfully.');
-          _loadCities();
         }
       } catch (e) {
         if (mounted) {
@@ -765,8 +765,8 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
       try {
         await _api.deleteCity(city.cityId);
         if (mounted) {
+          await _loadCities();
           await _showSuccessPopup('City deleted successfully.');
-          _loadCities();
         }
       } catch (e) {
         if (mounted) {
