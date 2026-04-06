@@ -741,22 +741,30 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
     final countBefore = _images.length;
     try {
       await widget.api.uploadYachtImage(widget.existing!.yachtId!, path);
-    } catch (e) {
-      debugPrint('Image upload reported an error: $e');
-    }
-    await _loadImages();
-    if (mounted) {
-      if (_images.length > countBefore) {
+      await _loadImages();
+      if (mounted) {
         await _showSuccessActionDialog(
           title: 'Image added',
           message: 'The image has been added successfully.',
         );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Upload failed. Please try again.')),
-        );
+        setState(() => _imageUploading = false);
       }
-      setState(() => _imageUploading = false);
+    } catch (e) {
+      debugPrint('Image upload reported an error: $e');
+      await _loadImages();
+      if (mounted) {
+        if (_images.length > countBefore) {
+          await _showSuccessActionDialog(
+            title: 'Image added',
+            message: 'The image has been added successfully.',
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Upload failed. Please try again.')),
+          );
+        }
+        setState(() => _imageUploading = false);
+      }
     }
   }
 
