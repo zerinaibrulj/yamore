@@ -623,6 +623,26 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
     }
   }
 
+  Future<void> _showCancelSuccessDialog() async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Success'),
+        content: const Text(
+          'Your reservation has been cancelled successfully.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _confirmCancel(Reservation r) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -649,10 +669,9 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
       try {
         await _api.cancelReservation(r.reservationId);
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Reservation cancelled.')),
-        );
         await _loadReservations();
+        if (!mounted) return;
+        await _showCancelSuccessDialog();
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
