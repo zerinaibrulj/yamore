@@ -841,9 +841,13 @@ class _UserDialogState extends State<_UserDialog> {
                   Expanded(
                     child: TextField(
                       controller: _firstNameController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'First name',
                         prefixIcon: Icon(Icons.person_outline),
+                        suffixIcon: _buildValidationIcon(
+                          _isFirstNameValid,
+                          _firstNameController.text,
+                        ),
                       ),
                       onChanged: (_) => setState(() {}),
                     ),
@@ -852,9 +856,13 @@ class _UserDialogState extends State<_UserDialog> {
                   Expanded(
                     child: TextField(
                       controller: _lastNameController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Last name',
                         prefixIcon: Icon(Icons.person),
+                        suffixIcon: _buildValidationIcon(
+                          _isLastNameValid,
+                          _lastNameController.text,
+                        ),
                       ),
                       onChanged: (_) => setState(() {}),
                     ),
@@ -1101,6 +1109,16 @@ class _UserDialogState extends State<_UserDialog> {
     return emailRegex.hasMatch(value) && value.length <= 100;
   }
 
+  bool get _isFirstNameValid {
+    final value = _firstNameController.text.trim();
+    return value.length >= 2 && value.length <= 50;
+  }
+
+  bool get _isLastNameValid {
+    final value = _lastNameController.text.trim();
+    return value.length >= 2 && value.length <= 50;
+  }
+
   bool get _isPasswordValid {
     final value = _passwordController.text;
     if (value.isEmpty) return false;
@@ -1128,10 +1146,9 @@ class _UserDialogState extends State<_UserDialog> {
 
   Widget? _buildValidationIcon(bool isValid, String value) {
     if (value.trim().isEmpty) return null;
-    if (!isValid) return null;
-    return const Icon(
-      Icons.check_circle,
-      color: Colors.green,
+    return Icon(
+      isValid ? Icons.check_circle : Icons.cancel,
+      color: isValid ? Colors.green : Colors.red.shade400,
       size: 18,
     );
   }
