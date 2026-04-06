@@ -474,20 +474,25 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     try {
       if (active) {
         await _api.suspendUser(user.userId);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${user.displayName} has been suspended.')),
-          );
-        }
+        await _loadUsers();
+        if (!mounted) return;
+        await _showSuccessDialog(
+          context,
+          title: 'User suspended',
+          message:
+              '${user.displayName} has been suspended successfully.',
+        );
       } else {
         await _api.activateUser(user.userId);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${user.displayName} has been activated.')),
-          );
-        }
+        await _loadUsers();
+        if (!mounted) return;
+        await _showSuccessDialog(
+          context,
+          title: 'User restored',
+          message:
+              '${user.displayName} has been restored successfully.',
+        );
       }
-      await _loadUsers();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to update status: $e')),
