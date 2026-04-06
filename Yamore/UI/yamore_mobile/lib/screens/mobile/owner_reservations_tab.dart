@@ -32,6 +32,8 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
   static const int _pageSize = 10;
   int _page = 0;
 
+  final ScrollController _listScrollController = ScrollController();
+
   final Map<int, YachtDetail> _yachtCache = {};
   final Map<int, AppUser> _guestCache = {};
 
@@ -41,6 +43,38 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
   void initState() {
     super.initState();
     _loadReservations();
+  }
+
+  @override
+  void dispose() {
+    _listScrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollReservationsListToTop() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!_listScrollController.hasClients) return;
+      _listScrollController.jumpTo(0);
+    });
+  }
+
+  Future<void> _showSuccessDialog(String title, String message) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _applyStatusFilter() async {
@@ -162,9 +196,11 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
         await _api.cancelReservation(r.reservationId);
         await _loadReservations();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Reservation cancelled successfully.')),
+          await _showSuccessDialog(
+            'Reservation cancelled',
+            'The reservation has been cancelled successfully.',
           );
+          _scrollReservationsListToTop();
         }
       } catch (e) {
         if (mounted) {
@@ -198,9 +234,11 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
         await _api.confirmReservation(r.reservationId);
         await _loadReservations();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Reservation confirmed successfully.')),
+          await _showSuccessDialog(
+            'Reservation confirmed',
+            'The reservation has been confirmed successfully.',
           );
+          _scrollReservationsListToTop();
         }
       } catch (e) {
         if (mounted) {
@@ -355,6 +393,7 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
                         _error = null;
                       });
                       await _applyStatusFilter();
+                      if (mounted) _scrollReservationsListToTop();
                     },
                     selectedColor: AppTheme.primaryBlue.withOpacity(0.15),
                     labelStyle: TextStyle(
@@ -404,7 +443,15 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
 
     final total = _reservations.length;
     final totalPages = (total / _pageSize).ceil();
-    final start = _page * _pageSize;
+    final maxPage = totalPages > 0 ? totalPages - 1 : 0;
+    final effectivePage = _page.clamp(0, maxPage);
+    if (effectivePage != _page) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() => _page = effectivePage);
+      });
+    }
+    final start = effectivePage * _pageSize;
     final end = (start + _pageSize).clamp(0, total);
     final pageItems = _reservations.sublist(start, end);
 
@@ -412,6 +459,7 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
       children: [
         Expanded(
           child: ListView.builder(
+            controller: _listScrollController,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
             itemCount: pageItems.length,
             itemBuilder: (context, index) {
@@ -501,12 +549,16 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      onPressed: _page > 0
-                          ? () => setState(() => _page = _page - 1)
+                      onPressed: effectivePage > 0
+                          ? () {
+                              setState(() => _page = effectivePage - 1);
+                              _scrollReservationsListToTop();
+                            }
                           : null,
                       icon: const Icon(Icons.chevron_left, size: 16),
                       constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
                       padding: EdgeInsets.zero,
+                      tooltip: 'Previous page',
                     ),
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -516,17 +568,21 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        'Page ${_page + 1} of $totalPages',
+                        'Page ${effectivePage + 1} of $totalPages',
                         style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
                       ),
                     ),
                     IconButton(
-                      onPressed: _page < totalPages - 1
-                          ? () => setState(() => _page = _page + 1)
+                      onPressed: effectivePage < totalPages - 1
+                          ? () {
+                              setState(() => _page = effectivePage + 1);
+                              _scrollReservationsListToTop();
+                            }
                           : null,
                       icon: const Icon(Icons.chevron_right, size: 16),
                       constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
                       padding: EdgeInsets.zero,
+                      tooltip: 'Next page',
                     ),
                   ],
                 ),
