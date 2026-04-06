@@ -7,7 +7,6 @@ import '../../models/yacht_detail.dart';
 import '../../models/yacht_image.dart';
 import '../../models/yacht_availability.dart';
 import '../../models/service_model.dart';
-import '../../models/service_category.dart';
 import '../../models/city.dart';
 import '../../models/yacht_category.dart';
 import '../../models/user.dart';
@@ -1098,7 +1097,10 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                 TextFormField(
                   controller: _name,
                   decoration: _inputDeco('Yacht Name',
-                      icon: Icons.directions_boat_outlined),
+                      icon: Icons.directions_boat_outlined,
+                      isValid: _isNameValid,
+                      value: _name.text),
+                  onChanged: (_) => setState(() {}),
                   validator: (v) =>
                       (v == null || v.trim().isEmpty) ? 'Required' : null,
                 ),
@@ -1123,7 +1125,10 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                       isExpanded: true,
                       value: _yearBuilt,
                       decoration:
-                          _inputDeco('Year', icon: Icons.calendar_today),
+                          _inputDeco('Year',
+                              icon: Icons.calendar_today,
+                              isValid: _yearBuilt != null,
+                              value: _yearBuilt?.toString() ?? ''),
                       items: List<int>.generate(
                               40, (i) => DateTime.now().year - i)
                           .map((y) =>
@@ -1138,7 +1143,11 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                     child: TextFormField(
                       controller: _length,
                       decoration:
-                          _inputDeco('Length (m)', icon: Icons.straighten),
+                          _inputDeco('Length (m)',
+                              icon: Icons.straighten,
+                              isValid: _isLengthValid,
+                              value: _length.text),
+                      onChanged: (_) => setState(() {}),
                       keyboardType: TextInputType.number,
                       validator: (v) =>
                           double.tryParse(v ?? '') == null ? 'Length' : null,
@@ -1152,7 +1161,10 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                       isExpanded: true,
                       value: _capacity,
                       decoration:
-                          _inputDeco('Capacity', icon: Icons.people_outline),
+                          _inputDeco('Capacity',
+                              icon: Icons.people_outline,
+                              isValid: _capacity != null,
+                              value: _capacity?.toString() ?? ''),
                       items: List.generate(30, (i) => i + 1)
                           .map((n) => DropdownMenuItem(
                               value: n,
@@ -1168,7 +1180,9 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                       isExpanded: true,
                       value: _cabins,
                       decoration: _inputDeco('Cabins',
-                          icon: Icons.king_bed_outlined),
+                          icon: Icons.king_bed_outlined,
+                          isValid: _cabins != null,
+                          value: _cabins?.toString() ?? ''),
                       items: List.generate(15, (i) => i + 1)
                           .map((n) => DropdownMenuItem(
                               value: n,
@@ -1184,7 +1198,9 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                       isExpanded: true,
                       value: _bathrooms,
                       decoration: _inputDeco('Bathrooms',
-                          icon: Icons.bathtub_outlined),
+                          icon: Icons.bathtub_outlined,
+                          isValid: _bathrooms != null,
+                          value: _bathrooms?.toString() ?? ''),
                       items: [
                         const DropdownMenuItem<int>(
                             value: null, child: Text('N/A')),
@@ -1206,7 +1222,11 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                 TextFormField(
                   controller: _price,
                   decoration:
-                      _inputDeco('Price (€/day)', icon: Icons.euro),
+                      _inputDeco('Price (€/day)',
+                          icon: Icons.euro,
+                          isValid: _isPriceValid,
+                          value: _price.text),
+                  onChanged: (_) => setState(() {}),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
@@ -1219,7 +1239,9 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                   isExpanded: true,
                   value: _locationId,
                   decoration: _inputDeco('Location',
-                      icon: Icons.location_on_outlined),
+                      icon: Icons.location_on_outlined,
+                      isValid: _locationId != null,
+                      value: _locationId?.toString() ?? ''),
                   items: widget.cities
                       .map((c) => DropdownMenuItem(
                           value: c.cityId, child: Text(c.name)))
@@ -1232,7 +1254,9 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                   isExpanded: true,
                   value: _categoryId,
                   decoration: _inputDeco('Category',
-                      icon: Icons.category_outlined),
+                      icon: Icons.category_outlined,
+                      isValid: _categoryId != null,
+                      value: _categoryId?.toString() ?? ''),
                   items: widget.categories
                       .map((c) => DropdownMenuItem(
                           value: c.categoryId, child: Text(c.name)))
@@ -1548,10 +1572,42 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
     );
   }
 
-  InputDecoration _inputDeco(String label, {IconData? icon}) {
+  bool get _isNameValid {
+    final value = _name.text.trim();
+    return value.isNotEmpty && value.length <= 100;
+  }
+
+  bool get _isLengthValid => double.tryParse(_length.text.trim()) != null;
+
+  bool get _isPriceValid => double.tryParse(_price.text.trim()) != null;
+
+  Widget? _buildValidationIcon(bool isValid, String value) {
+    if (value.trim().isEmpty) return null;
+    return SizedBox(
+      width: 24,
+      child: Align(
+        alignment: Alignment.center,
+        child: Icon(
+          isValid ? Icons.check_circle : Icons.cancel,
+          color: isValid ? Colors.green : Colors.red.shade400,
+          size: 18,
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _inputDeco(
+    String label, {
+    IconData? icon,
+    bool? isValid,
+    String value = '',
+  }) {
     return InputDecoration(
       labelText: label,
       prefixIcon: icon != null ? Icon(icon, size: 20) : null,
+      suffixIcon: isValid == null ? null : _buildValidationIcon(isValid, value),
+      suffixIconConstraints:
+          const BoxConstraints(minWidth: 30, minHeight: 20),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       filled: true,
       fillColor: const Color(0xFFFAFBFD),

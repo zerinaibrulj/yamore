@@ -589,29 +589,25 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
 
   Future<void> _onStatusAction(String action, YachtOverview y) async {
     try {
+      String? title;
+      String? message;
       if (action == 'activate') {
         await _api.activateYacht(y.yachtId);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${y.name} is now active.')),
-          );
-        }
+        title = 'Yacht activated';
+        message = '${y.name} has transitioned to Active state.';
       } else if (action == 'hide') {
         await _api.hideYacht(y.yachtId);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${y.name} is now hidden.')),
-          );
-        }
+        title = 'Yacht hidden';
+        message = '${y.name} has transitioned to Hidden state.';
       } else if (action == 'draft') {
         await _api.setYachtToDraft(y.yachtId);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${y.name} is now in draft.')),
-          );
-        }
+        title = 'Yacht set to draft';
+        message = '${y.name} has transitioned to Draft state.';
       }
       if (mounted) await _loadYachts();
+      if (mounted && title != null && message != null) {
+        await _showSuccessDialog(context, title: title, message: message);
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1176,6 +1172,66 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
     }
   }
 
+  bool get _isNameValid {
+    final value = _name.text.trim();
+    return value.isNotEmpty && value.length <= 100;
+  }
+
+  bool get _isLengthValid => double.tryParse(_length.text.trim()) != null;
+
+  bool get _isPriceValid => double.tryParse(_price.text.trim()) != null;
+
+  bool get _hasSpecsTopInput =>
+      _year.text.trim().isNotEmpty ||
+      _length.text.trim().isNotEmpty ||
+      _capacity.text.trim().isNotEmpty;
+
+  bool get _isSpecsTopValid =>
+      int.tryParse(_year.text.trim()) != null &&
+      _isLengthValid &&
+      int.tryParse(_capacity.text.trim()) != null;
+
+  bool get _hasSpecsBottomInput =>
+      _cabins.text.trim().isNotEmpty ||
+      _bathrooms.text.trim().isNotEmpty ||
+      _price.text.trim().isNotEmpty;
+
+  bool get _isSpecsBottomValid {
+    final cabinsValid = int.tryParse(_cabins.text.trim()) != null;
+    final bathroomsText = _bathrooms.text.trim();
+    final bathroomsValid =
+        bathroomsText.isEmpty || int.tryParse(bathroomsText) != null;
+    return cabinsValid && bathroomsValid && _isPriceValid;
+  }
+
+  Widget? _buildValidationIcon(bool isValid, String value) {
+    if (value.trim().isEmpty) return null;
+    return SizedBox(
+      width: 24,
+      child: Align(
+        alignment: Alignment.center,
+        child: Icon(
+          isValid ? Icons.check_circle : Icons.cancel,
+          color: isValid ? Colors.green : Colors.red.shade400,
+          size: 18,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRowValidationIcon(bool hasInput, bool isValid) {
+    return SizedBox(
+      width: 24,
+      child: hasInput
+          ? Icon(
+              isValid ? Icons.check_circle : Icons.cancel,
+              color: isValid ? Colors.green : Colors.red.shade400,
+              size: 18,
+            )
+          : const SizedBox.shrink(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -1191,10 +1247,12 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
               children: [
                 TextFormField(
                   controller: _name,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Name',
                     prefixIcon: Icon(Icons.directions_boat_outlined),
+                    suffixIcon: _buildValidationIcon(_isNameValid, _name.text),
                   ),
+                  onChanged: (_) => setState(() {}),
                   validator: (v) =>
                       (v == null || v.trim().isEmpty) ? 'Required' : null,
                 ),
@@ -1202,9 +1260,13 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                 DropdownButtonFormField<AppUser>(
                   isExpanded: true,
                   value: _selectedOwner,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Owner',
                     prefixIcon: Icon(Icons.person_outline),
+                    suffixIcon: _buildValidationIcon(
+                      _selectedOwner != null,
+                      _selectedOwner?.userId.toString() ?? '',
+                    ),
                   ),
                   items: widget.owners
                       .map(
@@ -1226,11 +1288,14 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                 Row(
                   children: [
                     Expanded(
-                      flex: 1,
-                      child: DropdownButtonFormField<int>(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 1,
+                            child: DropdownButtonFormField<int>(
                         isExpanded: true,
                         value: int.tryParse(_year.text),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Year',
                           prefixIcon: Icon(Icons.calendar_today_outlined),
                         ),
@@ -1246,34 +1311,37 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                             )
                             .toList(),
                         onChanged: (val) {
-                          _year.text =
-                              (val ?? DateTime.now().year).toString();
+                          setState(() {
+                            _year.text =
+                                (val ?? DateTime.now().year).toString();
+                          });
                         },
                         validator: (v) => v == null ? 'Year' : null,
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 1,
-                      child: TextFormField(
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            flex: 1,
+                            child: TextFormField(
                         controller: _length,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Length (m)',
                           prefixIcon: Icon(Icons.straighten),
                         ),
+                        onChanged: (_) => setState(() {}),
                         keyboardType: TextInputType.number,
                         validator: (v) => double.tryParse(v ?? '') == null
                             ? 'Length'
                             : null,
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 1,
-                      child: DropdownButtonFormField<int>(
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            flex: 1,
+                            child: DropdownButtonFormField<int>(
                         isExpanded: true,
                         value: int.tryParse(_capacity.text),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Capacity',
                           prefixIcon: Icon(Icons.people_outline),
                         ),
@@ -1286,22 +1354,32 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                             )
                             .toList(),
                         onChanged: (val) {
-                          _capacity.text = (val ?? 1).toString();
+                          setState(() {
+                            _capacity.text = (val ?? 1).toString();
+                          });
                         },
                         validator: (v) => v == null ? 'Capacity' : null,
                       ),
+                          ),
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
+                    _buildRowValidationIcon(_hasSpecsTopInput, _isSpecsTopValid),
                   ],
                 ),
                 const SizedBox(height: 10),
                 Row(
                   children: [
                     Expanded(
-                      flex: 1,
-                      child: DropdownButtonFormField<int>(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 1,
+                            child: DropdownButtonFormField<int>(
                         isExpanded: true,
                         value: int.tryParse(_cabins.text),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Cabins',
                           prefixIcon: Icon(Icons.king_bed_outlined),
                         ),
@@ -1314,20 +1392,22 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                             )
                             .toList(),
                         onChanged: (val) {
-                          _cabins.text = (val ?? 1).toString();
+                          setState(() {
+                            _cabins.text = (val ?? 1).toString();
+                          });
                         },
                         validator: (v) => v == null ? 'Cabins' : null,
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 1,
-                      child: DropdownButtonFormField<int>(
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            flex: 1,
+                            child: DropdownButtonFormField<int>(
                         isExpanded: true,
                         value: _bathrooms.text.isEmpty
                             ? null
                             : int.tryParse(_bathrooms.text),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Bathrooms',
                           prefixIcon: Icon(Icons.bathtub_outlined),
                         ),
@@ -1344,19 +1424,22 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                           ),
                         ],
                         onChanged: (val) {
-                          _bathrooms.text = val?.toString() ?? '';
+                          setState(() {
+                            _bathrooms.text = val?.toString() ?? '';
+                          });
                         },
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 1,
-                      child: TextFormField(
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            flex: 1,
+                            child: TextFormField(
                         controller: _price,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Price (€ / day)',
                           prefixIcon: Icon(Icons.euro_symbol),
                         ),
+                        onChanged: (_) => setState(() {}),
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [
                           FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
@@ -1365,6 +1448,14 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                             ? 'Price'
                             : null,
                       ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildRowValidationIcon(
+                      _hasSpecsBottomInput,
+                      _isSpecsBottomValid,
                     ),
                   ],
                 ),
@@ -1372,9 +1463,13 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                 DropdownButtonFormField<int>(
                   isExpanded: true,
                   value: int.tryParse(_locationId.text),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Location',
                     prefixIcon: Icon(Icons.location_on_outlined),
+                    suffixIcon: _buildValidationIcon(
+                      int.tryParse(_locationId.text) != null,
+                      _locationId.text,
+                    ),
                   ),
                   items: widget.cities
                       .map(
@@ -1385,7 +1480,9 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                       )
                       .toList(),
                   onChanged: (val) {
-                    _locationId.text = (val ?? 0).toString();
+                    setState(() {
+                      _locationId.text = (val ?? 0).toString();
+                    });
                   },
                   validator: (v) => v == null ? 'Location' : null,
                 ),
@@ -1393,9 +1490,13 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                 DropdownButtonFormField<int>(
                   isExpanded: true,
                   value: int.tryParse(_categoryId.text),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Category',
                     prefixIcon: Icon(Icons.category_outlined),
+                    suffixIcon: _buildValidationIcon(
+                      int.tryParse(_categoryId.text) != null,
+                      _categoryId.text,
+                    ),
                   ),
                   items: widget.categories
                       .map(
@@ -1406,7 +1507,9 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                       )
                       .toList(),
                   onChanged: (val) {
-                    _categoryId.text = (val ?? 0).toString();
+                    setState(() {
+                      _categoryId.text = (val ?? 0).toString();
+                    });
                   },
                   validator: (v) => v == null ? 'Category' : null,
                 ),
