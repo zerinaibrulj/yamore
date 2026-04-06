@@ -801,11 +801,10 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
     await _loadImages();
     if (mounted) {
       if (_images.length > countBefore) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Image uploaded successfully.'),
-            duration: Duration(seconds: 2),
-          ),
+        await _showSuccessDialog(
+          context,
+          title: 'Image added',
+          message: 'The image has been added successfully.',
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -821,8 +820,10 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
       await widget.api.deleteYachtImage(img.yachtImageId);
       await _loadImages();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Image deleted successfully.')),
+        await _showSuccessDialog(
+          context,
+          title: 'Image deleted',
+          message: 'The image has been deleted successfully.',
         );
       }
     } catch (e) {

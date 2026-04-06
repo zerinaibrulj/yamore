@@ -651,6 +651,26 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
     );
   }
 
+  Future<void> _showSuccessActionDialog({
+    required String title,
+    required String message,
+  }) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   static String _formatPriceForEdit(double value) {
     if (value == value.truncateToDouble()) return value.toInt().toString();
     return value.toString();
@@ -724,12 +744,9 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
     await _loadImages();
     if (mounted) {
       if (_images.length > countBefore) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Image uploaded successfully.'),
-            backgroundColor: Colors.green.shade600,
-            duration: const Duration(seconds: 2),
-          ),
+        await _showSuccessActionDialog(
+          title: 'Image added',
+          message: 'The image has been added successfully.',
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -745,8 +762,9 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
       await widget.api.deleteYachtImage(img.yachtImageId);
       await _loadImages();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Image deleted successfully.')),
+        await _showSuccessActionDialog(
+          title: 'Image deleted',
+          message: 'The image has been deleted successfully.',
         );
       }
     } catch (e) {
