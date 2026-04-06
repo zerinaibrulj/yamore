@@ -39,10 +39,88 @@ class _OwnerYachtsTabState extends State<OwnerYachtsTab> {
   List<CityModel> _cities = [];
   List<YachtCategoryModel> _categories = [];
 
+  int _itemsPerPage = 10;
+  int _currentPage = 0;
+
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _yachtListAnchorKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
     _loadAll();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  int get _totalPages {
+    if (_yachts.isEmpty) return 1;
+    return (_yachts.length / _itemsPerPage).ceil();
+  }
+
+  int get _effectivePage {
+    final maxPage = _totalPages - 1;
+    return _currentPage.clamp(0, maxPage < 0 ? 0 : maxPage);
+  }
+
+  List<YachtOverview> get _pagedYachts {
+    if (_yachts.isEmpty) return const [];
+    final page = _effectivePage;
+    final start = page * _itemsPerPage;
+    final end = (start + _itemsPerPage).clamp(0, _yachts.length);
+    return _yachts.sublist(start, end);
+  }
+
+  void _clampOwnerYachtPage() {
+    if (_yachts.isEmpty) {
+      _currentPage = 0;
+      return;
+    }
+    final maxPage = _totalPages - 1;
+    if (_currentPage > maxPage) _currentPage = maxPage;
+  }
+
+  void _scrollToYachtListStart() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final ctx = _yachtListAnchorKey.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          duration: Duration.zero,
+          alignment: 0,
+          alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+        );
+      } else if (_scrollController.hasClients) {
+        _scrollController.jumpTo(0);
+      }
+    });
+  }
+
+  void _updateItemsPerPage(int value) {
+    setState(() {
+      _itemsPerPage = value;
+      _currentPage = 0;
+    });
+    _scrollToYachtListStart();
+  }
+
+  void _goToPreviousYachtPage() {
+    setState(() {
+      _currentPage = (_effectivePage - 1).clamp(0, _totalPages - 1);
+    });
+    _scrollToYachtListStart();
+  }
+
+  void _goToNextYachtPage() {
+    setState(() {
+      _currentPage = (_effectivePage + 1).clamp(0, _totalPages - 1);
+    });
+    _scrollToYachtListStart();
   }
 
   Future<void> _loadAll() async {
@@ -61,6 +139,7 @@ class _OwnerYachtsTabState extends State<OwnerYachtsTab> {
           _yachts = (results[0] as PagedYachtOverview).resultList;
           _cities = results[1] as List<CityModel>;
           _categories = results[2] as List<YachtCategoryModel>;
+          _clampOwnerYachtPage();
           _loading = false;
         });
       }
@@ -181,52 +260,99 @@ class _OwnerYachtsTabState extends State<OwnerYachtsTab> {
         color: AppTheme.primaryBlue,
         onRefresh: _loadAll,
         child: CustomScrollView(
+          controller: _scrollController,
           slivers: [
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(18, 18, 18, 6),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF1a237e), Color(0xFF3949ab)],
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.directions_boat,
-                          color: Colors.white, size: 22),
-                    ),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'My Yachts',
-                      style:
-                          TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-                    ),
-                    const Spacer(),
-                    if (!_loading)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryBlue.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '${_yachts.length} yacht${_yachts.length == 1 ? '' : 's'}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.primaryBlue,
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF1a237e), Color(0xFF3949ab)],
+                            ),
+                            borderRadius: BorderRadius.circular(10),
                           ),
+                          child: const Icon(Icons.directions_boat,
+                              color: Colors.white, size: 22),
                         ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'My Yachts',
+                          style: TextStyle(
+                              fontSize: 22, fontWeight: FontWeight.w800),
+                        ),
+                        const Spacer(),
+                        if (!_loading)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryBlue.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${_yachts.length} yacht${_yachts.length == 1 ? '' : 's'}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.primaryBlue,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    if (!_loading &&
+                        _error == null &&
+                        _yachts.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<int>(
+                                value: _itemsPerPage,
+                                icon: Icon(
+                                  Icons.keyboard_arrow_down_rounded,
+                                  size: 18,
+                                  color: Colors.grey.shade700,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                style: TextStyle(
+                                    fontSize: 12, color: Colors.grey.shade700),
+                                items: const [
+                                  DropdownMenuItem(
+                                      value: 5, child: Text('5 / page')),
+                                  DropdownMenuItem(
+                                      value: 10, child: Text('10 / page')),
+                                ],
+                                onChanged: (v) {
+                                  if (v == null) return;
+                                  _updateItemsPerPage(v);
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
+                    ],
                   ],
                 ),
               ),
             ),
-            _buildSliverBody(),
+            ..._buildSliverBodySlivers(),
           ],
         ),
       ),
@@ -241,80 +367,159 @@ class _OwnerYachtsTabState extends State<OwnerYachtsTab> {
     );
   }
 
-  Widget _buildSliverBody() {
+  List<Widget> _buildSliverBodySlivers() {
     if (_loading) {
-      return const SliverFillRemaining(
-        child: Center(child: CircularProgressIndicator()),
-      );
+      return [
+        const SliverFillRemaining(
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ];
     }
     if (_error != null) {
-      return SliverFillRemaining(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
+      return [
+        SliverFillRemaining(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.cloud_off_outlined,
+                      size: 56, color: Colors.red.shade300),
+                  const SizedBox(height: 16),
+                  Text(_error!,
+                      style: TextStyle(color: Colors.red.shade600),
+                      textAlign: TextAlign.center),
+                  const SizedBox(height: 20),
+                  FilledButton.icon(
+                    onPressed: _loadAll,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ];
+    }
+    if (_yachts.isEmpty) {
+      return [
+        SliverFillRemaining(
+          child: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.cloud_off_outlined,
-                    size: 56, color: Colors.red.shade300),
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.sailing,
+                      size: 56, color: Colors.grey.shade400),
+                ),
                 const SizedBox(height: 16),
-                Text(_error!,
-                    style: TextStyle(color: Colors.red.shade600),
-                    textAlign: TextAlign.center),
-                const SizedBox(height: 20),
-                FilledButton.icon(
-                  onPressed: _loadAll,
-                  icon: const Icon(Icons.refresh, size: 18),
-                  label: const Text('Retry'),
+                Text(
+                  'No yachts yet',
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade700),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Tap + Add Yacht to list your first vessel.',
+                  style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
                 ),
               ],
             ),
           ),
         ),
-      );
+      ];
     }
-    if (_yachts.isEmpty) {
-      return SliverFillRemaining(
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+
+    final total = _yachts.length;
+    final totalPages = _totalPages;
+    final current = _effectivePage;
+    final from = total == 0 ? 0 : (current * _itemsPerPage) + 1;
+    final to = ((current * _itemsPerPage) + _itemsPerPage).clamp(0, total);
+    final paged = _pagedYachts;
+
+    return [
+      SliverPadding(
+        key: _yachtListAnchorKey,
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        sliver: SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) => _buildYachtCard(paged[index]),
+            childCount: paged.length,
+          ),
+        ),
+      ),
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            runSpacing: 8,
             children: [
+              Text(
+                'Showing $from-$to of $total',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+              ),
               Container(
-                padding: const EdgeInsets.all(24),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade100,
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey.shade300),
                 ),
-                child:
-                    Icon(Icons.sailing, size: 56, color: Colors.grey.shade400),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'No yachts yet',
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade700),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Tap + Add Yacht to list your first vessel.',
-                style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      onPressed: current > 0 ? _goToPreviousYachtPage : null,
+                      icon: const Icon(Icons.chevron_left, size: 16),
+                      constraints:
+                          const BoxConstraints(minWidth: 24, minHeight: 24),
+                      padding: EdgeInsets.zero,
+                      tooltip: 'Previous page',
+                    ),
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${current + 1}/$totalPages',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 11),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: current < totalPages - 1
+                          ? _goToNextYachtPage
+                          : null,
+                      icon: const Icon(Icons.chevron_right, size: 16),
+                      constraints:
+                          const BoxConstraints(minWidth: 24, minHeight: 24),
+                      padding: EdgeInsets.zero,
+                      tooltip: 'Next page',
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
-      );
-    }
-    return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
-      sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) => _buildYachtCard(_yachts[index]),
-          childCount: _yachts.length,
-        ),
       ),
-    );
+    ];
   }
 
   Widget _buildYachtCard(YachtOverview yacht) {
