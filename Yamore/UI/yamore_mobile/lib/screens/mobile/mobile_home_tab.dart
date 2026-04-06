@@ -52,10 +52,37 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
   int _itemsPerPage = 10;
   int _currentPage = 0;
 
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _yachtListHeaderKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
     _loadInitial();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  /// After changing the yacht list page, scroll so the list (first yacht on the new page) is in view.
+  void _scrollToYachtListStart() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final ctx = _yachtListHeaderKey.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          duration: Duration.zero,
+          alignment: 0,
+          alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+        );
+      } else if (_scrollController.hasClients) {
+        _scrollController.jumpTo(0);
+      }
+    });
   }
 
   @override
@@ -157,12 +184,16 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
     return RefreshIndicator(
       onRefresh: _loadInitial,
       child: CustomScrollView(
+        controller: _scrollController,
         slivers: [
           SliverToBoxAdapter(child: _buildHero()),
           if (!widget.showOnlyFavorites && _recommended.isNotEmpty)
             SliverToBoxAdapter(child: _buildRecommendedStrip()),
           const SliverToBoxAdapter(child: SizedBox(height: 6)),
-          SliverToBoxAdapter(child: _buildListHeader()),
+          SliverToBoxAdapter(
+            key: _yachtListHeaderKey,
+            child: _buildListHeader(),
+          ),
           if (_loading)
             const SliverFillRemaining(
               child: Center(child: CircularProgressIndicator()),
@@ -223,6 +254,7 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
       _itemsPerPage = value;
       _currentPage = 0;
     });
+    _scrollToYachtListStart();
   }
 
   void _setFilteredYachts(List<YachtOverview> list) {
@@ -234,10 +266,12 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
 
   void _goToPreviousPage() {
     setState(() => _currentPage = _currentPage - 1);
+    _scrollToYachtListStart();
   }
 
   void _goToNextPage() {
     setState(() => _currentPage = _currentPage + 1);
+    _scrollToYachtListStart();
   }
 
   void _setDateRange(DateTimeRange picked) {
