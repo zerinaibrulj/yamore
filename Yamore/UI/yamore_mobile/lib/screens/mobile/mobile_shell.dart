@@ -30,6 +30,10 @@ class _MobileShellState extends State<MobileShell> {
 
   late final List<_TabItem> _tabs;
 
+  /// Reflects profile updates; falls back to the user passed at login.
+  AppUser get _sessionUser =>
+      widget.authService.currentUser ?? widget.user;
+
   @override
   void initState() {
     super.initState();
@@ -51,35 +55,49 @@ class _MobileShellState extends State<MobileShell> {
   }
 
   Widget _buildBody() {
-    if (widget.user.isYachtOwner) {
+    final user = _sessionUser;
+    if (user.isYachtOwner) {
       switch (_selectedIndex) {
         case 0:
-          return OwnerReservationsTab(authService: widget.authService, user: widget.user);
+          return OwnerReservationsTab(authService: widget.authService, user: user);
         case 1:
-          return OwnerYachtsTab(authService: widget.authService, user: widget.user);
+          return OwnerYachtsTab(authService: widget.authService, user: user);
         case 2:
           return OwnerServicesTab(authService: widget.authService);
         case 3:
-          return OwnerSettingsTab(authService: widget.authService, user: widget.user);
+          return OwnerSettingsTab(
+            authService: widget.authService,
+            user: user,
+            onProfileUpdated: () {
+              if (mounted) setState(() {});
+            },
+          );
         default:
-          return OwnerReservationsTab(authService: widget.authService, user: widget.user);
+          return OwnerReservationsTab(authService: widget.authService, user: user);
       }
     } else {
       switch (_selectedIndex) {
         case 0:
-          return MobileHomeTab(authService: widget.authService, user: widget.user);
+          return MobileHomeTab(authService: widget.authService, user: user);
         case 1:
           return MobileHomeTab(
             authService: widget.authService,
-            user: widget.user,
+            user: user,
             showOnlyFavorites: true,
           );
         case 2:
-          return MobileBookingsTab(authService: widget.authService, user: widget.user);
+          return MobileBookingsTab(authService: widget.authService, user: user);
         case 3:
-          return MobileProfileTab(authService: widget.authService, user: widget.user, onLogout: _logout);
+          return MobileProfileTab(
+            authService: widget.authService,
+            user: user,
+            onLogout: _logout,
+            onProfileUpdated: () {
+              if (mounted) setState(() {});
+            },
+          );
         default:
-          return MobileHomeTab(authService: widget.authService, user: widget.user);
+          return MobileHomeTab(authService: widget.authService, user: user);
       }
     }
   }

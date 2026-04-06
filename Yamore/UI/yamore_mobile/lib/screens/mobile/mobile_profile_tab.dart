@@ -9,12 +9,15 @@ class MobileProfileTab extends StatefulWidget {
   final AuthService authService;
   final AppUser user;
   final VoidCallback onLogout;
+  /// Called after profile fields are saved so the shell can rebuild with [AuthService.currentUser].
+  final VoidCallback? onProfileUpdated;
 
   const MobileProfileTab({
     super.key,
     required this.authService,
     required this.user,
     required this.onLogout,
+    this.onProfileUpdated,
   });
 
   @override
@@ -57,6 +60,27 @@ class _MobileProfileTabState extends State<MobileProfileTab> {
     _phoneCtrl = TextEditingController(text: _user.phone ?? '');
 
     _loadNotifications();
+  }
+
+  void _applyUserToControllers(AppUser u) {
+    _firstNameCtrl.text = u.firstName;
+    _lastNameCtrl.text = u.lastName;
+    _emailCtrl.text = u.email ?? '';
+    _phoneCtrl.text = u.phone ?? '';
+  }
+
+  @override
+  void didUpdateWidget(covariant MobileProfileTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final o = oldWidget.user;
+    final n = widget.user;
+    if (o.userId == n.userId &&
+        (o.firstName != n.firstName ||
+            o.lastName != n.lastName ||
+            o.email != n.email ||
+            o.phone != n.phone)) {
+      _applyUserToControllers(n);
+    }
   }
 
   Future<void> _loadNotifications() async {
@@ -153,8 +177,10 @@ class _MobileProfileTabState extends State<MobileProfileTab> {
         phone: _phoneCtrl.text.trim(),
       );
       widget.authService.updateCurrentUser(updated);
+      _applyUserToControllers(updated);
       if (!mounted) return;
       setState(() => _profileSaving = false);
+      widget.onProfileUpdated?.call();
       _showSuccess('Profile updated', 'Your profile has been updated.');
     } on ApiException catch (e) {
       if (!mounted) return;
