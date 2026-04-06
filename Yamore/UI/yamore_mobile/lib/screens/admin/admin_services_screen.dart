@@ -71,10 +71,20 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
     super.dispose();
   }
 
-  void _showSuccess(String message) {
+  Future<void> _showSuccess(String message) async {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Success'),
+        content: Text(message),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -202,7 +212,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
         );
         await _loadCategories();
         await _loadAllCategories();
-        _showSuccess('Category added successfully.');
+        await _showSuccess('Category added successfully.');
       } catch (e) {
         _showError('Failed to add category: $e');
       }
@@ -273,7 +283,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
         );
         await _loadCategories();
         await _loadAllCategories();
-        _showSuccess('Category updated successfully.');
+        await _showSuccess('Category updated successfully.');
       } catch (e) {
         _showError('Failed to update category: $e');
       }
@@ -306,7 +316,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
         await _api.deleteServiceCategory(cat.serviceCategoryId);
         await _loadCategories();
         await _loadAllCategories();
-        _showSuccess('Category deleted successfully.');
+        await _showSuccess('Category deleted successfully.');
       } catch (e) {
         _showError('Failed to delete category: $e');
       }
@@ -360,7 +370,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
     );
     if (result == true) {
       await _loadServices();
-      _showSuccess('Service added successfully.');
+      await _showSuccess('Service added successfully.');
     }
   }
 
@@ -383,7 +393,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
     );
     if (result == true) {
       await _loadServices();
-      _showSuccess('Service updated successfully.');
+      await _showSuccess('Service updated successfully.');
     }
   }
 
@@ -410,7 +420,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
       try {
         await _api.deleteService(svc.serviceId);
         await _loadServices();
-        _showSuccess('Service deleted successfully.');
+        await _showSuccess('Service deleted successfully.');
       } catch (e) {
         _showError('Failed to delete service: $e');
       }
@@ -488,7 +498,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
       try {
         await _api.insertYachtCategory(name: nameCtrl.text.trim());
         await _loadYachtCategories();
-        _showSuccess('Yacht category added successfully.');
+        await _showSuccess('Yacht category added successfully.');
       } catch (e) {
         _showError('Failed to add yacht category: $e');
       }
@@ -539,7 +549,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
       try {
         await _api.updateYachtCategory(cat.categoryId, name: nameCtrl.text.trim());
         await _loadYachtCategories();
-        _showSuccess('Yacht category updated successfully.');
+        await _showSuccess('Yacht category updated successfully.');
       } catch (e) {
         _showError('Failed to update yacht category: $e');
       }
@@ -570,7 +580,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
       try {
         await _api.deleteYachtCategory(cat.categoryId);
         await _loadYachtCategories();
-        _showSuccess('Yacht category deleted successfully.');
+        await _showSuccess('Yacht category deleted successfully.');
       } catch (e) {
         _showError('Failed to delete yacht category: $e');
       }
