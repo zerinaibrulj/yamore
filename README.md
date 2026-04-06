@@ -124,6 +124,21 @@ After a **clean** database (e.g. first `docker compose up`, or after `docker com
 
 **Why logs showed `user@yamore.local`:** That is the seeded **`demo.user`** (often `UserId=3`). Emails go to the **`Email` stored for the user who made the reservation**, not “whoever you think is logged in” if the app session is still the demo account.
 
+## 🔑 Login credentials (real DB data)
+
+If the database already contains your manually created users (not fresh demo seed), use these credentials:
+
+| Role | Username | Password |
+|------|----------|----------|
+| 👑 Administrator | `zerina` | `Zerina123!` |
+| 🛥️ Yacht owner | `antonio` | `Antonio123!` |
+| 🛥️ Yacht owner | `julian` | `Julian123!` |
+| 👤 End user | `zara` | `Zara123!` |
+| 👤 End user | `arman` | `Arman123!` |
+| 👤 End user | `faris` | `Faris123!` |
+
+Use these accounts when testing against the existing (non-reset) SQL database.
+
 ---
 
 ## 🐰 Microservice functionality (RabbitMQ)
