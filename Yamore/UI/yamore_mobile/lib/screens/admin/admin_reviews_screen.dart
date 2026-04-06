@@ -238,8 +238,9 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
         await _api.respondToReview(review.reviewId, controller.text.trim());
         await _loadReviews();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Response sent successfully.')),
+          await _showSuccessDialog(
+            title: 'Response sent',
+            message: 'The response was sent successfully.',
           );
         }
       } catch (e) {
@@ -348,10 +349,12 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
                 try {
                   await _api.unreportReview(review.reviewId);
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Review marked as OK.')),
-                    );
                     await _loadReviews();
+                    await _showSuccessDialog(
+                      title: 'Marked as appropriate',
+                      message:
+                          'The review has been marked as appropriate successfully.',
+                    );
                   }
                 } catch (e) {
                   if (mounted) {
@@ -371,10 +374,12 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
                 try {
                   await _api.reportReview(review.reviewId);
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Review marked as inappropriate.')),
-                    );
                     await _loadReviews();
+                    await _showSuccessDialog(
+                      title: 'Marked as inappropriate',
+                      message:
+                          'The review has been marked as inappropriate successfully.',
+                    );
                   }
                 } catch (e) {
                   if (mounted) {
@@ -406,6 +411,26 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
             child: Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
           ),
           Expanded(child: Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showSuccessDialog({
+    required String title,
+    required String message,
+  }) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
         ],
       ),
     );
