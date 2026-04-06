@@ -12,6 +12,7 @@ import '../../models/yacht_category.dart';
 import '../../models/user.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/custom_date_range_picker_dialog.dart';
 
 class OwnerYachtsTab extends StatefulWidget {
   final AuthService authService;
@@ -659,6 +660,8 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(title),
         content: Text(message),
         actions: [
@@ -831,36 +834,25 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
             Text('Add Availability Period'),
           ]),
           content: SizedBox(
-            width: 380,
+            width: 400,
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 OutlinedButton.icon(
                   onPressed: () async {
-                    final picked = await showDateRangePicker(
+                    final now = DateTime.now();
+                    final initial = range ??
+                        DateTimeRange(
+                          start: now.add(const Duration(days: 1)),
+                          end: now.add(const Duration(days: 4)),
+                        );
+                    final picked = await showDialog<DateTimeRange>(
                       context: ctx,
-                      firstDate: DateTime.now(),
-                      lastDate:
-                          DateTime.now().add(const Duration(days: 730)),
-                      builder: (context, child) => Theme(
-                        data: Theme.of(context).copyWith(
-                          colorScheme: Theme.of(context)
-                              .colorScheme
-                              .copyWith(primary: AppTheme.primaryBlue),
-                          dialogTheme: const DialogThemeData(
-                            shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(16)),
-                            ),
-                          ),
-                        ),
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(
-                                maxWidth: 500, maxHeight: 550),
-                            child: child!,
-                          ),
-                        ),
+                      builder: (_) => CustomDateRangePickerDialog(
+                        initialRange: initial,
+                        firstDate: DateTime(now.year, now.month, now.day),
+                        lastDate: now.add(const Duration(days: 730)),
                       ),
                     );
                     if (picked != null) setLocal(() => range = picked);
@@ -881,13 +873,13 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                     alignment: Alignment.centerLeft,
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
                 SwitchListTile(
                   title: const Text('Block period (unavailable)'),
                   subtitle: Text(
                     isBlocked
-                        ? 'Yacht will be unavailable'
-                        : 'Yacht will be available',
+                        ? 'Yacht will be unavailable during this period'
+                        : 'Yacht will be available during this period',
                     style: const TextStyle(fontSize: 12),
                   ),
                   value: isBlocked,
@@ -932,14 +924,19 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
         );
         await _loadAvailabilities();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Availability period added successfully.')),
+          await _showSuccessActionDialog(
+            title: isBlocked
+                ? 'Unavailable period added'
+                : 'Available period added',
+            message: isBlocked
+                ? 'The yacht has been marked as unavailable for the selected period.'
+                : 'The yacht has been marked as available for the selected period.',
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to add: $e')),
+            SnackBar(content: Text('Failed to add availability: $e')),
           );
         }
       }
@@ -952,8 +949,10 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
       await widget.api.deleteYachtAvailability(a.yachtAvailabilityId);
       await _loadAvailabilities();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Availability period deleted successfully.')),
+        await _showSuccessActionDialog(
+          title: 'Availability removed',
+          message:
+              'The selected availability period has been removed successfully.',
         );
       }
     } catch (e) {
