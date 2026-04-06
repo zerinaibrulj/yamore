@@ -113,6 +113,18 @@ class _RegisterScreenState extends State<RegisterScreen>
     return hasLower && hasUpper && hasDigit && hasSpecial;
   }
 
+  Widget? _validationIndicator({
+    required bool hasInput,
+    required bool isValid,
+  }) {
+    if (!hasInput) return null;
+    return Icon(
+      isValid ? Icons.check_circle : Icons.cancel,
+      size: 20,
+      color: isValid ? Colors.green.shade600 : Colors.red.shade400,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -265,9 +277,15 @@ class _RegisterScreenState extends State<RegisterScreen>
                             const SizedBox(height: 14),
                             TextFormField(
                               controller: _emailCtrl,
+                              onChanged: (_) => setState(() {}),
                               decoration: InputDecoration(
                                 labelText: 'Email',
                                 prefixIcon: const Icon(Icons.email_outlined),
+                                suffixIcon: _validationIndicator(
+                                  hasInput: _emailCtrl.text.trim().isNotEmpty,
+                                  isValid: _emailCtrl.text.trim().length <= 100 &&
+                                      _emailRegex.hasMatch(_emailCtrl.text.trim()),
+                                ),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -292,9 +310,14 @@ class _RegisterScreenState extends State<RegisterScreen>
                             const SizedBox(height: 14),
                             TextFormField(
                               controller: _phoneCtrl,
+                              onChanged: (_) => setState(() {}),
                               decoration: InputDecoration(
                                 labelText: 'Phone (optional)',
                                 prefixIcon: const Icon(Icons.phone_outlined),
+                                suffixIcon: _validationIndicator(
+                                  hasInput: _phoneCtrl.text.trim().isNotEmpty,
+                                  isValid: _phoneRegex.hasMatch(_phoneCtrl.text.trim()),
+                                ),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -314,10 +337,16 @@ class _RegisterScreenState extends State<RegisterScreen>
                             const SizedBox(height: 14),
                             TextFormField(
                               controller: _usernameCtrl,
+                              onChanged: (_) => setState(() {}),
                               decoration: InputDecoration(
                                 labelText: 'Username',
                                 prefixIcon:
                                     const Icon(Icons.alternate_email_outlined),
+                                suffixIcon: _validationIndicator(
+                                  hasInput: _usernameCtrl.text.trim().isNotEmpty,
+                                  isValid: _usernameRegex
+                                      .hasMatch(_usernameCtrl.text.trim()),
+                                ),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -342,16 +371,36 @@ class _RegisterScreenState extends State<RegisterScreen>
                             const SizedBox(height: 14),
                             TextFormField(
                               controller: _passwordCtrl,
+                              onChanged: (_) => setState(() {}),
                               obscureText: _obscurePassword,
                               decoration: InputDecoration(
                                 labelText: 'Password',
                                 prefixIcon: const Icon(Icons.lock_outline),
-                                suffixIcon: IconButton(
-                                  icon: Icon(_obscurePassword
-                                      ? Icons.visibility_off
-                                      : Icons.visibility),
-                                  onPressed: () => setState(
-                                      () => _obscurePassword = !_obscurePassword),
+                                suffixIcon: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (_validationIndicator(
+                                          hasInput: _passwordCtrl.text.isNotEmpty,
+                                          isValid:
+                                              _isStrongPassword(_passwordCtrl.text),
+                                        ) !=
+                                        null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(right: 4),
+                                        child: _validationIndicator(
+                                          hasInput: _passwordCtrl.text.isNotEmpty,
+                                          isValid:
+                                              _isStrongPassword(_passwordCtrl.text),
+                                        ),
+                                      ),
+                                    IconButton(
+                                      icon: Icon(_obscurePassword
+                                          ? Icons.visibility_off
+                                          : Icons.visibility),
+                                      onPressed: () => setState(() =>
+                                          _obscurePassword = !_obscurePassword),
+                                    ),
+                                  ],
                                 ),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
@@ -372,17 +421,39 @@ class _RegisterScreenState extends State<RegisterScreen>
                             const SizedBox(height: 14),
                             TextFormField(
                               controller: _confirmPasswordCtrl,
+                              onChanged: (_) => setState(() {}),
                               obscureText: _obscureConfirm,
                               decoration: InputDecoration(
                                 labelText: 'Confirm Password',
                                 prefixIcon:
                                     const Icon(Icons.lock_reset_outlined),
-                                suffixIcon: IconButton(
-                                  icon: Icon(_obscureConfirm
-                                      ? Icons.visibility_off
-                                      : Icons.visibility),
-                                  onPressed: () => setState(
-                                      () => _obscureConfirm = !_obscureConfirm),
+                                suffixIcon: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (_validationIndicator(
+                                          hasInput:
+                                              _confirmPasswordCtrl.text.isNotEmpty,
+                                          isValid: _confirmPasswordCtrl.text ==
+                                              _passwordCtrl.text,
+                                        ) !=
+                                        null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(right: 4),
+                                        child: _validationIndicator(
+                                          hasInput:
+                                              _confirmPasswordCtrl.text.isNotEmpty,
+                                          isValid: _confirmPasswordCtrl.text ==
+                                              _passwordCtrl.text,
+                                        ),
+                                      ),
+                                    IconButton(
+                                      icon: Icon(_obscureConfirm
+                                          ? Icons.visibility_off
+                                          : Icons.visibility),
+                                      onPressed: () => setState(() =>
+                                          _obscureConfirm = !_obscureConfirm),
+                                    ),
+                                  ],
                                 ),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
