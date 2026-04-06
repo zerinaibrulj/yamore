@@ -123,10 +123,20 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
 
   bool _isReservationPast(Reservation r) => r.endDate.isBefore(DateTime.now());
 
-  void _showSuccess(String message) {
+  Future<void> _showSuccess(String message) async {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Success'),
+        content: Text(message),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -616,7 +626,8 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
                 ? null
                 : descCtrl.text.trim(),
           );
-          _showSuccess('Route created successfully.');
+          await _loadAll();
+          await _showSuccess('Route created successfully.');
         } else {
           await _api.updateRoute(
             routeId: existing.routeId,
@@ -628,9 +639,9 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
                 ? null
                 : descCtrl.text.trim(),
           );
-          _showSuccess('Route updated successfully.');
+          await _loadAll();
+          await _showSuccess('Route updated successfully.');
         }
-        await _loadAll();
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -665,7 +676,7 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
       try {
         await _api.deleteRoute(route.routeId);
         await _loadAll();
-        _showSuccess('Route deleted successfully.');
+        await _showSuccess('Route deleted successfully.');
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -883,7 +894,8 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
                 : condCtrl.text.trim(),
             windSpeed: wind,
           );
-          _showSuccess('Forecast created successfully.');
+          await _loadAll();
+          await _showSuccess('Forecast created successfully.');
         } else {
           await _api.updateWeatherForecast(
             forecastId: existing.forecastId,
@@ -895,9 +907,9 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
                 : condCtrl.text.trim(),
             windSpeed: wind,
           );
-          _showSuccess('Forecast updated successfully.');
+          await _loadAll();
+          await _showSuccess('Forecast updated successfully.');
         }
-        await _loadAll();
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -932,7 +944,7 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
       try {
         await _api.deleteWeatherForecast(forecast.forecastId);
         await _loadAll();
-        _showSuccess('Forecast deleted successfully.');
+        await _showSuccess('Forecast deleted successfully.');
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
