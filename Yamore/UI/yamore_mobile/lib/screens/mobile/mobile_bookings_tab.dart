@@ -35,6 +35,13 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
   String? _error;
   int _tabIndex = 0; // 0 = active, 1 = past
 
+  int _itemsPerPage = 10;
+  int _pageActive = 0;
+  int _pagePast = 0;
+
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _bookingsListAnchorKey = GlobalKey();
+
   List<Reservation> _allReservations = [];
   final Map<int, YachtDetail> _yachtCache = {};
   final Map<int, List<RouteModel>> _routesByYachtId = {};
@@ -44,6 +51,102 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
   void initState() {
     super.initState();
     _loadReservations();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  List<Reservation> get _reservationsForCurrentTab =>
+      _tabIndex == 0 ? _activeReservations : _pastReservations;
+
+  int get _totalPages {
+    final n = _reservationsForCurrentTab.length;
+    if (n == 0) return 1;
+    return (n / _itemsPerPage).ceil();
+  }
+
+  int get _currentPageIndex {
+    final maxPage = _totalPages - 1;
+    final stored = _tabIndex == 0 ? _pageActive : _pagePast;
+    return stored.clamp(0, maxPage);
+  }
+
+  List<Reservation> get _pagedReservations {
+    final list = _reservationsForCurrentTab;
+    if (list.isEmpty) return const [];
+    final current = _currentPageIndex;
+    final start = current * _itemsPerPage;
+    final end = (start + _itemsPerPage).clamp(0, list.length);
+    return list.sublist(start, end);
+  }
+
+  void _clampPaginationPages() {
+    void clampOne(int len, void Function(int) setPage, int current) {
+      if (len == 0) {
+        setPage(0);
+        return;
+      }
+      final maxPage = ((len - 1) / _itemsPerPage).floor();
+      if (current > maxPage) setPage(maxPage);
+    }
+
+    clampOne(_activeReservations.length, (v) => _pageActive = v, _pageActive);
+    clampOne(_pastReservations.length, (v) => _pagePast = v, _pagePast);
+  }
+
+  void _scrollToBookingsListStart() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final ctx = _bookingsListAnchorKey.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          duration: Duration.zero,
+          alignment: 0,
+          alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+        );
+      } else if (_scrollController.hasClients) {
+        _scrollController.jumpTo(0);
+      }
+    });
+  }
+
+  void _updateItemsPerPage(int value) {
+    setState(() {
+      _itemsPerPage = value;
+      _pageActive = 0;
+      _pagePast = 0;
+    });
+    _scrollToBookingsListStart();
+  }
+
+  void _goToPreviousPage() {
+    setState(() {
+      final next = _currentPageIndex - 1;
+      final clamped = next.clamp(0, _totalPages - 1);
+      if (_tabIndex == 0) {
+        _pageActive = clamped;
+      } else {
+        _pagePast = clamped;
+      }
+    });
+    _scrollToBookingsListStart();
+  }
+
+  void _goToNextPage() {
+    setState(() {
+      final next = _currentPageIndex + 1;
+      final clamped = next.clamp(0, _totalPages - 1);
+      if (_tabIndex == 0) {
+        _pageActive = clamped;
+      } else {
+        _pagePast = clamped;
+      }
+    });
+    _scrollToBookingsListStart();
   }
 
   Future<void> _loadReservations() async {
@@ -101,6 +204,7 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
       if (!mounted) return;
       setState(() {
         _allReservations = list;
+        _clampPaginationPages();
         _loading = false;
       });
     } catch (e) {
@@ -138,6 +242,7 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
         color: AppTheme.primaryBlue,
         onRefresh: _loadReservations,
         child: CustomScrollView(
+          controller: _scrollController,
           slivers: [
             SliverToBoxAdapter(child: _buildHeader()),
             if (_loading)
@@ -171,7 +276,7 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
                 ),
               )
             else
-              _buildList(),
+              ..._buildListSlivers(),
           ],
         ),
       ),
@@ -213,6 +318,43 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
               _segmentButton('PAST', 1),
             ],
           ),
+          if (!_loading && _error == null) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Spacer(),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<int>(
+                      value: _itemsPerPage,
+                      icon: Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 18,
+                        color: Colors.grey.shade700,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      style: TextStyle(
+                          fontSize: 12, color: Colors.grey.shade700),
+                      items: const [
+                        DropdownMenuItem(value: 5, child: Text('5 / page')),
+                        DropdownMenuItem(value: 10, child: Text('10 / page')),
+                      ],
+                      onChanged: (v) {
+                        if (v == null) return;
+                        _updateItemsPerPage(v);
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -232,7 +374,10 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
                   ? AppTheme.primaryBlue
                   : Colors.grey.shade300),
         ),
-        onPressed: () => setState(() => _tabIndex = index),
+        onPressed: () {
+          setState(() => _tabIndex = index);
+          _scrollToBookingsListStart();
+        },
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Text(
@@ -244,32 +389,107 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
     );
   }
 
-  Widget _buildList() {
-    final list =
-        _tabIndex == 0 ? _activeReservations : _pastReservations;
+  List<Widget> _buildListSlivers() {
+    final list = _reservationsForCurrentTab;
     if (list.isEmpty) {
-      return const SliverFillRemaining(
-        child: Center(
-          child: Text(
-            'No reservations in this section yet.',
-            style: TextStyle(fontSize: 14),
+      return [
+        const SliverFillRemaining(
+          child: Center(
+            child: Text(
+              'No reservations in this section yet.',
+              style: TextStyle(fontSize: 14),
+            ),
           ),
         ),
-      );
+      ];
     }
-    return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-      sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            final r = list[index];
-            final yacht = _yachtCache[r.yachtId];
-            return _reservationCard(r, yacht);
-          },
-          childCount: list.length,
+
+    final paged = _pagedReservations;
+    final total = list.length;
+    final totalPages = _totalPages;
+    final current = _currentPageIndex;
+    final from = total == 0 ? 0 : (current * _itemsPerPage) + 1;
+    final to = ((current * _itemsPerPage) + _itemsPerPage).clamp(0, total);
+
+    return [
+      SliverPadding(
+        key: _bookingsListAnchorKey,
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        sliver: SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              final r = paged[index];
+              final yacht = _yachtCache[r.yachtId];
+              return _reservationCard(r, yacht);
+            },
+            childCount: paged.length,
+          ),
         ),
       ),
-    );
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            runSpacing: 8,
+            children: [
+              Text(
+                'Showing $from-$to of $total',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      onPressed:
+                          current > 0 ? _goToPreviousPage : null,
+                      icon: const Icon(Icons.chevron_left, size: 16),
+                      constraints:
+                          const BoxConstraints(minWidth: 24, minHeight: 24),
+                      padding: EdgeInsets.zero,
+                      tooltip: 'Previous page',
+                    ),
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${current + 1}/$totalPages',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 11),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: current < totalPages - 1
+                          ? _goToNextPage
+                          : null,
+                      icon: const Icon(Icons.chevron_right, size: 16),
+                      constraints:
+                          const BoxConstraints(minWidth: 24, minHeight: 24),
+                      padding: EdgeInsets.zero,
+                      tooltip: 'Next page',
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ];
   }
 
   Widget _reservationCard(Reservation r, YachtDetail? yacht) {
