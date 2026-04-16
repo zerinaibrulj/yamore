@@ -161,6 +161,7 @@ class _OwnerYachtsTabState extends State<OwnerYachtsTab> {
           ownerId: widget.user.userId,
           cities: _cities,
           categories: _categories,
+          canEdit: true,
         ),
       ),
     );
@@ -168,6 +169,27 @@ class _OwnerYachtsTabState extends State<OwnerYachtsTab> {
   }
 
   Future<void> _editYacht(YachtOverview overview) async {
+    final canEdit = _canEditYacht(overview.stateMachine);
+    if (!canEdit) {
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Editing disabled'),
+          content: const Text(
+            'This yacht can only be edited when its status is \"Draft\" or \"Active\".',
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     try {
       final detail = await _api.getYachtById(overview.yachtId);
       if (!mounted) return;
@@ -179,6 +201,7 @@ class _OwnerYachtsTabState extends State<OwnerYachtsTab> {
             cities: _cities,
             categories: _categories,
             existing: detail,
+            canEdit: canEdit,
           ),
         ),
       );
@@ -525,6 +548,7 @@ class _OwnerYachtsTabState extends State<OwnerYachtsTab> {
   Widget _buildYachtCard(YachtOverview yacht) {
     final stateColor = _stateColor(yacht.stateMachine);
     final stateName = yacht.stateMachine ?? 'Draft';
+    final canEdit = _canEditYacht(yacht.stateMachine);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -685,7 +709,7 @@ class _OwnerYachtsTabState extends State<OwnerYachtsTab> {
               children: [
                 Expanded(
                   child: TextButton.icon(
-                    onPressed: () => _editYacht(yacht),
+                    onPressed: canEdit ? () => _editYacht(yacht) : null,
                     icon: const Icon(Icons.edit_outlined, size: 18),
                     label: const Text('Edit'),
                     style: TextButton.styleFrom(
@@ -763,6 +787,12 @@ class _OwnerYachtsTabState extends State<OwnerYachtsTab> {
     }
   }
 
+  bool _canEditYacht(String? stateMachine) {
+    final s = (stateMachine ?? '').toLowerCase();
+    // Editable only when yacht is in Draft or Active state.
+    return s == 'draft' || s == 'active' || s == 'activate';
+  }
+
   Widget _imagePlaceholder() {
     return Container(
       height: 180,
@@ -797,6 +827,7 @@ class _OwnerYachtFormScreen extends StatefulWidget {
   final List<CityModel> cities;
   final List<YachtCategoryModel> categories;
   final YachtDetail? existing;
+  final bool canEdit;
 
   const _OwnerYachtFormScreen({
     required this.api,
@@ -804,6 +835,7 @@ class _OwnerYachtFormScreen extends StatefulWidget {
     required this.cities,
     required this.categories,
     this.existing,
+    required this.canEdit,
   });
 
   @override
@@ -837,6 +869,28 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
   bool _servicesLoading = false;
 
   bool get _isEdit => widget.existing != null;
+
+  bool get _canEdit => widget.canEdit;
+  bool get _readOnly => !_canEdit;
+
+  Future<void> _showEditingDisabledDialog() async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Editing disabled'),
+        content: const Text(
+          'This yacht cannot be edited in its current state. Only "Draft" and "Active" yachts can be edited.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _showInvalidDataDialog() async {
     if (!mounted) return;
@@ -934,6 +988,10 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
   }
 
   Future<void> _pickAndUploadImage() async {
+    if (!_canEdit) {
+      await _showEditingDisabledDialog();
+      return;
+    }
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
@@ -974,6 +1032,10 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
   }
 
   Future<void> _deleteImage(YachtImageModel img) async {
+    if (!_canEdit) {
+      await _showEditingDisabledDialog();
+      return;
+    }
     try {
       await widget.api.deleteYachtImage(img.yachtImageId);
       await _loadImages();
@@ -993,6 +1055,10 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
   }
 
   Future<void> _setThumbnail(YachtImageModel img) async {
+    if (!_canEdit) {
+      await _showEditingDisabledDialog();
+      return;
+    }
     try {
       await widget.api.setYachtImageThumbnail(img.yachtImageId);
       await _loadImages();
@@ -1031,6 +1097,10 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
   }
 
   Future<void> _addAvailability() async {
+    if (!_canEdit) {
+      await _showEditingDisabledDialog();
+      return;
+    }
     DateTimeRange? range;
     bool isBlocked = true;
     final noteCtrl = TextEditingController();
@@ -1158,6 +1228,10 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
   }
 
   Future<void> _deleteAvailability(YachtAvailability a) async {
+    if (!_canEdit) {
+      await _showEditingDisabledDialog();
+      return;
+    }
     try {
       await widget.api.deleteYachtAvailability(a.yachtAvailabilityId);
       await _loadAvailabilities();
@@ -1227,6 +1301,10 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
   // ── Save ──
 
   Future<void> _save() async {
+    if (!_canEdit) {
+      await _showEditingDisabledDialog();
+      return;
+    }
     if (!_formKey.currentState!.validate()) {
       await _showInvalidDataDialog();
       return;
@@ -1282,34 +1360,37 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: Text(_isEdit ? 'Edit Yacht' : 'New Yacht'),
+        title: Text(
+          _isEdit ? (_readOnly ? 'Yacht (View)' : 'Edit Yacht') : 'New Yacht',
+        ),
         centerTitle: true,
         backgroundColor: AppTheme.primaryBlue,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: _saving
-                ? const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
+          if (!_readOnly)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: _saving
+                  ? const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      ),
+                    )
+                  : FilledButton.icon(
+                      onPressed: _save,
+                      icon: const Icon(Icons.check, size: 18),
+                      label: const Text('Save'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white.withOpacity(0.2),
+                        foregroundColor: Colors.white,
+                      ),
                     ),
-                  )
-                : FilledButton.icon(
-                    onPressed: _save,
-                    icon: const Icon(Icons.check, size: 18),
-                    label: const Text('Save'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.white.withOpacity(0.2),
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-          ),
+            ),
         ],
       ),
       body: SingleChildScrollView(
@@ -1326,6 +1407,7 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
               _card([
                 TextFormField(
                   controller: _name,
+                  enabled: !_readOnly,
                   decoration: _inputDeco('Yacht Name',
                       icon: Icons.directions_boat_outlined,
                       isValid: _isNameValid,
@@ -1337,6 +1419,7 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                 const SizedBox(height: 14),
                 TextFormField(
                   controller: _description,
+                  enabled: !_readOnly,
                   decoration: _inputDeco('Description (optional)',
                       icon: Icons.notes_outlined),
                   maxLines: 3,
@@ -1364,7 +1447,7 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                           .map((y) =>
                               DropdownMenuItem(value: y, child: Text('$y')))
                           .toList(),
-                      onChanged: (v) => setState(() => _yearBuilt = v),
+                      onChanged: _readOnly ? null : (v) => setState(() => _yearBuilt = v),
                       validator: (v) => v == null ? 'Year' : null,
                     ),
                   ),
@@ -1372,6 +1455,7 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                   Expanded(
                     child: TextFormField(
                       controller: _length,
+                      enabled: !_readOnly,
                       decoration:
                           _inputDeco('Length (m)',
                               icon: Icons.straighten,
@@ -1400,7 +1484,7 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                               value: n,
                               child: Text('$n guest${n > 1 ? 's' : ''}')))
                           .toList(),
-                      onChanged: (v) => setState(() => _capacity = v),
+                      onChanged: _readOnly ? null : (v) => setState(() => _capacity = v),
                       validator: (v) => v == null ? 'Capacity' : null,
                     ),
                   ),
@@ -1418,7 +1502,7 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                               value: n,
                               child: Text('$n cabin${n > 1 ? 's' : ''}')))
                           .toList(),
-                      onChanged: (v) => setState(() => _cabins = v),
+                      onChanged: _readOnly ? null : (v) => setState(() => _cabins = v),
                       validator: (v) => v == null ? 'Cabins' : null,
                     ),
                   ),
@@ -1437,7 +1521,7 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                         ...List.generate(10, (i) => i + 1).map((n) =>
                             DropdownMenuItem(value: n, child: Text('$n'))),
                       ],
-                      onChanged: (v) => setState(() => _bathrooms = v),
+                      onChanged: _readOnly ? null : (v) => setState(() => _bathrooms = v),
                     ),
                   ),
                 ]),
@@ -1451,6 +1535,7 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
               _card([
                 TextFormField(
                   controller: _price,
+                  enabled: !_readOnly,
                   decoration:
                       _inputDeco('Price (€/day)',
                           icon: Icons.euro,
@@ -1476,7 +1561,7 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                       .map((c) => DropdownMenuItem(
                           value: c.cityId, child: Text(c.name)))
                       .toList(),
-                  onChanged: (v) => setState(() => _locationId = v),
+                  onChanged: _readOnly ? null : (v) => setState(() => _locationId = v),
                   validator: (v) => v == null ? 'Select location' : null,
                 ),
                 const SizedBox(height: 14),
@@ -1491,7 +1576,7 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                       .map((c) => DropdownMenuItem(
                           value: c.categoryId, child: Text(c.name)))
                       .toList(),
-                  onChanged: (v) => setState(() => _categoryId = v),
+                  onChanged: _readOnly ? null : (v) => setState(() => _categoryId = v),
                   validator: (v) => v == null ? 'Select category' : null,
                 ),
               ]),
@@ -1510,7 +1595,9 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                     ),
                     const Spacer(),
                     FilledButton.icon(
-                      onPressed: _imageUploading ? null : _pickAndUploadImage,
+                      onPressed: (_readOnly || _imageUploading)
+                          ? null
+                          : _pickAndUploadImage,
                       icon: _imageUploading
                           ? const SizedBox(
                               width: 16,
@@ -1584,7 +1671,7 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                     ),
                     const Spacer(),
                     FilledButton.icon(
-                      onPressed: _addAvailability,
+                      onPressed: _readOnly ? null : _addAvailability,
                       icon: const Icon(Icons.add, size: 18),
                       label: const Text('Add Period'),
                       style: FilledButton.styleFrom(
@@ -1651,7 +1738,7 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                               icon: const Icon(Icons.delete_outline,
                                   size: 20, color: Colors.redAccent),
                               tooltip: 'Remove',
-                              onPressed: () => _deleteAvailability(a),
+                              onPressed: _readOnly ? null : () => _deleteAvailability(a),
                             ),
                           ),
                         ))),
@@ -1735,8 +1822,9 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                               : null,
                           value: assigned,
                           activeColor: AppTheme.primaryBlue,
-                          onChanged: (val) =>
-                              _toggleService(svc.serviceId, val),
+                          onChanged: _readOnly
+                              ? null
+                              : (val) => _toggleService(svc.serviceId, val),
                         ),
                       );
                     }),
@@ -1893,10 +1981,16 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (!img.isThumbnail)
-                _miniBtn(Icons.star_outline, () => _setThumbnail(img)),
+                _miniBtn(
+                  Icons.star_outline,
+                  _readOnly ? null : () => _setThumbnail(img),
+                ),
               const SizedBox(height: 3),
-              _miniBtn(Icons.delete_outline, () => _deleteImage(img),
-                  color: Colors.red),
+              _miniBtn(
+                Icons.delete_outline,
+                _readOnly ? null : () => _deleteImage(img),
+                color: Colors.red,
+              ),
             ],
           ),
         ),
@@ -1904,8 +1998,12 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
     );
   }
 
-  Widget _miniBtn(IconData icon, VoidCallback onTap,
-      {Color color = Colors.white}) {
+  Widget _miniBtn(
+    IconData icon,
+    VoidCallback? onTap, {
+    Color color = Colors.white,
+  }) {
+    final enabled = onTap != null;
     return Material(
       color: Colors.black54,
       borderRadius: BorderRadius.circular(6),
@@ -1914,7 +2012,11 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
         onTap: onTap,
         child: Padding(
             padding: const EdgeInsets.all(5),
-            child: Icon(icon, size: 16, color: color)),
+            child: Icon(
+              icon,
+              size: 16,
+              color: enabled ? color : color.withOpacity(0.45),
+            )),
       ),
     );
   }
