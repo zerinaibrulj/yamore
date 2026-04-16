@@ -514,6 +514,7 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
         cities: _cities,
         categories: _categories,
         owners: _owners,
+        isHidden: false,
       ),
     );
     if (created == true) {
@@ -540,6 +541,7 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
           cities: _cities,
           categories: _categories,
           owners: _owners,
+          isHidden: (overview.stateMachine ?? '').toLowerCase() == 'hidden',
         ),
       );
       if (updated == true) {
@@ -663,6 +665,7 @@ class YachtFormDialog extends StatefulWidget {
   final List<CityModel> cities;
   final List<YachtCategoryModel> categories;
   final List<AppUser> owners;
+  final bool isHidden;
 
   const YachtFormDialog({
     super.key,
@@ -672,6 +675,7 @@ class YachtFormDialog extends StatefulWidget {
     required this.cities,
     required this.categories,
     required this.owners,
+    this.isHidden = false,
   });
 
   @override
@@ -1050,6 +1054,7 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
 
   Widget _buildImageTile(YachtImageModel img) {
     final url = widget.api.yachtImageUrl(img.yachtImageId);
+    final bool isReadOnly = widget.isHidden;
     return Stack(
       children: [
         ClipRRect(
@@ -1094,14 +1099,14 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                 _miniButton(
                   icon: Icons.star_outline,
                   tooltip: 'Set as cover',
-                  onTap: () => _setThumbnail(img),
+                  onTap: isReadOnly ? null : () => _setThumbnail(img),
                 ),
               const SizedBox(width: 2),
               _miniButton(
                 icon: Icons.delete_outline,
                 tooltip: 'Delete',
                 color: Colors.red,
-                onTap: () => _deleteImage(img),
+                onTap: isReadOnly ? null : () => _deleteImage(img),
               ),
             ],
           ),
@@ -1113,7 +1118,7 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
   Widget _miniButton({
     required IconData icon,
     required String tooltip,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
     Color color = Colors.white,
   }) {
     return Material(
@@ -1131,6 +1136,28 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
   }
 
   Future<void> _save() async {
+    if (widget.isHidden) {
+      if (mounted) {
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Editing disabled'),
+            content: const Text(
+              'This yacht is currently in the Hidden state. Editing is disabled. '
+              'To make changes, first change the yacht status to Draft or Active from the list.',
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) {
       await _showInvalidDataDialog();
       return;
@@ -1163,10 +1190,40 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
         Navigator.of(context).pop(true);
       }
     } on ApiException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Save failed: ${e.body}')),
+      if (!mounted) return;
+
+      // Provide a friendly message instead of raw JSON / "Method Not Allowed".
+      final status = e.statusCode;
+      final bodyLower = (e.body ?? '').toString().toLowerCase();
+      final isMethodNotAllowed =
+          status == 405 || bodyLower.contains('method not allowed');
+
+      if (isMethodNotAllowed) {
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Editing disabled'),
+            content: const Text(
+              'This yacht cannot be edited in its current state. '
+              'If the yacht is Hidden, please change its status to Draft or Active before editing.',
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
         );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to save yacht. Please try again.'),
+          ),
+        );
+      }
+
+      if (mounted) {
         setState(() => _saving = false);
       }
     }
@@ -1234,6 +1291,8 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isReadOnly = widget.isHidden;
+
     return AlertDialog(
       title: Text(widget.title),
       content: SingleChildScrollView(
@@ -1247,6 +1306,7 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
               children: [
                 TextFormField(
                   controller: _name,
+                  enabled: !isReadOnly,
                   decoration: InputDecoration(
                     labelText: 'Name',
                     prefixIcon: Icon(Icons.directions_boat_outlined),
@@ -1295,6 +1355,7 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                             child: DropdownButtonFormField<int>(
                         isExpanded: true,
                         value: int.tryParse(_year.text),
+                        disabledHint: Text(_year.text.isEmpty ? 'Year' : _year.text),
                         decoration: InputDecoration(
                           labelText: 'Year',
                           prefixIcon: Icon(Icons.calendar_today_outlined),
@@ -1310,7 +1371,9 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                               ),
                             )
                             .toList(),
-                        onChanged: (val) {
+                        onChanged: isReadOnly
+                            ? null
+                            : (val) {
                           setState(() {
                             _year.text =
                                 (val ?? DateTime.now().year).toString();
@@ -1324,6 +1387,7 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                             flex: 1,
                             child: TextFormField(
                         controller: _length,
+                        enabled: !isReadOnly,
                         decoration: InputDecoration(
                           labelText: 'Length (m)',
                           prefixIcon: Icon(Icons.straighten),
@@ -1341,6 +1405,9 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                             child: DropdownButtonFormField<int>(
                         isExpanded: true,
                         value: int.tryParse(_capacity.text),
+                        disabledHint: Text(
+                          _capacity.text.isEmpty ? 'Capacity' : _capacity.text,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'Capacity',
                           prefixIcon: Icon(Icons.people_outline),
@@ -1353,7 +1420,9 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                               ),
                             )
                             .toList(),
-                        onChanged: (val) {
+                        onChanged: isReadOnly
+                            ? null
+                            : (val) {
                           setState(() {
                             _capacity.text = (val ?? 1).toString();
                           });
@@ -1379,6 +1448,9 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                             child: DropdownButtonFormField<int>(
                         isExpanded: true,
                         value: int.tryParse(_cabins.text),
+                        disabledHint: Text(
+                          _cabins.text.isEmpty ? 'Cabins' : _cabins.text,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'Cabins',
                           prefixIcon: Icon(Icons.king_bed_outlined),
@@ -1391,7 +1463,9 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                               ),
                             )
                             .toList(),
-                        onChanged: (val) {
+                        onChanged: isReadOnly
+                            ? null
+                            : (val) {
                           setState(() {
                             _cabins.text = (val ?? 1).toString();
                           });
@@ -1407,6 +1481,11 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                         value: _bathrooms.text.isEmpty
                             ? null
                             : int.tryParse(_bathrooms.text),
+                        disabledHint: Text(
+                          _bathrooms.text.isEmpty
+                              ? 'None'
+                              : _bathrooms.text,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'Bathrooms',
                           prefixIcon: Icon(Icons.bathtub_outlined),
@@ -1423,7 +1502,9 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                             ),
                           ),
                         ],
-                        onChanged: (val) {
+                        onChanged: isReadOnly
+                            ? null
+                            : (val) {
                           setState(() {
                             _bathrooms.text = val?.toString() ?? '';
                           });
@@ -1435,6 +1516,7 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                             flex: 1,
                             child: TextFormField(
                         controller: _price,
+                        enabled: !isReadOnly,
                         decoration: InputDecoration(
                           labelText: 'Price (€ / day)',
                           prefixIcon: Icon(Icons.euro_symbol),
@@ -1463,6 +1545,11 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                 DropdownButtonFormField<int>(
                   isExpanded: true,
                   value: int.tryParse(_locationId.text),
+                  disabledHint: Text(
+                    _locationId.text.isEmpty
+                        ? 'Location'
+                        : _locationId.text,
+                  ),
                   decoration: InputDecoration(
                     labelText: 'Location',
                     prefixIcon: Icon(Icons.location_on_outlined),
@@ -1479,7 +1566,9 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                         ),
                       )
                       .toList(),
-                  onChanged: (val) {
+                  onChanged: isReadOnly
+                      ? null
+                      : (val) {
                     setState(() {
                       _locationId.text = (val ?? 0).toString();
                     });
@@ -1490,6 +1579,11 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                 DropdownButtonFormField<int>(
                   isExpanded: true,
                   value: int.tryParse(_categoryId.text),
+                  disabledHint: Text(
+                    _categoryId.text.isEmpty
+                        ? 'Category'
+                        : _categoryId.text,
+                  ),
                   decoration: InputDecoration(
                     labelText: 'Category',
                     prefixIcon: Icon(Icons.category_outlined),
@@ -1506,7 +1600,9 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                         ),
                       )
                       .toList(),
-                  onChanged: (val) {
+                  onChanged: isReadOnly
+                      ? null
+                      : (val) {
                     setState(() {
                       _categoryId.text = (val ?? 0).toString();
                     });
@@ -1516,6 +1612,7 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                 const SizedBox(height: 10),
                 TextFormField(
                   controller: _description,
+                  enabled: !isReadOnly,
                   decoration: const InputDecoration(
                     labelText: 'Description (optional)',
                     prefixIcon: Icon(Icons.notes_outlined),
@@ -1540,7 +1637,8 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                       ),
                       const Spacer(),
                       OutlinedButton.icon(
-                        onPressed: _imageUploading ? null : _pickAndUploadImage,
+                      onPressed:
+                          isReadOnly || _imageUploading ? null : _pickAndUploadImage,
                         icon: _imageUploading
                             ? const SizedBox(
                                 width: 14,
@@ -1596,7 +1694,7 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                       ),
                       const Spacer(),
                       OutlinedButton.icon(
-                        onPressed: _addAvailability,
+                      onPressed: isReadOnly ? null : _addAvailability,
                         icon: const Icon(Icons.add, size: 18),
                         label: const Text('Add Period'),
                       ),
@@ -1639,7 +1737,8 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                         trailing: IconButton(
                           icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
                           tooltip: 'Remove',
-                          onPressed: () => _deleteAvailability(a),
+                          onPressed:
+                              isReadOnly ? null : () => _deleteAvailability(a),
                         ),
                       ),
                     ))),
@@ -1655,7 +1754,7 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
           child: const Text('Cancel'),
         ),
         FilledButton(
-          onPressed: _saving ? null : _save,
+          onPressed: _saving || isReadOnly ? null : _save,
           child: _saving
               ? const SizedBox(
                   height: 20,
