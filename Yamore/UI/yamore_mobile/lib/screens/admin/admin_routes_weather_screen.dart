@@ -140,6 +140,32 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
     );
   }
 
+  Future<void> _showRouteValidationDialog(ApiException e) async {
+    if (!mounted) return;
+
+    final body = e.body;
+    final isStartEndSameError =
+        body.contains('Start city and end city must be different');
+
+    final message = isStartEndSameError
+        ? 'Start city and end city must be different.'
+        : 'Invalid route data. Please review the selected start and end cities.';
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cannot save route'),
+        content: Text(message),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _formatDateTime(DateTime dt) =>
       '${dt.day.toString().padLeft(2, '0')}.'
       '${dt.month.toString().padLeft(2, '0')}.'
@@ -642,11 +668,27 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
           await _loadAll();
           await _showSuccess('Route updated successfully.');
         }
-      } catch (e) {
+      } on ApiException catch (e) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save route: $e')),
-        );
+        if (e.statusCode == 400) {
+          await _showRouteValidationDialog(e);
+        } else {
+          await showDialog<void>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Failed to save route'),
+              content: const Text(
+                'Something went wrong while saving the route. Please try again.',
+              ),
+              actions: [
+                FilledButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
       }
     }
     descCtrl.dispose();
