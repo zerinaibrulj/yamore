@@ -11,6 +11,7 @@ import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../models/statistics.dart';
 import '../../utils/euro_format.dart';
+import '../../models/reservation.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   final AuthService authService;
@@ -101,10 +102,21 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                       fontWeight: FontWeight.w600,
                     ),
               ),
-              FilledButton.icon(
-                onPressed: () => _exportReport(stats),
-                icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
-                label: const Text('Export report'),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FilledButton.icon(
+                    onPressed: _exportReservationsBookingsReport,
+                    icon: const Icon(Icons.event_note_outlined, size: 18),
+                    label: const Text('Reservations & bookings (PDF)'),
+                  ),
+                  const SizedBox(width: 12),
+                  FilledButton.icon(
+                    onPressed: () => _exportAdminOverviewReport(stats),
+                    icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
+                    label: const Text('Export report'),
+                  ),
+                ],
               ),
             ],
           ),
@@ -506,7 +518,126 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     );
   }
 
-  Future<void> _exportReport(StatisticsDtoModel stats) async {
+  Future<void> _exportAdminOverviewReport(StatisticsDtoModel stats) async {
+    await _openPdfExportDialog(
+      dialogTitle: 'Export report',
+      pdfFileName: 'yamore_admin_report.pdf',
+      build: (format) => _buildAdminReportPdf(stats, format),
+    );
+  }
+
+  /// Loads paged data for the reservations PDF (current calendar year, by created date
+  /// when set—otherwise by trip start year—to align with the statistics API’s year filter).
+  Future<_ReservationsReportData> _loadReservationsReportData() async {
+    final year = DateTime.now().year;
+    final all = <Reservation>[];
+    for (var page = 0; ; page++) {
+      const pageSize = 200;
+      final p = await _api.getReservations(page: page, pageSize: pageSize);
+      all.addAll(p.resultList);
+      if (p.resultList.length < pageSize) break;
+      if (p.count != null && all.length >= p.count!) break;
+    }
+    final inYear = all.where((r) {
+      if (r.createdAt != null) return r.createdAt!.year == year;
+      return r.startDate.year == year;
+    }).toList()
+      ..sort((a, b) {
+        final ac = a.createdAt ?? a.startDate;
+        final bc = b.createdAt ?? b.startDate;
+        return bc.compareTo(ac);
+      });
+
+    final yachtNames = <int, String>{};
+    for (var page = 0; ; page++) {
+      const pageSize = 200;
+      final p = await _api.getYachtOverviewForAdmin(page: page, pageSize: pageSize);
+      for (final y in p.resultList) {
+        yachtNames[y.yachtId] = y.name;
+      }
+      if (p.resultList.isEmpty || p.resultList.length < pageSize) break;
+      if (p.count != null && yachtNames.length >= p.count!) break;
+    }
+
+    final userNames = <int, String>{};
+    for (var page = 0; ; page++) {
+      const pageSize = 200;
+      final p = await _api.getUsers(page: page, pageSize: pageSize);
+      for (final u in p.resultList) {
+        userNames[u.userId] =
+            u.displayName.isNotEmpty ? u.displayName : u.username;
+      }
+      if (p.resultList.length < pageSize) break;
+      if (p.count != null && userNames.length >= p.count!) break;
+    }
+
+    return _ReservationsReportData(
+      year: year,
+      reservations: inYear,
+      yachtNames: yachtNames,
+      userNames: userNames,
+    );
+  }
+
+  Future<void> _exportReservationsBookingsReport() async {
+    if (!context.mounted) return;
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return PopScope(
+          canPop: false,
+          child: Center(
+            child: Card(
+              elevation: 4,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Preparing report…',
+                      style: Theme.of(ctx).textTheme.bodyLarge,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    try {
+      final data = await _loadReservationsReportData();
+      if (!context.mounted) return;
+      if (navigator.canPop()) {
+        navigator.pop();
+      }
+      await _openPdfExportDialog(
+        dialogTitle: 'Reservations & bookings',
+        pdfFileName: 'yamore_reservations_bookings_report.pdf',
+        build: (format) => _buildReservationsBookingsPdf(data, format),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      if (navigator.canPop()) {
+        navigator.pop();
+      }
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not build report: $e')),
+      );
+    }
+  }
+
+  Future<void> _openPdfExportDialog({
+    required String dialogTitle,
+    required String pdfFileName,
+    required Future<Uint8List> Function(PdfPageFormat format) build,
+  }) async {
     if (!context.mounted) return;
     final size = MediaQuery.sizeOf(context);
     await showDialog<void>(
@@ -533,7 +664,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                       children: [
                         const SizedBox(width: 8),
                         Text(
-                          'Export report',
+                          dialogTitle,
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                         const Spacer(),
@@ -548,8 +679,8 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                 ),
                 Expanded(
                   child: PdfPreview(
-                    build: (format) => _buildAdminReportPdf(stats, format),
-                    pdfFileName: 'yamore_admin_report.pdf',
+                    build: (format) => build(format),
+                    pdfFileName: pdfFileName,
                     allowPrinting: true,
                     allowSharing: true,
                     canChangePageFormat: true,
@@ -563,6 +694,18 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         );
       },
     );
+  }
+
+  String _formatPdfDate(DateTime d) {
+    return '${d.day.toString().padLeft(2, '0')}/'
+        '${d.month.toString().padLeft(2, '0')}/${d.year}';
+  }
+
+  String _pdfShortLabel(String? text, {int maxLen = 28}) {
+    if (text == null || text.isEmpty) return '—';
+    final t = text.trim();
+    if (t.length <= maxLen) return t;
+    return '${t.substring(0, maxLen - 1)}…';
   }
 
   /// Builds PDF bytes for the admin report; [format] drives page size in the preview/print flow.
@@ -690,5 +833,168 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
     return doc.save();
   }
+
+  /// Bookings and reservations for the year; same typography and section layout as [_buildAdminReportPdf].
+  Future<Uint8List> _buildReservationsBookingsPdf(
+    _ReservationsReportData data,
+    PdfPageFormat format,
+  ) async {
+    const cancelledStatus = 'Cancelled';
+    final list = data.reservations;
+    final byStatus = <String, int>{};
+    for (final r in list) {
+      final s = (r.status ?? '—').trim();
+      final key = s.isEmpty ? '—' : s;
+      byStatus[key] = (byStatus[key] ?? 0) + 1;
+    }
+    final totalDays =
+        list.fold<int>(0, (a, r) => a + r.durationDays.clamp(0, 10000));
+    final completedRevenue = list
+        .where((r) => r.status != cancelledStatus)
+        .fold<double>(0, (a, r) => a + (r.totalPrice ?? 0));
+
+    final statusRows = byStatus.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    final tableRows = list
+        .map(
+          (r) => <String>[
+            r.reservationId.toString(),
+            r.createdAt != null
+                ? _formatPdfDate(r.createdAt!.toLocal())
+                : '—',
+            _formatPdfDate(r.startDate.toLocal()),
+            _formatPdfDate(r.endDate.toLocal()),
+            _pdfShortLabel(
+              data.userNames[r.userId] ?? 'User #${r.userId}',
+            ),
+            _pdfShortLabel(
+              data.yachtNames[r.yachtId] ?? 'Yacht #${r.yachtId}',
+            ),
+            (r.status ?? '—'),
+            r.totalPrice != null
+                ? formatEuroDashboard(r.totalPrice!)
+                : '—',
+          ],
+        )
+        .toList();
+
+    final doc = pw.Document();
+    final baseFont = await PdfGoogleFonts.notoSansRegular();
+    final boldFont = await PdfGoogleFonts.notoSansBold();
+
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: format,
+        margin: const pw.EdgeInsets.all(24),
+        theme: pw.ThemeData.withFont(
+          base: baseFont,
+          bold: boldFont,
+        ),
+        build: (context) => [
+          pw.Header(
+            level: 0,
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text(
+                  'Yamore – Reservations & bookings',
+                  style: pw.TextStyle(
+                    fontSize: 20,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.Text(
+                  'Year ${data.year}',
+                  style: const pw.TextStyle(fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 12),
+          pw.Text(
+            'Summary',
+            style: pw.TextStyle(
+              fontSize: 16,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Bullet(
+            text: 'Reservations in period: ${list.length}.',
+          ),
+          if (list.isNotEmpty)
+            pw.Bullet(
+              text: 'Total charter days (start to end, all rows): $totalDays.',
+            ),
+          pw.Bullet(
+            text:
+                'Revenue (excluding cancelled): ${formatEuroDashboard(completedRevenue)}.',
+          ),
+          if (byStatus.isNotEmpty) ...[
+            pw.SizedBox(height: 8),
+            pw.Text(
+              'By status',
+              style: pw.TextStyle(
+                fontSize: 14,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+            pw.SizedBox(height: 4),
+            pw.Table.fromTextArray(
+              headers: const ['Status', 'Count'],
+              data: statusRows
+                  .map((e) => [e.key, e.value.toString()])
+                  .toList(),
+            ),
+          ],
+          pw.SizedBox(height: 16),
+          pw.Text(
+            'Detailed listing',
+            style: pw.TextStyle(
+              fontSize: 14,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 8),
+          if (list.isEmpty)
+            pw.Text('No reservations in this year.')
+          else
+            pw.Table.fromTextArray(
+              headers: const [
+                'ID',
+                'Booked',
+                'From',
+                'To',
+                'Client',
+                'Yacht',
+                'Status',
+                'Total',
+              ],
+              data: tableRows,
+              cellStyle: const pw.TextStyle(fontSize: 8),
+              headerStyle: pw.TextStyle(
+                fontSize: 8,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+        ],
+      ),
+    );
+
+    return doc.save();
+  }
 }
 
+class _ReservationsReportData {
+  const _ReservationsReportData({
+    required this.year,
+    required this.reservations,
+    required this.yachtNames,
+    required this.userNames,
+  });
+  final int year;
+  final List<Reservation> reservations;
+  final Map<int, String> yachtNames;
+  final Map<int, String> userNames;
+}
