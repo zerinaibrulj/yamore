@@ -8,6 +8,7 @@ import '../../models/yacht_overview.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/custom_single_date_picker_dialog.dart';
 
 class AdminRoutesWeatherScreen extends StatefulWidget {
   final AuthService authService;
@@ -768,64 +769,135 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.calendar_month, size: 18),
-                          label: Text(
-                            '${date.day.toString().padLeft(2, '0')}.'
-                            '${date.month.toString().padLeft(2, '0')}.'
-                            '${date.year}',
+                        child: Card(
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                          onPressed: () async {
-                            final picked = await showDatePicker(
-                              context: dialogContext,
-                              firstDate: DateTime.now()
-                                  .subtract(const Duration(days: 1)),
-                              lastDate: DateTime.now()
-                                  .add(const Duration(days: 365)),
-                              initialDate: date,
-                            );
-                            if (picked != null) {
-                              setDialogState(() {
-                                date = DateTime(
-                                  picked.year,
-                                  picked.month,
-                                  picked.day,
-                                  time.hour,
-                                  time.minute,
-                                );
-                              });
-                            }
-                          },
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            minVerticalPadding: 8,
+                            leading: Icon(
+                              Icons.calendar_today_outlined,
+                              color: AppTheme.primaryBlue,
+                              size: 22,
+                            ),
+                            title: const Text(
+                              'Date',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '${date.day.toString().padLeft(2, '0')}.'
+                              '${date.month.toString().padLeft(2, '0')}.'
+                              '${date.year}',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            onTap: () async {
+                              final firstDate = DateTime.now()
+                                  .subtract(const Duration(days: 1));
+                              final lastDate = DateTime.now()
+                                  .add(const Duration(days: 365));
+                              final picked = await showDialog<DateTime>(
+                                context: dialogContext,
+                                builder: (dCtx) => CustomSingleDatePickerDialog(
+                                  initialDate: date,
+                                  firstDate: firstDate,
+                                  lastDate: lastDate,
+                                  title: 'Select forecast date',
+                                ),
+                              );
+                              if (picked != null) {
+                                setDialogState(() {
+                                  date = DateTime(
+                                    picked.year,
+                                    picked.month,
+                                    picked.day,
+                                    time.hour,
+                                    time.minute,
+                                  );
+                                });
+                              }
+                            },
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.access_time, size: 18),
-                          label: Text(
-                            '${time.hour.toString().padLeft(2, '0')}:'
-                            '${time.minute.toString().padLeft(2, '0')}',
+                        child: Card(
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                          onPressed: () async {
-                            final picked = await showTimePicker(
-                              context: dialogContext,
-                              initialTime: time,
-                            );
-                            if (picked != null) {
-                              setDialogState(() {
-                                time = picked;
-                                date = DateTime(
-                                  date.year,
-                                  date.month,
-                                  date.day,
-                                  time.hour,
-                                  time.minute,
-                                );
-                              });
-                            }
-                          },
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            minVerticalPadding: 8,
+                            leading: Icon(
+                              Icons.access_time,
+                              color: AppTheme.primaryBlue,
+                              size: 22,
+                            ),
+                            title: const Text(
+                              'Time',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '${time.hour.toString().padLeft(2, '0')}:'
+                              '${time.minute.toString().padLeft(2, '0')}',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            onTap: () async {
+                              final picked = await showTimePicker(
+                                context: dialogContext,
+                                initialTime: time,
+                                builder: (context, child) {
+                                  return Theme(
+                                    data: Theme.of(context).copyWith(
+                                      colorScheme: ColorScheme.fromSeed(
+                                        seedColor: AppTheme.primaryBlue,
+                                        primary: AppTheme.primaryBlue,
+                                        brightness:
+                                            Theme.of(context).brightness,
+                                      ),
+                                    ),
+                                    child: child!,
+                                  );
+                                },
+                              );
+                              if (picked != null) {
+                                setDialogState(() {
+                                  time = picked;
+                                  date = DateTime(
+                                    date.year,
+                                    date.month,
+                                    date.day,
+                                    time.hour,
+                                    time.minute,
+                                  );
+                                });
+                              }
+                            },
+                          ),
                         ),
                       ),
                     ],
