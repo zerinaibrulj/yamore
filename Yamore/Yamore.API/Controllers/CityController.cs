@@ -10,9 +10,20 @@ namespace Yamore.API.Controllers
     [Route("[controller]")]
     public class CityController : BaseCRUDController<Model.City, CitySearchObject, CityInsertRequest, CityUpdateRequest, CityDeleteRequest>
     {
+        private readonly ICityService _cityService;
+
         public CityController(ICityService service)
             : base(service)
         {
+            _cityService = service;
+        }
+
+        [HttpDelete("{id}")]
+        public override ActionResult<Model.City> Delete(int id)
+        {
+            var err = _cityService.GetDeleteBlockingErrorMessage(id);
+            if (err != null) return RejectWithUserError(err);
+            return base.Delete(id);
         }
     }
 }

@@ -1,3 +1,5 @@
+import 'dart:convert' show jsonDecode;
+
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../models/city.dart';
@@ -546,9 +548,27 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
           await _loadCities();
           await _showSuccessPopup('Country deleted successfully.');
         }
-      } catch (e) {
+      } on ApiException catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+          await _showCountryDeleteErrorDialog(countryName: c.name, e: e);
+        }
+      } catch (_) {
+        if (mounted) {
+          await showDialog<void>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Cannot delete country'),
+              content: const Text(
+                'The country could not be deleted. Please check your connection and try again.',
+              ),
+              actions: [
+                FilledButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
         }
       }
     }
@@ -768,11 +788,127 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
           await _loadCities();
           await _showSuccessPopup('City deleted successfully.');
         }
-      } catch (e) {
+      } on ApiException catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+          await _showCityDeleteErrorDialog(cityName: city.name, e: e);
+        }
+      } catch (_) {
+        if (mounted) {
+          await showDialog<void>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Cannot delete city'),
+              content: const Text(
+                'The city could not be deleted. Please check your connection and try again.',
+              ),
+              actions: [
+                FilledButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
         }
       }
     }
+  }
+
+  /// Prefer [ApiException] body `errors.userError` (400 from API [UserException]).
+  /// Falls back to friendly text when the server still returns 500/legacy errors.
+  Future<void> _showCityDeleteErrorDialog({
+    required String cityName,
+    required ApiException e,
+  }) async {
+    final apiMessage = _userErrorMessageFromApiBody(e.body);
+    final isLikelyInUse = e.statusCode == 500 ||
+        e.statusCode == 409 ||
+        e.body.toLowerCase().contains('route') ||
+        e.body.toLowerCase().contains('constraint') ||
+        e.body.toLowerCase().contains('reference') ||
+        e.body.toLowerCase().contains('foreign');
+
+    final String message;
+    if (e.statusCode == 400 && apiMessage != null && apiMessage.isNotEmpty) {
+      message = apiMessage;
+    } else if (e.statusCode == 404) {
+      message = 'This city no longer exists or was already removed.';
+    } else if (isLikelyInUse) {
+      message =
+          '“$cityName” cannot be deleted because it is still in use. One or more yachts may use it as a location, '
+          'or one or more routes may start or end there. Update those records (or choose another city) before deleting.';
+    } else {
+      message = 'The city could not be deleted. Please try again in a moment.';
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cannot delete city'),
+        content: Text(message),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Same pattern as [_showCityDeleteErrorDialog]: API returns 400 + `errors.userError` for [UserException].
+  Future<void> _showCountryDeleteErrorDialog({
+    required String countryName,
+    required ApiException e,
+  }) async {
+    final apiMessage = _userErrorMessageFromApiBody(e.body);
+    final isLikelyInUse = e.statusCode == 500 ||
+        e.statusCode == 409 ||
+        e.body.toLowerCase().contains('city') ||
+        e.body.toLowerCase().contains('constraint') ||
+        e.body.toLowerCase().contains('reference') ||
+        e.body.toLowerCase().contains('foreign');
+
+    final String message;
+    if (e.statusCode == 400 && apiMessage != null && apiMessage.isNotEmpty) {
+      message = apiMessage;
+    } else if (e.statusCode == 404) {
+      message = 'This country no longer exists or was already removed.';
+    } else if (isLikelyInUse) {
+      message =
+          '“$countryName” cannot be deleted because it is still in use. One or more cities are associated with this country. '
+          'Remove or reassign those cities to another country before deleting.';
+    } else {
+      message = 'The country could not be deleted. Please try again in a moment.';
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cannot delete country'),
+        content: Text(message),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String? _userErrorMessageFromApiBody(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is! Map<String, dynamic>) return null;
+      final errors = decoded['errors'];
+      if (errors is! Map<String, dynamic>) return null;
+      final userError = errors['userError'];
+      if (userError is List && userError.isNotEmpty) {
+        final first = userError.first;
+        if (first is String && first.isNotEmpty) return first;
+      }
+    } catch (_) {}
+    return null;
   }
 }

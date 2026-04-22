@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
+using Yamore.Model;
 using Yamore.Model.SearchObjects;
 using Yamore.Services.Interfaces;
 
@@ -16,6 +18,18 @@ namespace Yamore.API.Controllers
             _service = service;                                                    //ovo moramo napisati obzirom da smo gore koristili kljucnu rijec NEW
         }
 
+        /// <summary>
+        /// HTTP 400 with the same <c>errors.userError</c> JSON shape as <c>ExceptionFilter</c> when it handles <see cref="UserException"/>,
+        /// but without <c>throw</c> so a normal "cannot delete" business rule will not make Visual Studio break on a first-chance exception.
+        /// </summary>
+        protected ActionResult<TModel> RejectWithUserError(string userMessage) =>
+            BadRequest(new
+            {
+                errors = new Dictionary<string, string[]>
+                {
+                    ["userError"] = new[] { userMessage }
+                }
+            });
 
         [HttpPost]
         public virtual ActionResult<TModel> Insert(TInsert request)
