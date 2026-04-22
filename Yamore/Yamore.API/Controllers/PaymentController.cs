@@ -49,8 +49,8 @@ namespace Yamore.API.Controllers
         [AllowAnonymous]
         public ActionResult<object> GetStripeConfig()
         {
-            var publishableKey = _configuration["Stripe:PublishableKey"];
-            return Ok(new { PublishableKey = publishableKey ?? "" });
+            var publishableKey = _configuration["Stripe:PublishableKey"]?.Trim() ?? "";
+            return Ok(new { PublishableKey = publishableKey });
         }
 
         /// <summary>Creates a Stripe PaymentIntent for a <b>new</b> booking without writing a reservation row. Confirm with <c>POST confirm</c> and <c>reservationId: 0</c> after the client payment succeeds.</summary>

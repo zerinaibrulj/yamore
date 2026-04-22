@@ -15,7 +15,8 @@ public class StripePaymentService
 
     public StripePaymentService(IConfiguration configuration)
     {
-        _secretKey = configuration["Stripe:SecretKey"];
+        // Trim: .env / Docker often introduce trailing newlines that make Stripe reject the key.
+        _secretKey = configuration["Stripe:SecretKey"]?.Trim();
         if (!string.IsNullOrWhiteSpace(_secretKey))
             _stripeClient = new StripeClient(_secretKey);
     }

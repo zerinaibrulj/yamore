@@ -34,6 +34,11 @@ services:
       context: .
       dockerfile: Yamore.API/Dockerfile
     container_name: yamore-api
+    # Stripe (and other HTTPS calls) need working DNS inside the container. On some Windows/Docker setups
+    # the default resolver fails with "Name or service not known" for api.stripe.com — public DNS avoids that.
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     depends_on:
       sqlserver:
         condition: service_healthy
@@ -74,6 +79,9 @@ services:
       context: .
       dockerfile: Yamore.Worker/Dockerfile
     container_name: yamore-worker
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     depends_on:
       rabbitmq:
         condition: service_healthy
