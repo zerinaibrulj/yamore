@@ -1,11 +1,16 @@
+import 'dart:math' as math;
+import 'dart:typed_data';
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../models/statistics.dart';
+import '../../utils/euro_format.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   final AuthService authService;
@@ -156,7 +161,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         _buildKpiCard(
           icon: Icons.euro_symbol,
           label: 'Revenue',
-          value: '€${stats.totalRevenue.toStringAsFixed(0)}',
+          value: formatEuroDashboard(stats.totalRevenue),
           color: Colors.orange,
           textTheme: textTheme,
         ),
@@ -189,7 +194,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, color: color),
@@ -219,15 +224,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         ),
       ),
     );
-  }
-
-  /// Format revenue for axis/tooltip: e.g. €1.2k, €500, €0
-  static String _formatRevenue(double value) {
-    if (value >= 1000) {
-      final k = value / 1000;
-      return k == k.roundToDouble() ? '€${k.toInt()}k' : '€${k.toStringAsFixed(1)}k';
-    }
-    return value >= 1 ? '€${value.toStringAsFixed(0)}' : '€0';
   }
 
   Widget _buildRevenueChartCard(
@@ -322,7 +318,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                           return Padding(
                             padding: const EdgeInsets.only(right: 4),
                             child: Text(
-                              _formatRevenue(value),
+                              formatEuroCompactAxis(value),
                               style: TextStyle(
                                 fontSize: 10,
                                 color: Colors.grey.shade700,
@@ -445,7 +441,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             Expanded(
               child: ListView.separated(
                 itemCount: data.length,
-                separatorBuilder: (_, __) => const Divider(height: 8),
+                separatorBuilder: (_, int index) => const Divider(height: 8),
                 itemBuilder: (context, index) {
                   final y = data[index];
                   return Row(
@@ -471,7 +467,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                       SizedBox(
                         width: 120,
                         child: Text(
-                          '€${y.totalRevenue.toStringAsFixed(0)}',
+                          formatEuroDashboard(y.totalRevenue),
                           style: const TextStyle(fontWeight: FontWeight.w500),
                         ),
                       ),
@@ -511,130 +507,188 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   }
 
   Future<void> _exportReport(StatisticsDtoModel stats) async {
-    await Printing.layoutPdf(
-      onLayout: (format) async {
-        final doc = pw.Document();
-        final baseFont = await PdfGoogleFonts.notoSansRegular();
-        final boldFont = await PdfGoogleFonts.notoSansBold();
-
-        doc.addPage(
-          pw.MultiPage(
-            margin: const pw.EdgeInsets.all(24),
-            theme: pw.ThemeData.withFont(
-              base: baseFont,
-              bold: boldFont,
+    if (!context.mounted) return;
+    final size = MediaQuery.sizeOf(context);
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return Dialog(
+          alignment: Alignment.center,
+          clipBehavior: Clip.antiAlias,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 900,
+              maxHeight: math.min(720, size.height * 0.92),
             ),
-            build: (context) => [
-              pw.Header(
-                level: 0,
-                child: pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text(
-                      'Yamore – Admin report',
-                      style: pw.TextStyle(
-                        fontSize: 20,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Material(
+                  color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: Row(
+                      children: [
+                        const SizedBox(width: 8),
+                        Text(
+                          'Export report',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const Spacer(),
+                        IconButton.filledTonal(
+                          onPressed: () => Navigator.of(dialogContext).pop(),
+                          icon: const Icon(Icons.close),
+                          tooltip: 'Close',
+                        ),
+                      ],
                     ),
-                    pw.Text(
-                      'Year ${DateTime.now().year}',
-                      style: const pw.TextStyle(fontSize: 12),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-              pw.SizedBox(height: 12),
-              pw.Text(
-                'Overview',
-                style: pw.TextStyle(
-                  fontSize: 16,
-                  fontWeight: pw.FontWeight.bold,
+                Expanded(
+                  child: PdfPreview(
+                    build: (format) => _buildAdminReportPdf(stats, format),
+                    pdfFileName: 'yamore_admin_report.pdf',
+                    allowPrinting: true,
+                    allowSharing: true,
+                    canChangePageFormat: true,
+                    canChangeOrientation: true,
+                    initialPageFormat: PdfPageFormat.a4,
+                  ),
                 ),
-              ),
-              pw.SizedBox(height: 8),
-              pw.Bullet(
-                  text:
-                      'Active yachts: ${stats.yachtsCount}, active users: ${stats.activeUsersCount}.'),
-              pw.Bullet(
-                  text:
-                      'Total bookings: ${stats.totalBookings}, total revenue: €${stats.totalRevenue.toStringAsFixed(0)}.'),
-              pw.Bullet(
-                  text:
-                      'Reported reviews: ${stats.reportedReviewsCount}.'),
-              pw.SizedBox(height: 16),
-              pw.Text(
-                'Revenue by month',
-                style: pw.TextStyle(
-                  fontSize: 14,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-              pw.SizedBox(height: 8),
-              if (stats.revenueByMonth.isEmpty)
-                pw.Text('No data yet.')
-              else
-                pw.Table.fromTextArray(
-                  headers: const ['Month', 'Revenue', 'Bookings'],
-                  data: stats.revenueByMonth
-                      .map((m) => [
-                            '${m.month}/${m.year}',
-                            '€${m.revenue.toStringAsFixed(0)}',
-                            m.bookingCount.toString(),
-                          ])
-                      .toList(),
-                ),
-              pw.SizedBox(height: 16),
-              pw.Text(
-                'Reservations by city',
-                style: pw.TextStyle(
-                  fontSize: 14,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-              pw.SizedBox(height: 8),
-              if (stats.reservationsByCity.isEmpty)
-                pw.Text('No data yet.')
-              else
-                pw.Table.fromTextArray(
-                  headers: const ['City', 'Reservations', 'Revenue'],
-                  data: stats.reservationsByCity
-                      .map((c) => [
-                            c.cityName,
-                            c.reservationCount.toString(),
-                            '€${c.revenue.toStringAsFixed(0)}',
-                          ])
-                      .toList(),
-                ),
-              pw.SizedBox(height: 16),
-              pw.Text(
-                'Most popular yachts',
-                style: pw.TextStyle(
-                  fontSize: 14,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-              pw.SizedBox(height: 8),
-              if (stats.mostPopularYachts.isEmpty)
-                pw.Text('No data yet.')
-              else
-                pw.Table.fromTextArray(
-                  headers: const ['Yacht', 'Bookings', 'Revenue'],
-                  data: stats.mostPopularYachts
-                      .map((y) => [
-                            y.yachtName,
-                            y.bookingCount.toString(),
-                            '€${y.totalRevenue.toStringAsFixed(0)}',
-                          ])
-                      .toList(),
-                ),
-            ],
+              ],
+            ),
           ),
         );
-
-        return doc.save();
       },
     );
+  }
+
+  /// Builds PDF bytes for the admin report; [format] drives page size in the preview/print flow.
+  Future<Uint8List> _buildAdminReportPdf(StatisticsDtoModel stats, PdfPageFormat format) async {
+    final doc = pw.Document();
+    final baseFont = await PdfGoogleFonts.notoSansRegular();
+    final boldFont = await PdfGoogleFonts.notoSansBold();
+
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: format,
+        margin: const pw.EdgeInsets.all(24),
+        theme: pw.ThemeData.withFont(
+          base: baseFont,
+          bold: boldFont,
+        ),
+        build: (context) => [
+          pw.Header(
+            level: 0,
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text(
+                  'Yamore – Admin report',
+                  style: pw.TextStyle(
+                    fontSize: 20,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.Text(
+                  'Year ${DateTime.now().year}',
+                  style: const pw.TextStyle(fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 12),
+          pw.Text(
+            'Overview',
+            style: pw.TextStyle(
+              fontSize: 16,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Bullet(
+            text: 'Active yachts: ${stats.yachtsCount}, active users: ${stats.activeUsersCount}.',
+          ),
+          pw.Bullet(
+            text:
+                'Total bookings: ${stats.totalBookings}, total revenue: ${formatEuroDashboard(stats.totalRevenue)}.',
+          ),
+          pw.Bullet(
+            text: 'Reported reviews: ${stats.reportedReviewsCount}.',
+          ),
+          pw.SizedBox(height: 16),
+          pw.Text(
+            'Revenue by month',
+            style: pw.TextStyle(
+              fontSize: 14,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 8),
+          if (stats.revenueByMonth.isEmpty)
+            pw.Text('No data yet.')
+          else
+            pw.Table.fromTextArray(
+              headers: const ['Month', 'Revenue', 'Bookings'],
+              data: stats.revenueByMonth
+                  .map((m) => [
+                        '${m.month}/${m.year}',
+                        formatEuroDashboard(m.revenue),
+                        m.bookingCount.toString(),
+                      ])
+                  .toList(),
+            ),
+          pw.SizedBox(height: 16),
+          pw.Text(
+            'Reservations by city',
+            style: pw.TextStyle(
+              fontSize: 14,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 8),
+          if (stats.reservationsByCity.isEmpty)
+            pw.Text('No data yet.')
+          else
+            pw.Table.fromTextArray(
+              headers: const ['City', 'Reservations', 'Revenue'],
+              data: stats.reservationsByCity
+                  .map((c) => [
+                        c.cityName,
+                        c.reservationCount.toString(),
+                        formatEuroDashboard(c.revenue),
+                      ])
+                  .toList(),
+            ),
+          pw.SizedBox(height: 16),
+          pw.Text(
+            'Most popular yachts',
+            style: pw.TextStyle(
+              fontSize: 14,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 8),
+          if (stats.mostPopularYachts.isEmpty)
+            pw.Text('No data yet.')
+          else
+            pw.Table.fromTextArray(
+              headers: const ['Yacht', 'Bookings', 'Revenue'],
+              data: stats.mostPopularYachts
+                  .map((y) => [
+                        y.yachtName,
+                        y.bookingCount.toString(),
+                        formatEuroDashboard(y.totalRevenue),
+                      ])
+                  .toList(),
+            ),
+        ],
+      ),
+    );
+
+    return doc.save();
   }
 }
 
