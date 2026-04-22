@@ -12,9 +12,21 @@ namespace Yamore.API.Controllers
     [Authorize]
     public class ServiceCategoryController : BaseCRUDController<ServiceCategory, ServiceCategorySearchObject, ServiceCategoryInsertRequest, ServiceCategoryUpdateRequest, ServiceCategoryDeleteRequest>
     {
+        private readonly IServiceCategoryService _serviceCategoryService;
+
         public ServiceCategoryController(IServiceCategoryService service)
             : base(service)
         {
+            _serviceCategoryService = service;
+        }
+
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
+        public override ActionResult<ServiceCategory> Delete(int id)
+        {
+            var err = _serviceCategoryService.GetDeleteBlockingErrorMessage(id);
+            if (err != null) return RejectWithUserError(err);
+            return base.Delete(id);
         }
 
         [HttpGet]

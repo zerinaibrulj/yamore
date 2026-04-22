@@ -14,9 +14,21 @@ namespace Yamore.API.Controllers
     public class YachtCategoryController : BaseCRUDController<Model.YachtCategory, YachtCategorySearchObject, YachtCategoryInsertRequest, YachtCategoryUpdateRequest, YachtCategoryDeleteRequest>
         
     {
+        private readonly IYachtCategoryService _yachtCategoryService;
+
         public YachtCategoryController(IYachtCategoryService service)
             : base(service)
         {
+            _yachtCategoryService = service;
+        }
+
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
+        public override ActionResult<YachtCategory> Delete(int id)
+        {
+            var err = _yachtCategoryService.GetDeleteBlockingErrorMessage(id);
+            if (err != null) return RejectWithUserError(err);
+            return base.Delete(id);
         }
 
         [Authorize(Roles = "Admin")]                      // samo admin moze da dodaje nove kategorije

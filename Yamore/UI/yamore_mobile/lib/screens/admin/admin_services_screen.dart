@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../models/service_category.dart';
@@ -110,6 +112,65 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
         ],
       ),
     );
+  }
+
+  /// Same `errors.userError` contract as the API (400) for [UserException]; no raw exception text in the happy path.
+  Future<void> _showDeleteBlockedDialog({
+    required String dialogTitle,
+    required String itemName,
+    required ApiException e,
+    required String fallbackInUse,
+  }) async {
+    if (!mounted) return;
+    final apiMessage = _userErrorMessageFromApiBody(e.body);
+    final lower = e.body.toLowerCase();
+    final isLikelyInUse = e.statusCode == 500 ||
+        e.statusCode == 409 ||
+        lower.contains('constraint') ||
+        lower.contains('reference') ||
+        lower.contains('foreign') ||
+        lower.contains('yacht') ||
+        lower.contains('reservation') ||
+        lower.contains('service') ||
+        lower.contains('categor');
+    String message;
+    if (e.statusCode == 400 && apiMessage != null && apiMessage.isNotEmpty) {
+      message = apiMessage;
+    } else if (e.statusCode == 404) {
+      message = '“$itemName” no longer exists or was already removed.';
+    } else if (isLikelyInUse) {
+      message = fallbackInUse;
+    } else {
+      message = 'The item could not be deleted. Please try again in a moment.';
+    }
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(dialogTitle),
+        content: Text(message),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String? _userErrorMessageFromApiBody(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is! Map<String, dynamic>) return null;
+      final errors = decoded['errors'];
+      if (errors is! Map<String, dynamic>) return null;
+      final userError = errors['userError'];
+      if (userError is List && userError.isNotEmpty) {
+        final first = userError.first;
+        if (first is String && first.isNotEmpty) return first;
+      }
+    } catch (_) {}
+    return null;
   }
 
   Future<void> _loadAllCategories() async {
@@ -320,8 +381,34 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
         await _loadCategories();
         await _loadAllCategories();
         await _showSuccess('Category deleted successfully.');
-      } catch (e) {
-        _showError('Failed to delete category: $e');
+      } on ApiException catch (e) {
+        if (mounted) {
+          await _showDeleteBlockedDialog(
+            dialogTitle: 'Cannot delete service category',
+            itemName: cat.name,
+            e: e,
+            fallbackInUse:
+                '“${cat.name}” cannot be deleted because it is still in use. One or more services are assigned to this category. Reassign or update those services, then try again.',
+          );
+        }
+      } catch (_) {
+        if (mounted) {
+          await showDialog<void>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Delete failed'),
+              content: const Text(
+                'The service category could not be deleted. Please check your connection and try again.',
+              ),
+              actions: [
+                FilledButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
       }
     }
   }
@@ -427,8 +514,34 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
         }
         await _loadServices();
         await _showSuccess('Service deleted successfully.');
-      } catch (e) {
-        _showError('Failed to delete service: $e');
+      } on ApiException catch (e) {
+        if (mounted) {
+          await _showDeleteBlockedDialog(
+            dialogTitle: 'Cannot delete service',
+            itemName: svc.name,
+            e: e,
+            fallbackInUse:
+                '“${svc.name}” cannot be deleted because it is still in use. It may be linked to yacht add-ons or reservations. Remove or update those links, then try again.',
+          );
+        }
+      } catch (_) {
+        if (mounted) {
+          await showDialog<void>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Delete failed'),
+              content: const Text(
+                'The service could not be deleted. Please check your connection and try again.',
+              ),
+              actions: [
+                FilledButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
       }
     }
   }
@@ -590,8 +703,34 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
         }
         await _loadYachtCategories();
         await _showSuccess('Yacht category deleted successfully.');
-      } catch (e) {
-        _showError('Failed to delete yacht category: $e');
+      } on ApiException catch (e) {
+        if (mounted) {
+          await _showDeleteBlockedDialog(
+            dialogTitle: 'Cannot delete yacht category',
+            itemName: cat.name,
+            e: e,
+            fallbackInUse:
+                '“${cat.name}” cannot be deleted because it is still in use. One or more yachts use this category. Reassign or update those yachts, then try again.',
+          );
+        }
+      } catch (_) {
+        if (mounted) {
+          await showDialog<void>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Delete failed'),
+              content: const Text(
+                'The yacht category could not be deleted. Please check your connection and try again.',
+              ),
+              actions: [
+                FilledButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
       }
     }
   }

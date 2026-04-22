@@ -6,5 +6,6 @@ namespace Yamore.Services.Interfaces
 {
     public interface IServiceCategoryService : ICRUDService<ServiceCategory, ServiceCategorySearchObject, ServiceCategoryInsertRequest, ServiceCategoryUpdateRequest, ServiceCategoryDeleteRequest>
     {
+        string? GetDeleteBlockingErrorMessage(int serviceCategoryId);
     }
 }

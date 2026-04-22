@@ -11,6 +11,6 @@ namespace Yamore.Services.Interfaces
 {
     public interface IYachtCategoryService : ICRUDService<YachtCategory, YachtCategorySearchObject, YachtCategoryInsertRequest, YachtCategoryUpdateRequest, YachtCategoryDeleteRequest>
     {
-     
+        string? GetDeleteBlockingErrorMessage(int categoryId);
     }
 }

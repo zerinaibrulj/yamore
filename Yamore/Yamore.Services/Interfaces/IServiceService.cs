@@ -10,5 +10,6 @@ namespace Yamore.Services.Interfaces
 {
     public interface IServiceService : ICRUDService<Model.Service, ServiceSearchObject, ServiceInsertRequest, ServiceUpdateRequest, ServiceDeleteRequest>
     {
+        string? GetDeleteBlockingErrorMessage(int serviceId);
     }
 }

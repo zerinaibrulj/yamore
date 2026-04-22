@@ -10,9 +10,20 @@ namespace Yamore.API.Controllers
     [Route("[controller]")]
     public class ServiceController : BaseCRUDController<Model.Service, ServiceSearchObject, ServiceInsertRequest, ServiceUpdateRequest, ServiceDeleteRequest>
     {
+        private readonly IServiceService _serviceService;
+
         public ServiceController(IServiceService service) 
             : base(service)
         {
-        } 
+            _serviceService = service;
+        }
+
+        [HttpDelete("{id}")]
+        public override ActionResult<Model.Service> Delete(int id)
+        {
+            var err = _serviceService.GetDeleteBlockingErrorMessage(id);
+            if (err != null) return RejectWithUserError(err);
+            return base.Delete(id);
+        }
     }
 }
