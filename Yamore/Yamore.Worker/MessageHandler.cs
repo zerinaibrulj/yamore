@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Mail;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Yamore.Model.Messages;
@@ -15,6 +17,8 @@ public class MessageHandler
 {
     private static readonly Regex _simpleEmailRegex =
         new(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static readonly CultureInfo _emailCulture = CultureInfo.GetCultureInfo("en-GB");
 
     private readonly ILogger<MessageHandler> _logger;
     private readonly IConfiguration _configuration;
@@ -63,10 +67,34 @@ public class MessageHandler
             return;
         }
 
-        await SendEmailAsync(
-            msg.UserEmail!,
-            "Reservation received",
-            $"Your reservation #{msg.ReservationId} has been received. We will confirm shortly.");
+        var yachtLine = !string.IsNullOrWhiteSpace(msg.YachtName)
+            ? msg.YachtName.Trim()
+            : $"Yacht (ID {msg.YachtId})";
+        var period = FormatDateRange(msg.StartDate, msg.EndDate);
+        var greet = GreetingName(msg.UserName);
+        var totalLine = msg.TotalPrice.HasValue
+            ? $"Total: EUR {msg.TotalPrice.Value:N2}"
+            : null;
+
+        var body = new StringBuilder();
+        body.AppendLine(greet);
+        body.AppendLine();
+        body.AppendLine("Thank you for choosing Yamore. We have received your booking with the following details:");
+        body.AppendLine();
+        body.AppendLine($"Yacht: {yachtLine}");
+        body.AppendLine($"Charter period: {period}");
+        body.AppendLine($"Reference: #{msg.ReservationId}");
+        if (totalLine != null)
+            body.AppendLine(totalLine);
+        body.AppendLine();
+        body.AppendLine("We will process your request and contact you if any further information is required.");
+        body.AppendLine();
+        body.AppendLine("Kind regards,");
+        body.AppendLine("Yamore");
+
+        var subject = $"Booking received - {yachtLine} ({period})";
+
+        await SendEmailAsync(msg.UserEmail!, subject, body.ToString());
     }
 
     private async Task HandlePaymentCompletedAsync(string payloadJson)
@@ -86,12 +114,49 @@ public class MessageHandler
             return;
         }
 
-        await SendEmailAsync(
-            msg.UserEmail!,
-            msg.IsConfirmed ? "Payment confirmed" : "Payment received",
-            msg.IsConfirmed
-                ? $"Payment of EUR {msg.Amount:N2} for reservation #{msg.ReservationId} has been confirmed."
-                : $"Payment for reservation #{msg.ReservationId} was recorded with status '{msg.PaymentStatus ?? "pending"}'.");
+        var yachtLine = !string.IsNullOrWhiteSpace(msg.YachtName)
+            ? msg.YachtName.Trim()
+            : $"Yacht (ID from reservation #{msg.ReservationId})";
+        var period = msg.ReservationStartDate.HasValue && msg.ReservationEndDate.HasValue
+            ? FormatDateRange(msg.ReservationStartDate.Value, msg.ReservationEndDate.Value)
+            : null;
+        var greet = GreetingName(msg.UserName);
+
+        var body = new StringBuilder();
+        body.AppendLine(greet);
+        body.AppendLine();
+        if (msg.IsConfirmed)
+        {
+            body.AppendLine("We have successfully recorded your payment. Please find the details below:");
+        }
+        else
+        {
+            body.AppendLine("We have recorded your payment arrangement. Please find the details below:");
+        }
+        body.AppendLine();
+        body.AppendLine($"Yacht: {yachtLine}");
+        if (period != null)
+            body.AppendLine($"Charter period: {period}");
+        body.AppendLine($"Reservation reference: #{msg.ReservationId}");
+        body.AppendLine($"Amount: EUR {msg.Amount:N2}");
+        body.AppendLine($"Payment method: {msg.PaymentMethod ?? "—"}");
+        if (!string.IsNullOrWhiteSpace(msg.PaymentStatus) && !msg.IsConfirmed)
+            body.AppendLine($"Status: {msg.PaymentStatus}");
+        body.AppendLine();
+        body.AppendLine("If you have any questions, please contact us and quote your reservation reference.");
+        body.AppendLine();
+        body.AppendLine("Kind regards,");
+        body.AppendLine("Yamore");
+
+        var subject = msg.IsConfirmed
+            ? (period != null
+                ? $"Payment received - {yachtLine} ({period})"
+                : $"Payment received - {yachtLine} (ref. #{msg.ReservationId})")
+            : (period != null
+                ? $"Payment update - {yachtLine} ({period})"
+                : $"Payment update - {yachtLine} (ref. #{msg.ReservationId})");
+
+        await SendEmailAsync(msg.UserEmail!, subject, body.ToString());
     }
 
     private Task HandleReviewSubmittedAsync(string payloadJson)
@@ -153,4 +218,10 @@ public class MessageHandler
             return false;
         return _simpleEmailRegex.IsMatch(email.Trim());
     }
+
+    private static string GreetingName(string? fullName) =>
+        !string.IsNullOrWhiteSpace(fullName) ? $"Dear {fullName.Trim()}," : "Dear customer,";
+
+    private static string FormatDateRange(DateTime start, DateTime end) =>
+        $"{start.ToString("dd MMMM yyyy", _emailCulture)} - {end.ToString("dd MMMM yyyy", _emailCulture)}";
 }

@@ -9,6 +9,15 @@ import '../../models/service_model.dart';
 import '../../theme/app_theme.dart';
 import 'mobile_shell.dart';
 
+String _formatCharterPeriod(DateTime start, DateTime end) {
+  const months = <String>[
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+  String line(DateTime d) => '${d.day} ${months[d.month - 1]} ${d.year}';
+  return '${line(start)} - ${line(end)}';
+}
+
 class MobileBookingReviewScreen extends StatefulWidget {
   final ApiService api;
   final AppUser user;
@@ -452,6 +461,18 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
 
       if (!mounted) return;
       setState(() => _saving = false);
+      final yachtName = widget.overview.name;
+      final periodLabel = _formatCharterPeriod(start, end);
+      final successBody = isCard
+          ? 'Your payment was successful and your reservation is now confirmed.\n\n'
+              'Yacht: $yachtName\n'
+              'Charter period: $periodLabel\n\n'
+              'A confirmation email will be sent to you shortly. Thank you for choosing Yamore.'
+          : 'Your booking request has been received.\n\n'
+              'Yacht: $yachtName\n'
+              'Charter period: $periodLabel\n\n'
+              '${offlineMethod == 'Cash' ? 'Payment is due on arrival (cash or bank transfer, as agreed with the operator).' : 'Payment will be arranged separately.'}\n\n'
+              'We will contact you if we need any further information. Thank you for choosing Yamore.';
       await showDialog<void>(
         context: context,
         barrierDismissible: false,
@@ -459,9 +480,7 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Icon(Icons.check_circle, size: 48, color: Colors.green),
           content: Text(
-            isCard
-                ? 'Payment successful. Your reservation is confirmed.\n\nThank you for your trust!'
-                : 'Your reservation has been received. ${offlineMethod == 'Cash' ? 'You will pay on arrival (cash/bank transfer).' : 'Payment will be arranged separately.'}\n\nThank you for your trust!',
+            successBody,
             textAlign: TextAlign.center,
           ),
           actions: [

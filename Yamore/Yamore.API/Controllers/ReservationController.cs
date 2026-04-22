@@ -32,11 +32,13 @@ namespace Yamore.API.Controllers
         {
             var result = _reservationService.Insert(request);
             var user = _context.Users.Find(result.UserId);
+            var yacht = _context.Yachts.Find(result.YachtId);
             var msg = new ReservationCreatedMessage
             {
                 ReservationId = result.ReservationId,
                 UserId = result.UserId,
                 YachtId = result.YachtId,
+                YachtName = yacht?.Name,
                 StartDate = result.StartDate,
                 EndDate = result.EndDate,
                 TotalPrice = result.TotalPrice,

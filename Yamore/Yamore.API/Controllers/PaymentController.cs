@@ -276,11 +276,13 @@ namespace Yamore.API.Controllers
             await _stripe.TagPaymentIntentFulfilledAsync(paymentIntentId, reservation.ReservationId, cancellationToken);
 
             var user = _context.Users.Find(reservation.UserId);
+            var yacht = _context.Yachts.Find(yachtId);
             var resMsg = new ReservationCreatedMessage
             {
                 ReservationId = reservation.ReservationId,
                 UserId = reservation.UserId,
                 YachtId = reservation.YachtId,
+                YachtName = yacht?.Name,
                 StartDate = reservation.StartDate,
                 EndDate = reservation.EndDate,
                 TotalPrice = total,
@@ -298,6 +300,10 @@ namespace Yamore.API.Controllers
                 PaymentStatus = payStatus,
                 IsConfirmed = true,
                 UserEmail = user?.Email,
+                UserName = user == null ? null : $"{user.FirstName} {user.LastName}".Trim(),
+                YachtName = yacht?.Name,
+                ReservationStartDate = reservation.StartDate,
+                ReservationEndDate = reservation.EndDate,
             };
             _messagePublisher.Publish(MessageEnvelope.PaymentCompleted, JsonSerializer.Serialize(payMsg));
 
@@ -339,6 +345,7 @@ namespace Yamore.API.Controllers
             _context.Payments.Add(payCard);
             _context.SaveChanges();
             var resUser = _context.Users.Find(reservation.UserId);
+            var y = _context.Yachts.Find(reservation.YachtId);
 
             var payMsg = new PaymentCompletedMessage
             {
@@ -349,6 +356,10 @@ namespace Yamore.API.Controllers
                 PaymentStatus = status,
                 IsConfirmed = true,
                 UserEmail = resUser?.Email,
+                UserName = resUser == null ? null : $"{resUser.FirstName} {resUser.LastName}".Trim(),
+                YachtName = y?.Name,
+                ReservationStartDate = reservation.StartDate,
+                ReservationEndDate = reservation.EndDate,
             };
             _messagePublisher.Publish(MessageEnvelope.PaymentCompleted, JsonSerializer.Serialize(payMsg));
 
@@ -363,6 +374,7 @@ namespace Yamore.API.Controllers
         {
             var res = _context.Reservations.Find(payment.ReservationId);
             var u = res != null ? _context.Users.Find(res.UserId) : null;
+            var y = res != null ? _context.Yachts.Find(res.YachtId) : null;
             var msg = new PaymentCompletedMessage
             {
                 PaymentId = payment.PaymentId,
@@ -372,6 +384,10 @@ namespace Yamore.API.Controllers
                 PaymentStatus = status,
                 IsConfirmed = isConfirmed,
                 UserEmail = u?.Email,
+                UserName = u == null ? null : $"{u.FirstName} {u.LastName}".Trim(),
+                YachtName = y?.Name,
+                ReservationStartDate = res?.StartDate,
+                ReservationEndDate = res?.EndDate,
             };
             _messagePublisher.Publish(MessageEnvelope.PaymentCompleted, JsonSerializer.Serialize(msg));
         }
