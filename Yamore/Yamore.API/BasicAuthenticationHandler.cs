@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
-using Microsoft.Identity.Client;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
@@ -21,18 +20,39 @@ namespace Yamore.API
 
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
         {
-            if (!Request.Headers.ContainsKey("Authorization"))
+            if (!Request.Headers.TryGetValue("Authorization", out var authHeaderValue) || string.IsNullOrWhiteSpace(authHeaderValue))
             {
                 return AuthenticateResult.Fail("Missing header");
             }
 
-            var authHeader = AuthenticationHeaderValue.Parse(Request.Headers["Authorization"]);
-            var credentialBytes = Convert.FromBase64String(authHeader.Parameter);
-            var credentials = Encoding.UTF8.GetString(credentialBytes).Split(':');
+            if (!AuthenticationHeaderValue.TryParse(authHeaderValue, out var authHeader)
+                || !"Basic".Equals(authHeader.Scheme, StringComparison.OrdinalIgnoreCase)
+                || string.IsNullOrEmpty(authHeader.Parameter))
+            {
+                return AuthenticateResult.Fail("Invalid authorization header");
+            }
 
-            var username = credentials[0];
-            var password = credentials[1];
+            string username;
+            string password;
+            try
+            {
+                var credentialBytes = Convert.FromBase64String(authHeader.Parameter);
+                var credentials = Encoding.UTF8.GetString(credentialBytes);
+                // Password may contain ':'; only split on the first colon.
+                var i = credentials.IndexOf(':');
+                if (i <= 0)
+                    return AuthenticateResult.Fail("Invalid credentials format");
 
+                username = credentials[..i];
+                password = credentials[(i + 1)..];
+            }
+            catch (FormatException)
+            {
+                return AuthenticateResult.Fail("Invalid base64");
+            }
+
+            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+                return AuthenticateResult.Fail("Empty username or password");
 
             var user = UserService.Login(username, password);
 

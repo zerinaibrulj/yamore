@@ -356,7 +356,16 @@ namespace Yamore.Services.Services
 
         public Model.LoginResponseDto Login(string username, string password)
         {
-            var entity = Context.Users.Include(x => x.UserRoles).ThenInclude(y => y.Role).FirstOrDefault(x => x.Username == username);
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrEmpty(password))
+                return null;
+
+            // Match username case-insensitively; trim the username the client sent (not the password).
+            var u = username.Trim();
+            var entity = Context.Users
+                .Include(x => x.UserRoles)
+                .ThenInclude(y => y.Role)
+                .FirstOrDefault(x => x.Username != null
+                    && x.Username.ToLower() == u.ToLower());
 
             if (entity == null)
                 return null;

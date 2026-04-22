@@ -21,6 +21,12 @@ using Microsoft.Data.SqlClient;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Optional per-machine overrides (ConnectionStrings, Stripe, etc.) — file is gitignored. Must be loaded explicitly; it is not part of the default host configuration.
+if (builder.Environment.IsDevelopment())
+{
+    builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+}
+
 // Linux Docker containers: bind 0.0.0.0:8080 so host port 5096→8080 forwarding works (fixes "connection refused" from Windows).
 if (File.Exists("/.dockerenv"))
 {
@@ -162,8 +168,23 @@ builder.Services.AddSwaggerGen(c =>
 
 
 
-// For Appsetting.json
+// For appsettings.json. Note: an empty value in user secrets for ConnectionStrings:DefaultConnection can override
+// non-empty values from JSON; use appsettings.Local.json (loaded above) or Yamore:Development:DefaultConnection as fallback.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString) && builder.Environment.IsDevelopment())
+{
+    connectionString = builder.Configuration["Yamore:Development:DefaultConnection"]?.Trim();
+}
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException(
+        "Connection string 'DefaultConnection' is missing or empty. " +
+        "Yamore.API will not start without a database. " +
+        "In Development: set Yamore:Development:DefaultConnection in appsettings.Development.json, " +
+        "or appsettings.Local.json, or user secrets (see scripts/set-dev-connectionstring.ps1), " +
+        "or set the environment variable ConnectionStrings__DefaultConnection.");
+}
+
 builder.Services.AddDbContext<_220245Context>(options => options.UseSqlServer(connectionString));
 
 builder.Services.AddMapster();      //dodamo Mapster za automatsko mapiranje entiteta u modele
@@ -173,6 +194,7 @@ builder.Services.AddMapster();      //dodamo Mapster za automatsko mapiranje ent
 builder.Services.AddAuthentication("BasicAuthentication")
     .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null);
 
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 

@@ -87,11 +87,22 @@ namespace Yamore.API.Controllers
         }
 
 
+        /// <summary>Login. Supports credentials in the query string (Flutter), form fields, or JSON body.</summary>
         [HttpPost("login")]
         [AllowAnonymous]
-        public ActionResult<Model.LoginResponseDto> Login(string username, string password)
+        public ActionResult<Model.LoginResponseDto> Login(
+            [FromQuery] string? username,
+            [FromQuery] string? password,
+            [FromForm] string? formUsername,
+            [FromForm] string? formPassword,
+            [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] UserLoginRequest? body)
         {
-            var result = (_service as IUsersService).Login(username, password);
+            var u = username?.Trim() ?? formUsername?.Trim() ?? body?.Username?.Trim();
+            var p = password ?? formPassword ?? body?.Password;
+            if (string.IsNullOrEmpty(u) || p is null)
+                return BadRequest(new { error = "username and password are required" });
+
+            var result = _usersService.Login(u, p);
             if (result == null)
                 return Unauthorized();
             return Ok(result);
