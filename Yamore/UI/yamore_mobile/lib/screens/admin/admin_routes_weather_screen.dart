@@ -382,12 +382,13 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
                   itemBuilder: (context, index) {
                     final f = _forecasts[index];
                     final dt = f.forecastDate;
-                    final when = dt == null
+                    final local = dt != null ? dt.toLocal() : null;
+                    final when = local == null
                         ? 'N/A'
-                        : '${dt.day.toString().padLeft(2, '0')}.'
-                          '${dt.month.toString().padLeft(2, '0')}.'
-                          '${dt.year} ${dt.hour.toString().padLeft(2, '0')}:'
-                          '${dt.minute.toString().padLeft(2, '0')}h';
+                        : '${local.day.toString().padLeft(2, '0')}.'
+                          '${local.month.toString().padLeft(2, '0')}.'
+                          '${local.year} ${local.hour.toString().padLeft(2, '0')}:'
+                          '${local.minute.toString().padLeft(2, '0')}h';
                     return ListTile(
                       dense: true,
                       title: Text(when),
@@ -746,185 +747,196 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
     DateTime? prefilledDate,
   }) async {
     final isEdit = existing != null;
-    DateTime? date = existing?.forecastDate ?? prefilledDate ?? DateTime.now();
-    TimeOfDay time =
-        TimeOfDay.fromDateTime(date ?? DateTime.now());
+    DateTime date = existing?.forecastDate != null
+        ? existing!.forecastDate!.toLocal()
+        : prefilledDate ?? DateTime.now();
+    TimeOfDay time = TimeOfDay.fromDateTime(date);
     double? temp = existing?.temperature;
     double? wind = existing?.windSpeed;
     final condCtrl = TextEditingController(text: existing?.condition ?? '');
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(isEdit ? 'Edit forecast' : 'New forecast'),
-        content: SizedBox(
-          width: 380,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          return AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Text(isEdit ? 'Edit forecast' : 'New forecast'),
+            content: SizedBox(
+              width: 380,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.calendar_month, size: 18),
-                      label: Text(
-                        '${date!.day.toString().padLeft(2, '0')}.'
-                        '${date!.month.toString().padLeft(2, '0')}.'
-                        '${date!.year}',
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.calendar_month, size: 18),
+                          label: Text(
+                            '${date.day.toString().padLeft(2, '0')}.'
+                            '${date.month.toString().padLeft(2, '0')}.'
+                            '${date.year}',
+                          ),
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: dialogContext,
+                              firstDate: DateTime.now()
+                                  .subtract(const Duration(days: 1)),
+                              lastDate: DateTime.now()
+                                  .add(const Duration(days: 365)),
+                              initialDate: date,
+                            );
+                            if (picked != null) {
+                              setDialogState(() {
+                                date = DateTime(
+                                  picked.year,
+                                  picked.month,
+                                  picked.day,
+                                  time.hour,
+                                  time.minute,
+                                );
+                              });
+                            }
+                          },
+                        ),
                       ),
-                      onPressed: () async {
-                        final picked = await showDatePicker(
-                          context: ctx,
-                          firstDate: DateTime.now()
-                              .subtract(const Duration(days: 1)),
-                          lastDate:
-                              DateTime.now().add(const Duration(days: 365)),
-                          initialDate: date!,
-                        );
-                        if (picked != null) {
-                          date = DateTime(
-                            picked.year,
-                            picked.month,
-                            picked.day,
-                            time.hour,
-                            time.minute,
-                          );
-                        }
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.access_time, size: 18),
-                      label: Text(
-                        '${time.hour.toString().padLeft(2, '0')}:'
-                        '${time.minute.toString().padLeft(2, '0')}',
-                      ),
-                      onPressed: () async {
-                        final picked = await showTimePicker(
-                          context: ctx,
-                          initialTime: time,
-                        );
-                        if (picked != null) {
-                          time = picked;
-                          date = DateTime(
-                            date!.year,
-                            date!.month,
-                            date!.day,
-                            time.hour,
-                            time.minute,
-                          );
-                        }
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<double>(
-                value: temp,
-                decoration: const InputDecoration(
-                  labelText: 'Temperature (°C)',
-                  border: OutlineInputBorder(),
-                ),
-                items: const [-5, 0, 5, 10, 15, 20, 25, 30, 35]
-                    .map(
-                      (t) => DropdownMenuItem(
-                        value: t.toDouble(),
-                        child: Text('${t.toString()}°C'),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (v) => temp = v,
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<double>(
-                value: wind,
-                decoration: const InputDecoration(
-                  labelText: 'Wind speed (km/h)',
-                  border: OutlineInputBorder(),
-                ),
-                items: const [0, 5, 10, 15, 20, 25, 30, 40, 50]
-                    .map(
-                      (w) => DropdownMenuItem(
-                        value: w.toDouble(),
-                        child: Text('${w.toString()} km/h'),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (v) => wind = v,
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: condCtrl.text.isNotEmpty ? condCtrl.text : null,
-                decoration: const InputDecoration(
-                  labelText: 'Condition',
-                  border: OutlineInputBorder(),
-                ),
-                items: const [
-                  'Sunny',
-                  'Partly cloudy',
-                  'Cloudy',
-                  'Rain',
-                  'Storm',
-                  'Windy',
-                  'Fog'
-                ]
-                    .map(
-                      (c) => DropdownMenuItem(
-                        value: c,
-                        child: Text(c),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (v) {
-                  condCtrl.text = v ?? '';
-                },
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              if (date == null ||
-                  temp == null ||
-                  wind == null ||
-                  condCtrl.text.trim().isEmpty) {
-                await showDialog<void>(
-                  context: ctx,
-                  builder: (dialogCtx) => AlertDialog(
-                    title: const Text('Invalid data'),
-                    content: const Text(
-                      'Please enter valid forecast data before clicking Create.',
-                    ),
-                    actions: [
-                      FilledButton(
-                        onPressed: () => Navigator.of(dialogCtx).pop(),
-                        child: const Text('OK'),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.access_time, size: 18),
+                          label: Text(
+                            '${time.hour.toString().padLeft(2, '0')}:'
+                            '${time.minute.toString().padLeft(2, '0')}',
+                          ),
+                          onPressed: () async {
+                            final picked = await showTimePicker(
+                              context: dialogContext,
+                              initialTime: time,
+                            );
+                            if (picked != null) {
+                              setDialogState(() {
+                                time = picked;
+                                date = DateTime(
+                                  date.year,
+                                  date.month,
+                                  date.day,
+                                  time.hour,
+                                  time.minute,
+                                );
+                              });
+                            }
+                          },
+                        ),
                       ),
                     ],
                   ),
-                );
-                return;
-              }
-              if (ctx.mounted) {
-                Navigator.of(ctx).pop(true);
-              }
-            },
-            child: Text(isEdit ? 'Save' : 'Create'),
-          ),
-        ],
+                  const SizedBox(height: 12),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<double>(
+                    value: temp,
+                    decoration: const InputDecoration(
+                      labelText: 'Temperature (°C)',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [-5, 0, 5, 10, 15, 20, 25, 30, 35]
+                        .map(
+                          (t) => DropdownMenuItem(
+                            value: t.toDouble(),
+                            child: Text('${t.toString()}°C'),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) => setDialogState(() => temp = v),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<double>(
+                    value: wind,
+                    decoration: const InputDecoration(
+                      labelText: 'Wind speed (km/h)',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [0, 5, 10, 15, 20, 25, 30, 40, 50]
+                        .map(
+                          (w) => DropdownMenuItem(
+                            value: w.toDouble(),
+                            child: Text('${w.toString()} km/h'),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) => setDialogState(() => wind = v),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: condCtrl.text.isNotEmpty ? condCtrl.text : null,
+                    decoration: const InputDecoration(
+                      labelText: 'Condition',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      'Sunny',
+                      'Partly cloudy',
+                      'Cloudy',
+                      'Rain',
+                      'Storm',
+                      'Windy',
+                      'Fog'
+                    ]
+                        .map(
+                          (c) => DropdownMenuItem(
+                            value: c,
+                            child: Text(c),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) {
+                      setDialogState(() {
+                        condCtrl.text = v ?? '';
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  if (temp == null ||
+                      wind == null ||
+                      condCtrl.text.trim().isEmpty) {
+                    await showDialog<void>(
+                      context: dialogContext,
+                      builder: (dialogCtx) => AlertDialog(
+                        title: const Text('Invalid data'),
+                        content: const Text(
+                          'Please enter valid forecast data before clicking Create.',
+                        ),
+                        actions: [
+                          FilledButton(
+                            onPressed: () => Navigator.of(dialogCtx).pop(),
+                            child: const Text('OK'),
+                          ),
+                        ],
+                      ),
+                    );
+                    return;
+                  }
+                  if (ctx.mounted) {
+                    Navigator.of(ctx).pop(true);
+                  }
+                },
+                child: Text(isEdit ? 'Save' : 'Create'),
+              ),
+            ],
+          );
+        },
       ),
     );
 
-    if (confirmed == true && date != null) {
+    if (confirmed == true) {
       try {
         if (existing == null) {
           await _api.insertWeatherForecast(

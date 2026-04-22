@@ -1293,7 +1293,8 @@ class ApiService {
       headers: _headers,
       body: jsonEncode({
         'RouteId': routeId,
-        'ForecastDate': forecastDate?.toUtc().toIso8601String(),
+        // Local wall-clock time as selected in the app (no UTC shift).
+        'ForecastDate': _weatherForecastDateToJson(forecastDate),
         'Temperature': temperature,
         'Condition': condition,
         'WindSpeed': windSpeed,
@@ -1321,7 +1322,7 @@ class ApiService {
       headers: _headers,
       body: jsonEncode({
         'RouteId': routeId,
-        'ForecastDate': forecastDate?.toUtc().toIso8601String(),
+        'ForecastDate': _weatherForecastDateToJson(forecastDate),
         'Temperature': temperature,
         'Condition': condition,
         'WindSpeed': windSpeed,
@@ -1333,6 +1334,23 @@ class ApiService {
     return WeatherForecastModel.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
+  }
+
+  /// ISO 8601 in the user's local time zone, without [toUtc] conversion, so
+  /// the value stored and shown matches the selected date and time.
+  String? _weatherForecastDateToJson(DateTime? value) {
+    if (value == null) return null;
+    final l = value.toLocal();
+    return DateTime(
+      l.year,
+      l.month,
+      l.day,
+      l.hour,
+      l.minute,
+      l.second,
+      l.millisecond,
+      l.microsecond,
+    ).toIso8601String();
   }
 
   Future<void> deleteWeatherForecast(int forecastId) async {
