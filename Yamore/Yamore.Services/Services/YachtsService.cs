@@ -1,10 +1,12 @@
 using Azure.Core;
 using MapsterMapper;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Dynamic.Core;
+using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 using Yamore.Model;
@@ -20,13 +22,73 @@ namespace Yamore.Services.Services
     {
         public BaseYachtState BaseYachtState { get; set; }
 
-        public YachtsService(_220245Context context, IMapper mapper, BaseYachtState baseYachtState) 
+        private readonly IHttpContextAccessor? _httpContextAccessor;
+
+        public YachtsService(
+            _220245Context context,
+            IMapper mapper,
+            BaseYachtState baseYachtState,
+            IHttpContextAccessor? httpContextAccessor = null)
             : base(context, mapper)
         {
             BaseYachtState = baseYachtState;
+            _httpContextAccessor = httpContextAccessor;
         }
 
+        /// <summary>Load yacht for state transitions and owner/admin updates (no public visibility filter).</summary>
+        private Model.Yacht? LoadYachtUnrestricted(int id)
+        {
+            var entity = Context.Set<Database.Yacht>().Find(id);
+            if (entity == null) return null;
+            return Mapper.Map<Model.Yacht>(entity);
+        }
 
+        /// <summary>
+        /// End users only see <c>active</c> yachts. Admins see any; owners see their own in any state.
+        /// </summary>
+        public override Model.Yacht GetById(int id)
+        {
+            var y = LoadYachtUnrestricted(id);
+            if (y == null) return null;
+            var http = _httpContextAccessor?.HttpContext;
+            if (http == null)
+            {
+                return string.Equals(y.StateMachine, "active", StringComparison.OrdinalIgnoreCase) ? y : null;
+            }
+
+            if (http.User?.IsInRole("Admin") == true) return y;
+            if (int.TryParse(http.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId) &&
+                y.OwnerId == userId)
+            {
+                return y;
+            }
+
+            return string.Equals(y.StateMachine, "active", StringComparison.OrdinalIgnoreCase) ? y : null;
+        }
+
+        /// <summary>
+        /// Non-admins only receive yachts in <c>active</c> state (same rule as the public catalog).
+        /// </summary>
+        public override PagedResponse<Model.Yacht> GetPaged(YachtsSearchObject search)
+        {
+            search ??= new YachtsSearchObject();
+            if (_httpContextAccessor?.HttpContext?.User?.IsInRole("Admin") == true)
+                return base.GetPaged(search);
+
+            var query = Context.Set<Database.Yacht>().AsQueryable()
+                .Where(y => y.StateMachine == "active");
+            query = AddFilter(search, query);
+            var count = query.Count();
+            if (search.Page.HasValue == true && search.PageSize.HasValue == true)
+            {
+                query = query.Skip(search.Page.Value * search.PageSize.Value).Take(search.PageSize.Value);
+            }
+
+            var list = query.ToList();
+            var result = new List<Model.Yacht>();
+            result = Mapper.Map(list, result);
+            return new PagedResponse<Model.Yacht> { Count = count, ResultList = result };
+        }
 
         public override IQueryable<Database.Yacht> AddFilter(YachtsSearchObject search, IQueryable<Database.Yacht> query)
         {
@@ -128,28 +190,32 @@ namespace Yamore.Services.Services
 
         public override Model.Yacht Update(int id, YachtsUpdateRequest request)
         {
-            var entity = GetById(id);
+            var entity = LoadYachtUnrestricted(id)
+                ?? throw new KeyNotFoundException($"Yacht with id {id} not found.");
             var state = BaseYachtState.CreateState(entity.StateMachine);   //u entity.StateMachine se nalazi draft i on predstavlja trenutno stanje u kojem se nalazi jahta
             return state.Update(id, request);
         }
 
         public Model.Yacht Activate(int id)
         {
-            var entity = GetById(id);
+            var entity = LoadYachtUnrestricted(id)
+                ?? throw new KeyNotFoundException($"Yacht with id {id} not found.");
             var state = BaseYachtState.CreateState(entity.StateMachine);
             return state.Activate(id);
         }
 
         public Model.Yacht Hide(int id)
         {
-            var entity = GetById(id);
+            var entity = LoadYachtUnrestricted(id)
+                ?? throw new KeyNotFoundException($"Yacht with id {id} not found.");
             var state = BaseYachtState.CreateState(entity.StateMachine);
             return state.Hide(id);
         }
 
         public Model.Yacht Edit(int id)
         {
-            var entity = GetById(id);
+            var entity = LoadYachtUnrestricted(id)
+                ?? throw new KeyNotFoundException($"Yacht with id {id} not found.");
             var state = BaseYachtState.CreateState(entity.StateMachine);
             return state.Edit(id);
         }
@@ -289,6 +355,54 @@ namespace Yamore.Services.Services
                 .Include(y => y.Location)
                     .ThenInclude(c => c.Country)
                 .Include(y => y.Reviews)
+                .AsQueryable();
+
+            query = AddFilter(search, query);
+            var count = query.Count();
+
+            if (search?.Page.HasValue == true && search?.PageSize.HasValue == true)
+                query = query.Skip(search.Page.Value * search.PageSize.Value).Take(search.PageSize.Value);
+
+            var list = query.ToList();
+            var yachtIds = list.Select(y => y.YachtId).ToList();
+            var thumbnails = Context.YachtImages
+                .Where(i => yachtIds.Contains(i.YachtId) && i.IsThumbnail)
+                .Select(i => new { i.YachtId, i.YachtImageId })
+                .ToDictionary(x => x.YachtId, x => x.YachtImageId);
+
+            var result = list.Select(y => new YachtOverviewDto
+            {
+                YachtId = y.YachtId,
+                Name = y.Name,
+                LocationName = y.Location?.Name,
+                CountryName = y.Location?.Country?.Name,
+                OwnerName = y.Owner != null ? $"{y.Owner.FirstName} {y.Owner.LastName}".Trim() : null,
+                OwnerId = y.OwnerId,
+                YearBuilt = y.YearBuilt,
+                Length = y.Length,
+                Capacity = y.Capacity,
+                PricePerDay = y.PricePerDay,
+                StateMachine = y.StateMachine,
+                ThumbnailImageId = thumbnails.TryGetValue(y.YachtId, out var tid) ? tid : null,
+                CategoryId = y.CategoryId,
+                AverageRating = y.Reviews.Any(r => r.Rating.HasValue)
+                    ? y.Reviews.Where(r => r.Rating.HasValue).Average(r => (double)r.Rating!)
+                    : (double?)null,
+                ReviewCount = y.Reviews.Count(r => r.Rating.HasValue)
+            }).ToList();
+
+            return new PagedResponse<YachtOverviewDto> { Count = count, ResultList = result };
+        }
+
+        /// <inheritdoc />
+        public PagedResponse<YachtOverviewDto> GetOverviewForPublicListing(YachtsSearchObject search)
+        {
+            var query = Context.Yachts
+                .Include(y => y.Owner)
+                .Include(y => y.Location)
+                    .ThenInclude(c => c.Country)
+                .Include(y => y.Reviews)
+                .Where(y => y.StateMachine == "active")
                 .AsQueryable();
 
             query = AddFilter(search, query);

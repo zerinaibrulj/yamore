@@ -59,10 +59,12 @@ namespace Yamore.API.Controllers
         }
 
         [HttpGet("admin/overview")]
-        [Authorize] // Any authenticated user (Admin, YachtOwner, end user) can see yacht overview
+        [Authorize] // Admins: full list. Other users: only active yachts (public catalog).
         public PagedResponse<YachtOverviewDto> GetOverviewForAdmin([FromQuery] YachtsSearchObject search)
         {
-            return _yachtsService.GetOverviewForAdmin(search ?? new YachtsSearchObject());
+            if (User.IsInRole("Admin"))
+                return _yachtsService.GetOverviewForAdmin(search ?? new YachtsSearchObject());
+            return _yachtsService.GetOverviewForPublicListing(search ?? new YachtsSearchObject());
         }
 
         [HttpGet("owner/my")]

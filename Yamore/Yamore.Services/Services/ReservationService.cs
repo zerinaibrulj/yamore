@@ -9,6 +9,7 @@ using Yamore.Model.Requests.Reservation;
 using Yamore.Model.SearchObjects;
 using Yamore.Services.Database;
 using Yamore.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace Yamore.Services.Services
 {
@@ -80,6 +81,15 @@ namespace Yamore.Services.Services
             var yachtId = request.YachtId;
             var start = request.StartDate;
             var end = request.EndDate;
+
+            var yacht = Context.Set<Database.Yacht>().AsNoTracking().FirstOrDefault(y => y.YachtId == yachtId);
+            if (yacht == null)
+                throw new KeyNotFoundException($"Yacht with id {yachtId} not found.");
+            if (!string.Equals(yacht.StateMachine, "active", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new UserException(
+                    "This yacht is not available for booking. Only published (active) yachts can be reserved.");
+            }
 
             // Check for overlapping reservations for the same yacht (excluding cancelled)
             var overlapping = Context.Set<Database.Reservation>()

@@ -60,6 +60,11 @@ namespace Yamore.Services.DummyService
             throw new NotImplementedException();
         }
 
+        public PagedResponse<YachtOverviewDto> GetOverviewForPublicListing(YachtsSearchObject search)
+        {
+            throw new NotImplementedException();
+        }
+
         public PagedResponse<YachtOverviewDto> GetOverviewForOwner(int ownerId, YachtsSearchObject search)
         {
             throw new NotImplementedException();

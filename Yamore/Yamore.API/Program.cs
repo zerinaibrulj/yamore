@@ -71,6 +71,7 @@ builder.Services.AddCors(options =>
 
 // Add services to the container.
 
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<IYachtsService, YachtsService>();  //dodamo servis
 //builder.Services.AddTransient<YachtsService, YachtsService>(); 
 //builder.Services.AddTransient<YachtsService, DummyYachtsService>();
