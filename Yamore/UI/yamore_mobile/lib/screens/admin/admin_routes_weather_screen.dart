@@ -390,32 +390,63 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
                           '${local.month.toString().padLeft(2, '0')}.'
                           '${local.year} ${local.hour.toString().padLeft(2, '0')}:'
                           '${local.minute.toString().padLeft(2, '0')}h';
-                    return ListTile(
-                      dense: true,
-                      title: Text(when),
-                      subtitle: Text(
-                        [
-                          if (f.temperature != null)
-                            'Temp: ${f.temperature}°C',
-                          if (f.windSpeed != null)
-                            'Wind: ${f.windSpeed} km/h',
-                          if (f.condition != null) f.condition!,
-                        ].join(' · '),
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit, size: 18),
-                            onPressed: () =>
-                                _openEditForecastDialog(route, f),
+                    final isPast = local != null &&
+                        local.isBefore(DateTime.now());
+                    final detail = [
+                      if (f.temperature != null) 'Temp: ${f.temperature}°C',
+                      if (f.windSpeed != null) 'Wind: ${f.windSpeed} km/h',
+                      if (f.condition != null) f.condition!,
+                    ].join(' · ');
+                    return Opacity(
+                      opacity: isPast ? 0.55 : 1.0,
+                      child: ListTile(
+                        dense: true,
+                        title: Text(
+                          when,
+                          style: TextStyle(
+                            decoration: isPast
+                                ? TextDecoration.lineThrough
+                                : null,
+                            decorationColor: Colors.grey.shade600,
+                            color: isPast ? Colors.grey.shade600 : null,
+                            fontWeight:
+                                isPast ? FontWeight.w500 : FontWeight.w600,
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline,
-                                size: 18, color: Colors.redAccent),
-                            onPressed: () => _deleteForecast(f),
+                        ),
+                        subtitle: Text(
+                          detail,
+                          style: TextStyle(
+                            color: isPast
+                                ? Colors.grey.shade500
+                                : Colors.black87,
                           ),
-                        ],
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                Icons.edit,
+                                size: 18,
+                                color: isPast
+                                    ? Colors.grey.shade500
+                                    : null,
+                              ),
+                              onPressed: () =>
+                                  _openEditForecastDialog(route, f),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                Icons.delete_outline,
+                                size: 18,
+                                color: isPast
+                                    ? Colors.redAccent.withOpacity(0.5)
+                                    : Colors.redAccent,
+                              ),
+                              onPressed: () => _deleteForecast(f),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
