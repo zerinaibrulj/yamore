@@ -1438,7 +1438,43 @@ class ApiService {
     return (map['publishableKey'] ?? map['PublishableKey'] ?? '') as String;
   }
 
-  /// Creates a Stripe PaymentIntent for card payment. Returns clientSecret and paymentIntentId.
+  /// Starts card checkout without creating a reservation. After Stripe succeeds, call [confirmPayment] with [reservationId] 0 and the [paymentIntentId].
+  Future<PaymentIntentResult> prepareCardBooking({
+    required int userId,
+    required int yachtId,
+    required DateTime startDate,
+    required DateTime endDate,
+    List<int> serviceIds = const [],
+  }) async {
+    final uri = Uri.parse('$baseUrl/Payment/prepare-card-booking');
+    final response = await http.post(
+      uri,
+      headers: _headers,
+      body: jsonEncode({
+        'userId': userId,
+        'UserId': userId,
+        'yachtId': yachtId,
+        'YachtId': yachtId,
+        'startDate': startDate.toUtc().toIso8601String(),
+        'StartDate': startDate.toUtc().toIso8601String(),
+        'endDate': endDate.toUtc().toIso8601String(),
+        'EndDate': endDate.toUtc().toIso8601String(),
+        'serviceIds': serviceIds,
+        'ServiceIds': serviceIds,
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    final map = jsonDecode(response.body) as Map<String, dynamic>;
+    return PaymentIntentResult(
+      clientSecret: map['clientSecret'] as String? ?? map['ClientSecret'] as String?,
+      paymentIntentId: map['paymentIntentId'] as String? ?? map['PaymentIntentId'] as String?,
+      status: map['status'] as String? ?? map['Status'] as String?,
+    );
+  }
+
+  /// Creates a Stripe PaymentIntent for an <b>existing</b> reservation. Prefer [prepareCardBooking] for new card bookings.
   Future<PaymentIntentResult> createPaymentIntent({
     required int reservationId,
     required double amount,
@@ -1468,9 +1504,9 @@ class ApiService {
     );
   }
 
-  /// Confirms payment: for card pass paymentIntentId; for cash/bank pass paymentMethod only.
+  /// For new card booking: [reservationId] 0 and [paymentIntentId]. For pay-on-arrival: a real [reservationId] and [paymentMethod].
   Future<String> confirmPayment({
-    required int reservationId,
+    int reservationId = 0,
     String? paymentIntentId,
     String? paymentMethod,
   }) async {

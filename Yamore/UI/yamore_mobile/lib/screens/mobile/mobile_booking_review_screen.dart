@@ -341,64 +341,40 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
     final start = widget.startDateTime;
     final end = widget.endDateTime;
     try {
-      final reservation = await widget.api.createReservation(
-        userId: widget.user.userId,
-        yachtId: widget.overview.yachtId,
-        startDate: start,
-        endDate: end,
-        totalPrice: totalPrice,
-        status: 'Pending',
-      );
-      for (final s in widget.selectedServices) {
-        await widget.api.addServiceToReservation(
-          reservationId: reservation.reservationId,
-          serviceId: s.serviceId,
-        );
-      }
-
       final isCard = widget.paymentMethod == 'card';
       String offlineMethod = 'Cash';
       if (isCard) {
-        final intentResult = await widget.api.createPaymentIntent(
-          reservationId: reservation.reservationId,
-          amount: totalPrice,
-          paymentMethod: 'stripe',
+        // No reservation in DB until Stripe reports success. Server recalculates the total to match the PaymentIntent.
+        final intentResult = await widget.api.prepareCardBooking(
+          userId: widget.user.userId,
+          yachtId: widget.overview.yachtId,
+          startDate: start,
+          endDate: end,
+          serviceIds: widget.selectedServices.map((s) => s.serviceId).toList(),
         );
         final clientSecret = intentResult.clientSecret;
         final paymentIntentId = intentResult.paymentIntentId;
         if (clientSecret == null || clientSecret.isEmpty) {
           if (!mounted) return;
           setState(() => _saving = false);
-          try {
-            await widget.api.cancelReservation(reservation.reservationId);
-          } catch (e) {
-            debugPrint('Failed to auto-cancel reservation after payment setup failure: $e');
-          }
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                'Card payment is not configured. Please choose Pay on arrival or contact support.',
+                'Card payment is not available. Check Stripe settings or choose Pay on arrival.',
               ),
             ),
           );
-          Navigator.of(context).pop();
           return;
         }
         final publishableKey = await widget.api.getStripePublishableKey();
         if (publishableKey.isEmpty) {
           if (!mounted) return;
           setState(() => _saving = false);
-          try {
-            await widget.api.cancelReservation(reservation.reservationId);
-          } catch (e) {
-            debugPrint('Failed to auto-cancel reservation after missing Stripe key: $e');
-          }
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Payment configuration missing. Please try Pay on arrival.')),
           );
-          Navigator.of(context).pop();
           return;
         }
         Stripe.publishableKey = publishableKey;
@@ -413,25 +389,14 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
         } on StripeException catch (e) {
           if (!mounted) return;
           setState(() => _saving = false);
-          try {
-            await widget.api.cancelReservation(reservation.reservationId);
-          } catch (e) {
-            debugPrint('Failed to auto-cancel reservation after Stripe exception: $e');
-          }
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Payment cancelled or failed: ${e.error?.localizedMessage ?? e.toString()}')),
           );
-          Navigator.of(context).pop();
           return;
         } catch (e) {
           if (!mounted) return;
           setState(() => _saving = false);
-          try {
-            await widget.api.cancelReservation(reservation.reservationId);
-          } catch (e) {
-            debugPrint('Failed to auto-cancel reservation after payment runtime error: $e');
-          }
           if (!mounted) return;
           final msg = e.toString();
           if (msg.contains('MissingPluginException') || msg.contains('flutter.stripe')) {
@@ -458,14 +423,26 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
               SnackBar(content: Text('Payment failed: $e')),
             );
           }
-          Navigator.of(context).pop();
           return;
         }
         await widget.api.confirmPayment(
-          reservationId: reservation.reservationId,
           paymentIntentId: paymentIntentId,
         );
       } else {
+        final reservation = await widget.api.createReservation(
+          userId: widget.user.userId,
+          yachtId: widget.overview.yachtId,
+          startDate: start,
+          endDate: end,
+          totalPrice: totalPrice,
+          status: 'Pending',
+        );
+        for (final s in widget.selectedServices) {
+          await widget.api.addServiceToReservation(
+            reservationId: reservation.reservationId,
+            serviceId: s.serviceId,
+          );
+        }
         offlineMethod = 'Cash';
         await widget.api.confirmPayment(
           reservationId: reservation.reservationId,

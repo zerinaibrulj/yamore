@@ -669,3 +669,18 @@ public sealed class WeatherForecastUpdateRequestValidator : AbstractValidator<We
     }
 }
 
+public sealed class PrepareCardBookingRequestValidator : AbstractValidator<PrepareCardBookingRequest>
+{
+    public PrepareCardBookingRequestValidator()
+    {
+        RuleFor(x => x.UserId).GreaterThan(0).WithMessage("Please select a valid user.");
+        RuleFor(x => x.YachtId).GreaterThan(0).WithMessage("Please select a valid yacht.");
+        RuleFor(x => x.StartDate)
+            .NotEmpty().WithMessage(ValidationMessages.Required("Start date"));
+        RuleFor(x => x.EndDate)
+            .NotEmpty().WithMessage(ValidationMessages.Required("End date"))
+            .GreaterThan(x => x.StartDate).WithMessage("End date must be after the start date.");
+        RuleFor(x => x.ServiceIds).NotNull().WithMessage("Service list is required (use an empty list if none).");
+    }
+}
+

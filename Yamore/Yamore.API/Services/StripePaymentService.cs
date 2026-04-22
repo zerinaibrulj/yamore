@@ -1,3 +1,4 @@
+using System.Globalization;
 using Stripe;
 
 namespace Yamore.API.Services;
@@ -48,10 +49,69 @@ public class StripePaymentService
             },
         };
 
+        return await CreateAndReturnAsync(options, cancellationToken);
+    }
+
+    /// <summary>Provisional card booking: no reservation row yet. Metadata is used by <c>POST Payment/confirm</c> to create the booking after success.</summary>
+    public async Task<(string? ClientSecret, string? PaymentIntentId)> CreateProvisionalBookingIntentAsync(
+        IReadOnlyDictionary<string, string> metadata,
+        decimal amount,
+        string currency = "eur",
+        CancellationToken cancellationToken = default)
+    {
+        if (_stripeClient == null)
+            throw new InvalidOperationException("Stripe is not configured. Set Stripe:SecretKey in configuration.");
+
+        var amountInCents = (long)Math.Round(amount * 100);
+        if (amountInCents < 50) // Stripe minimum
+            amountInCents = 50;
+
+        var options = new PaymentIntentCreateOptions
+        {
+            Amount = amountInCents,
+            Currency = currency.ToLowerInvariant(),
+            PaymentMethodTypes = new List<string> { "card" },
+            Metadata = new Dictionary<string, string>(metadata),
+        };
+
+        return await CreateAndReturnAsync(options, cancellationToken);
+    }
+
+    private async Task<(string? ClientSecret, string? PaymentIntentId)> CreateAndReturnAsync(
+        PaymentIntentCreateOptions options,
+        CancellationToken cancellationToken)
+    {
+        if (_stripeClient == null)
+            throw new InvalidOperationException("Stripe is not configured. Set Stripe:SecretKey in configuration.");
         var service = new PaymentIntentService(_stripeClient);
         var intent = await service.CreateAsync(options, cancellationToken: cancellationToken);
-
         return (intent.ClientSecret, intent.Id);
+    }
+
+    public async Task<PaymentIntent> GetPaymentIntentAsync(string paymentIntentId, CancellationToken cancellationToken = default)
+    {
+        if (_stripeClient == null)
+            throw new InvalidOperationException("Stripe is not configured. Set Stripe:SecretKey in configuration.");
+        return await new PaymentIntentService(_stripeClient).GetAsync(paymentIntentId, cancellationToken: cancellationToken);
+    }
+
+    /// <summary>Marks a provisional intent as fulfilled so repeat confirms are idempotent.</summary>
+    public async Task TagPaymentIntentFulfilledAsync(
+        string paymentIntentId,
+        int reservationId,
+        CancellationToken cancellationToken = default)
+    {
+        if (_stripeClient == null)
+            return;
+        var existing = await GetPaymentIntentAsync(paymentIntentId, cancellationToken);
+        var merged = new Dictionary<string, string>(existing.Metadata ?? new Dictionary<string, string>())
+        {
+            ["FulfilledReservationId"] = reservationId.ToString(CultureInfo.InvariantCulture),
+        };
+        await new PaymentIntentService(_stripeClient).UpdateAsync(
+            paymentIntentId,
+            new PaymentIntentUpdateOptions { Metadata = merged },
+            cancellationToken: cancellationToken);
     }
 
     /// <summary>
