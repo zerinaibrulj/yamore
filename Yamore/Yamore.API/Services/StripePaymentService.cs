@@ -1,5 +1,6 @@
 using System.Globalization;
 using Stripe;
+using Yamore.API.Configuration;
 
 namespace Yamore.API.Services;
 
@@ -15,13 +16,13 @@ public class StripePaymentService
 
     public StripePaymentService(IConfiguration configuration)
     {
-        // Trim: .env / Docker often introduce trailing newlines that make Stripe reject the key.
-        _secretKey = configuration["Stripe:SecretKey"]?.Trim();
+        // IConfiguration (Stripe:SecretKey) and/or STRIPE_SECRET_KEY from .env; avoids stale/wrong nested env alone.
+        _secretKey = StripeKeyResolver.GetSecretKey(configuration);
         if (!string.IsNullOrWhiteSpace(_secretKey))
             _stripeClient = new StripeClient(_secretKey);
     }
 
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(_secretKey);
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(_secretKey) && _secretKey.StartsWith("sk_", StringComparison.Ordinal);
 
     /// <summary>
     /// Creates a Stripe PaymentIntent for the given amount. Amount is in the currency's smallest unit (e.g. cents for EUR/USD).

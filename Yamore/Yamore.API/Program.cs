@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
 using Yamore.API;
+using Yamore.API.Configuration;
 using Yamore.API.Filters;
 using Yamore.API.Validation;
 using Yamore.Services.Database;
@@ -18,14 +19,13 @@ using Yamore.API.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Data.SqlClient;
 
+// Load Yamore/.env (or a .env found by walking up from the project directory) before configuration is built.
+// All secrets and environment-specific values must come from environment / .env — not from committed appsettings.json.
+LocalEnvFileLoader.Load();
+// Map STRIPE_*, SMTP_*, etc. to Stripe__*, Smtp__* so one .env works for Docker substitution and for dotnet run.
+ConfigurationEnvAliases.Apply();
 
 var builder = WebApplication.CreateBuilder(args);
-
-// Optional per-machine overrides (ConnectionStrings, Stripe, etc.) — file is gitignored. Must be loaded explicitly; it is not part of the default host configuration.
-if (builder.Environment.IsDevelopment())
-{
-    builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
-}
 
 // Linux Docker containers: bind 0.0.0.0:8080 so host port 5096→8080 forwarding works (fixes "connection refused" from Windows).
 if (File.Exists("/.dockerenv"))
@@ -45,8 +45,11 @@ TypeAdapterConfig<Yamore.Model.Requests.User.UserUpdateRequest, Yamore.Services.
     .NewConfig()
     .IgnoreNullValues(true);
 
-// READ allowed origins from configuration (appsettings or environment)
-var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+// CORS: comma-separated origins from Cors:AllowedOrigins (env: Cors__AllowedOrigins). If unset, dev allows any origin.
+var corsList = builder.Configuration["Cors:AllowedOrigins"];
+var allowedOrigins = !string.IsNullOrWhiteSpace(corsList)
+    ? corsList.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    : Array.Empty<string>();
 
 builder.Services.AddCors(options =>
 {
@@ -168,8 +171,7 @@ builder.Services.AddSwaggerGen(c =>
 
 
 
-// For appsettings.json. Note: an empty value in user secrets for ConnectionStrings:DefaultConnection can override
-// non-empty values from JSON; use appsettings.Local.json (loaded above) or Yamore:Development:DefaultConnection as fallback.
+// Connection string: set ConnectionStrings__DefaultConnection in .env or the environment. Optional dev fallback: Yamore__Development__DefaultConnection
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 if (string.IsNullOrWhiteSpace(connectionString) && builder.Environment.IsDevelopment())
 {
@@ -178,11 +180,9 @@ if (string.IsNullOrWhiteSpace(connectionString) && builder.Environment.IsDevelop
 if (string.IsNullOrWhiteSpace(connectionString))
 {
     throw new InvalidOperationException(
-        "Connection string 'DefaultConnection' is missing or empty. " +
-        "Yamore.API will not start without a database. " +
-        "In Development: set Yamore:Development:DefaultConnection in appsettings.Development.json, " +
-        "or appsettings.Local.json, or user secrets (see scripts/set-dev-connectionstring.ps1), " +
-        "or set the environment variable ConnectionStrings__DefaultConnection.");
+        "Connection string 'DefaultConnection' is missing. " +
+        "Set ConnectionStrings__DefaultConnection in Yamore/.env (copy from .env.example), the process environment, or Docker. " +
+        "In .env, use double-underscore for nested keys, e.g. ConnectionStrings__DefaultConnection=Server=...;");
 }
 
 builder.Services.AddDbContext<_220245Context>(options => options.UseSqlServer(connectionString));
@@ -209,6 +209,17 @@ using (var scope = app.Services.CreateScope())
 {
     var loggerFactory = scope.ServiceProvider.GetRequiredService<ILoggerFactory>();
     var startupLogger = loggerFactory.CreateLogger("Startup");
+
+    if (app.Environment.IsDevelopment())
+    {
+        var sk = StripeKeyResolver.GetSecretKey(app.Configuration);
+        var pk = StripeKeyResolver.GetPublishableKey(app.Configuration);
+        var skOk = !string.IsNullOrEmpty(sk) && sk.StartsWith("sk_", StringComparison.Ordinal);
+        var pkOk = !string.IsNullOrEmpty(pk) && pk.StartsWith("pk_", StringComparison.Ordinal);
+        startupLogger.LogInformation(
+            "Stripe: secret key (sk_*) ok: {SkOk}, publishable (pk_*) ok: {PkOk}. If false, fix Yamore/.env or remove conflicting Stripe: entries from user secrets.",
+            skOk, pkOk);
+    }
 
     if (skipMigrate)
     {

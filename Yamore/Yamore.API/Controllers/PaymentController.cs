@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Stripe;
+using Yamore.API.Configuration;
 using Yamore.API.Services;
 using Yamore.Model;
 using Yamore.Model.Messages;
@@ -49,7 +50,7 @@ namespace Yamore.API.Controllers
         [AllowAnonymous]
         public ActionResult<object> GetStripeConfig()
         {
-            var publishableKey = _configuration["Stripe:PublishableKey"]?.Trim() ?? "";
+            var publishableKey = StripeKeyResolver.GetPublishableKey(_configuration) ?? "";
             return Ok(new { PublishableKey = publishableKey });
         }
 

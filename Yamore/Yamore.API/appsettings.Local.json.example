@@ -1,5 +1,3 @@
 {
-  "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost;Database=220245;Trusted_Connection=True;MultipleActiveResultSets=True;TrustServerCertificate=True"
-  }
+  "Info": "Do not put connection strings or API keys here. Use Yamore/.env (from .env.example) or environment variables; the API loads .env on startup."
 }

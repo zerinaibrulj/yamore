@@ -108,13 +108,13 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                   FilledButton.icon(
                     onPressed: _exportReservationsBookingsReport,
                     icon: const Icon(Icons.event_note_outlined, size: 18),
-                    label: const Text('Reservations & bookings (PDF)'),
+                    label: const Text('Reservations & Bookings'),
                   ),
                   const SizedBox(width: 12),
                   FilledButton.icon(
                     onPressed: () => _exportAdminOverviewReport(stats),
                     icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
-                    label: const Text('Export report'),
+                    label: const Text('Admin report'),
                   ),
                 ],
               ),
@@ -520,7 +520,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
   Future<void> _exportAdminOverviewReport(StatisticsDtoModel stats) async {
     await _openPdfExportDialog(
-      dialogTitle: 'Export report',
+      dialogTitle: 'Admin report',
       pdfFileName: 'yamore_admin_report.pdf',
       build: (format) => _buildAdminReportPdf(stats, format),
     );
@@ -618,7 +618,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         navigator.pop();
       }
       await _openPdfExportDialog(
-        dialogTitle: 'Reservations & bookings',
+        dialogTitle: 'Reservations & Bookings',
         pdfFileName: 'yamore_reservations_bookings_report.pdf',
         build: (format) => _buildReservationsBookingsPdf(data, format),
       );
@@ -856,28 +856,28 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     final statusRows = byStatus.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    final tableRows = list
-        .map(
-          (r) => <String>[
-            r.reservationId.toString(),
-            r.createdAt != null
-                ? _formatPdfDate(r.createdAt!.toLocal())
-                : '—',
-            _formatPdfDate(r.startDate.toLocal()),
-            _formatPdfDate(r.endDate.toLocal()),
-            _pdfShortLabel(
-              data.userNames[r.userId] ?? 'User #${r.userId}',
-            ),
-            _pdfShortLabel(
-              data.yachtNames[r.yachtId] ?? 'Yacht #${r.yachtId}',
-            ),
-            (r.status ?? '—'),
-            r.totalPrice != null
-                ? formatEuroDashboard(r.totalPrice!)
-                : '—',
-          ],
-        )
-        .toList();
+    final tableRows = <List<String>>[];
+    for (var i = 0; i < list.length; i++) {
+      final r = list[i];
+      tableRows.add([
+        (i + 1).toString(),
+        r.createdAt != null
+            ? _formatPdfDate(r.createdAt!.toLocal())
+            : '—',
+        _formatPdfDate(r.startDate.toLocal()),
+        _formatPdfDate(r.endDate.toLocal()),
+        _pdfShortLabel(
+          data.userNames[r.userId] ?? 'User #${r.userId}',
+        ),
+        _pdfShortLabel(
+          data.yachtNames[r.yachtId] ?? 'Yacht #${r.yachtId}',
+        ),
+        (r.status ?? '—'),
+        r.totalPrice != null
+            ? formatEuroDashboard(r.totalPrice!)
+            : '—',
+      ]);
+    }
 
     final doc = pw.Document();
     final baseFont = await PdfGoogleFonts.notoSansRegular();
@@ -898,7 +898,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
                 pw.Text(
-                  'Yamore – Reservations & bookings',
+                  'Yamore – Reservations & Bookings',
                   style: pw.TextStyle(
                     fontSize: 20,
                     fontWeight: pw.FontWeight.bold,
