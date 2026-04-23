@@ -17,12 +17,11 @@ using System.Linq.Dynamic.Core;
 
 namespace Yamore.Services.Services
 {
-    public class UsersService : BaseCRUDService<Model.User, UsersSearchObject, Database.User, UserInsertRequest, UserUpdateRequest, UserDeleteRequest>, IUsersService    //Database.User -> predstavlja tabelu s kojom radimo
+    public class UsersService : BaseCRUDService<Model.User, UsersSearchObject, Database.User, UserInsertRequest, UserUpdateRequest, UserDeleteRequest>, IUsersService
     {
         public UsersService(_220245Context context, IMapper mapper)
-            : base(context, mapper)                                                                 //proslijedit cemo ono sto je potrebno baznoj klasi a to su context i mapper
+            : base(context, mapper)
         {
-
         }
 
         /// <summary>
@@ -33,7 +32,6 @@ namespace Yamore.Services.Services
         {
             var query = Context.Users.AsQueryable();
 
-            // Apply common filters (including optional role includes/filters)
             query = AddFilter(search, query);
 
             var count = query.Count();
@@ -45,7 +43,6 @@ namespace Yamore.Services.Services
                     .Take(search.PageSize.Value);
             }
 
-            // Materialize and manually map to break any navigation cycles.
             var list = query
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
@@ -66,7 +63,6 @@ namespace Yamore.Services.Services
                     Status = u.Status,
                 };
 
-                // Only populate roles when requested to keep payloads small.
                 if (search?.IsUserRoleIncluded == true || !string.IsNullOrWhiteSpace(search?.RoleName))
                 {
                     var userRoles = new List<Model.UserRole>();
@@ -78,7 +74,7 @@ namespace Yamore.Services.Services
                                 RoleId = ur.Role.RoleId,
                                 Name = ur.Role.Name,
                                 Description = ur.Role.Description,
-                                UserRoles = new List<Model.UserRole>() // avoid cycles
+                                UserRoles = new List<Model.UserRole>()
                             }
                             : null;
 
@@ -180,8 +176,6 @@ namespace Yamore.Services.Services
         {
             var filteredQuery = base.AddFilter(search, query);
 
-            // Name search: when both FirstNameGTE and LastNameGTE are provided (as in the admin UI),
-            // treat them as a single search term that matches either first OR last name.
             if (!string.IsNullOrWhiteSpace(search?.FirstNameGTE) &&
                 !string.IsNullOrWhiteSpace(search.LastNameGTE) &&
                 string.Equals(search.FirstNameGTE!.Trim(), search.LastNameGTE!.Trim(), StringComparison.OrdinalIgnoreCase))
@@ -256,7 +250,7 @@ namespace Yamore.Services.Services
 
 
 
-        public override void BeforeInsret(UserInsertRequest request, Database.User entity)  //dodajemo samo ono sto je karakteristicno za Insert korisnika
+        public override void BeforeInsret(UserInsertRequest request, Database.User entity)
         {
             if (request.Password != request.PasswordConfirmation)
             {
@@ -295,7 +289,6 @@ namespace Yamore.Services.Services
 
         public override void BeforeUpdate(UserUpdateRequest request, Database.User entity)
         {
-            // Enforce unique email if it is being changed.
             if (!string.IsNullOrWhiteSpace(request.Email) &&
                 !string.Equals(request.Email!.Trim(), entity.Email, StringComparison.OrdinalIgnoreCase))
             {
@@ -357,7 +350,6 @@ namespace Yamore.Services.Services
             if (string.IsNullOrWhiteSpace(username) || string.IsNullOrEmpty(password))
                 return null;
 
-            // Match username case-insensitively; trim the username the client sent (not the password).
             var u = username.Trim();
             var entity = Context.Users
                 .Include(x => x.UserRoles)
@@ -398,7 +390,6 @@ namespace Yamore.Services.Services
 
         public Model.User Register(UserInsertRequest request)
         {
-            // For public registration, fall back to default User / EndUser role.
             var user = Insert(request);
             var userRole = Context.Roles.FirstOrDefault(r => r.Name == "User" || r.Name == "EndUser");
             if (userRole != null)
@@ -416,7 +407,6 @@ namespace Yamore.Services.Services
 
         public List<Model.LoginResponseDto> GetOwners()
         {
-            // Return only users who have the YachtOwner or Owner role (for admin "Add Yacht" dropdown).
             var list = Context.Users
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)

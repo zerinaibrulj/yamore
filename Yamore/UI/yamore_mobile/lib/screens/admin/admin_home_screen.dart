@@ -357,8 +357,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     }
     final top = data.take(8).toList();
     final maxCount = top.map((e) => e.reservationCount).fold<int>(0, (a, b) => a > b ? a : b);
-    // Keep axis tick values “round” so we don't show awkward decimals
-    // (e.g. 3.6) on the Y axis.
     final maxY = (maxCount.toDouble() + 1).clamp(1.0, double.infinity);
 
     return Card(
@@ -467,7 +465,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      // Fixed-width columns so the “Bookings:” values align nicely.
                       SizedBox(
                         width: 110,
                         child: Text(

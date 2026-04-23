@@ -36,21 +36,17 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
   bool _loading = true;
   String? _error;
 
-  // lookups
   List<CityModel> _cities = [];
   List<YachtCategoryModel> _categories = [];
   List<AppUser> _owners = [];
 
-  // filters
   final TextEditingController _searchNameController = TextEditingController();
   final TextEditingController _priceMinController = TextEditingController();
   final TextEditingController _priceMaxController = TextEditingController();
   int? _selectedSearchLocationId;
 
-  // selection
   int? _selectedYachtId;
 
-  // paging
   int _currentPage = 0;
   final int _pageSize = 10;
 
@@ -94,7 +90,7 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
       });
     } on ApiException catch (e) {
       setState(() {
-        _error = '${e.statusCode}: ${e.body}';
+        _error = '${e.statusCode}: ${e.displayMessage}';
         _loading = false;
       });
     } catch (e) {
@@ -556,7 +552,7 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
       }
     } on ApiException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load yacht: ${e.body}')),
+        SnackBar(content: Text('Failed to load yacht: ${e.displayMessage}')),
       );
     }
   }
@@ -652,7 +648,7 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
       }
     } on ApiException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Delete failed: ${e.body}')),
+        SnackBar(content: Text('Delete failed: ${e.displayMessage}')),
       );
     }
   }
@@ -798,8 +794,6 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
     try {
       await widget.api.uploadYachtImage(widget.initial!.yachtId!, path);
     } catch (e) {
-      // The POST may fail on the client side even if the server saved the
-      // image (Windows desktop http quirk). We reload and check below.
       debugPrint('Image upload reported an error: $e');
     }
     await _loadImages();
@@ -856,8 +850,6 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
       }
     }
   }
-
-  // ── Availability ──
 
   Future<void> _loadAvailabilities() async {
     setState(() => _availLoading = true);
@@ -1192,9 +1184,8 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
     } on ApiException catch (e) {
       if (!mounted) return;
 
-      // Provide a friendly message instead of raw JSON / "Method Not Allowed".
       final status = e.statusCode;
-      final bodyLower = (e.body ?? '').toString().toLowerCase();
+      final bodyLower = e.displayMessage.toLowerCase();
       final isMethodNotAllowed =
           status == 405 || bodyLower.contains('method not allowed');
 
@@ -1680,7 +1671,6 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
                       ),
                     ),
 
-                  // ── Availability Section ──
                   const SizedBox(height: 18),
                   const Divider(),
                   const SizedBox(height: 8),

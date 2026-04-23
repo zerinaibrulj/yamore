@@ -2,6 +2,8 @@
 
 All configuration is stored in configuration files (appsettings, environment variables, or Flutter dart-define). No secrets or environment-specific values are hardcoded in source.
 
+**Shared host bootstrap:** The **`Yamore.Configuration`** class library (referenced by **Yamore.API** and **Yamore.Worker**) loads **`Yamore/.env`** via **`LocalEnvFileLoader`** and maps Docker-style variable names via **`ConfigurationEnvAliases`** before the ASP.NET or Worker host builds configuration—one implementation, two entry points.
+
 ---
 
 ## Yamore.API (main service)

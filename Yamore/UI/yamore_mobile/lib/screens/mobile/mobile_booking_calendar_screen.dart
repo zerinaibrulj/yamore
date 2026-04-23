@@ -91,13 +91,11 @@ class _MobileBookingCalendarScreenState
       ];
 
   bool _slotAvailable(DateTime start, DateTime end) {
-    // Blocked periods
     for (final a in _blocks.where((b) => b.isBlocked)) {
       if (start.isBefore(a.endDate) && end.isAfter(a.startDate)) {
         return false;
       }
     }
-    // Existing reservations (not cancelled)
     for (final r in _reservations.where(
         (r) => (r.status ?? '').toLowerCase() != 'cancelled')) {
       if (start.isBefore(r.endDate) && end.isAfter(r.startDate)) {
@@ -316,8 +314,6 @@ class _MobileBookingCalendarScreenState
             const SizedBox(height: 8),
             LayoutBuilder(
               builder: (context, constraints) {
-                // Keep the weekdays header and the day cells perfectly aligned by using
-                // the same fixed cellSize for both.
                 final cellSize =
                     ((constraints.maxWidth - 6) / 7).clamp(18.0, maxCellSize);
                 final calendarWidth = cellSize * 7;

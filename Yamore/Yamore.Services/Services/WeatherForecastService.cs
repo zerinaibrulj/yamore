@@ -24,7 +24,6 @@ namespace Yamore.Services.Services
             if (entity == null)
                 throw new KeyNotFoundException($"WeatherForecast with id {id} not found.");
 
-            // Do not map/modify key fields through request payload.
             entity.RouteId = request.RouteId;
             entity.ForecastDate = request.ForecastDate;
             entity.Temperature = request.Temperature;

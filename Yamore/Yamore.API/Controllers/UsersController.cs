@@ -24,7 +24,6 @@ namespace Yamore.API.Controllers
         [HttpPut("{id}")]
         public override ActionResult<Model.User> Update(int id, UserUpdateRequest request)
         {
-            // Normalize whitespace-only values so they don't accidentally trigger password update logic.
             request.OldPassword = string.IsNullOrWhiteSpace(request.OldPassword) ? null : request.OldPassword;
             request.Password = string.IsNullOrWhiteSpace(request.Password) ? null : request.Password;
             request.PasswordConfirmation = string.IsNullOrWhiteSpace(request.PasswordConfirmation) ? null : request.PasswordConfirmation;
@@ -122,7 +121,6 @@ namespace Yamore.API.Controllers
         public object GetOwners()
         {
             var owners = _usersService.GetOwners();
-            // Wrap in an object so the client can reuse the standard { resultList: [...] } shape.
             return new { resultList = owners };
         }
 
@@ -139,9 +137,9 @@ namespace Yamore.API.Controllers
             {
                 FirstName = user.FirstName,
                 LastName = user.LastName,
-                //Email = user.Email,
+                Email = user.Email,
                 Phone = user.Phone,
-                //Username = user.Username,
+                Username = user.Username,
                 Status = false
             };
             var result = _usersService.Update(id, update);

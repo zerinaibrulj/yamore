@@ -39,7 +39,6 @@ public class RabbitMQConsumer : IDisposable
             return;
         }
 
-        // Drop any half-open resources from a previous failed start
         TeardownConnection(reason: "before reconnect");
 
         var hostName = _configuration["RabbitMQ:HostName"];
@@ -95,7 +94,6 @@ public class RabbitMQConsumer : IDisposable
             var consumer = new AsyncEventingBasicConsumer(_channel);
             consumer.Received += async (_, ea) =>
             {
-                // Copy body before any await; buffer may be released after the handler returns.
                 var bodyCopy = ea.Body.ToArray();
 
                 string json;

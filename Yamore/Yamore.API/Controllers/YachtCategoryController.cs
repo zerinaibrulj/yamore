@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore.Storage;
 using Yamore.Model;
 using Yamore.Model.Requests.YachtCategory;
 using Yamore.Model.SearchObjects;
@@ -10,9 +9,7 @@ namespace Yamore.API.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    //[AllowAnonymous]                // cijeli endpoint ce biti dostupan anonimnim korisnicima
     public class YachtCategoryController : BaseCRUDController<Model.YachtCategory, YachtCategorySearchObject, YachtCategoryInsertRequest, YachtCategoryUpdateRequest, YachtCategoryDeleteRequest>
-        
     {
         private readonly IYachtCategoryService _yachtCategoryService;
 
@@ -31,13 +28,14 @@ namespace Yamore.API.Controllers
             return base.Delete(id);
         }
 
-        [Authorize(Roles = "Admin")]                      // samo admin moze da dodaje nove kategorije
+        [Authorize(Roles = "Admin")]
         public override ActionResult<YachtCategory> Insert(YachtCategoryInsertRequest request)
         {
             return base.Insert(request);
         }
 
-        [AllowAnonymous]                                // samo ova metoda je dostupna anonimnim korisnicima (korisnik ne mora biti logovan da bi pristupio ovoj metodi)
+        /// <summary>Anonymous listing for browse and booking flows.</summary>
+        [AllowAnonymous]
         public override PagedResponse<YachtCategory> GetPaged([FromQuery] YachtCategorySearchObject search)
         {
             return base.GetPaged(search);

@@ -88,7 +88,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       });
     } on ApiException catch (e) {
       setState(() {
-        _error = '${e.statusCode}: ${e.body}';
+        _error = '${e.statusCode}: ${e.displayMessage}';
         _loading = false;
       });
     } catch (e) {

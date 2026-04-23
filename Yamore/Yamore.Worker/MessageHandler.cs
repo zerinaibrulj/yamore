@@ -200,7 +200,6 @@ public class MessageHandler
         }
 
         using var client = new SmtpClient(host, port);
-        // Required for explicit mailbox login; otherwise some servers return 5.7.0 Authentication Required.
         client.UseDefaultCredentials = false;
         client.EnableSsl = useSsl;
         client.Credentials = new NetworkCredential(userName, password);

@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
 using Yamore.API;
 using Yamore.API.Configuration;
+using Yamore.Configuration;
 using Yamore.API.Filters;
 using Yamore.API.Validation;
 using Yamore.Services.Database;
@@ -19,33 +20,24 @@ using Yamore.API.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Data.SqlClient;
 
-// Load Yamore/.env (or a .env found by walking up from the project directory) before configuration is built.
-// All secrets and environment-specific values must come from environment / .env — not from committed appsettings.json.
 LocalEnvFileLoader.Load();
-// Map STRIPE_*, SMTP_*, etc. to Stripe__*, Smtp__* so one .env works for Docker substitution and for dotnet run.
 ConfigurationEnvAliases.Apply();
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Linux Docker containers: bind 0.0.0.0:8080 so host port 5096→8080 forwarding works (fixes "connection refused" from Windows).
 if (File.Exists("/.dockerenv"))
 {
     builder.WebHost.UseUrls("http://0.0.0.0:8080");
 }
 
-// Configure Mapster mappings.
-// 1) Avoid cycles between User and UserRole.
 TypeAdapterConfig<Yamore.Services.Database.UserRole, Yamore.Model.UserRole>
     .NewConfig()
     .Ignore(dest => dest.User);
 
-// 2) For User updates, ignore null values so that fields not sent
-//    from the client (like Email/Username) do not overwrite existing data.
 TypeAdapterConfig<Yamore.Model.Requests.User.UserUpdateRequest, Yamore.Services.Database.User>
     .NewConfig()
     .IgnoreNullValues(true);
 
-// CORS: comma-separated origins from Cors:AllowedOrigins (env: Cors__AllowedOrigins). If unset, dev allows any origin.
 var corsList = builder.Configuration["Cors:AllowedOrigins"];
 var allowedOrigins = !string.IsNullOrWhiteSpace(corsList)
     ? corsList.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -64,21 +56,16 @@ builder.Services.AddCors(options =>
         }
         else if (builder.Environment.IsDevelopment())
         {
-            // development fallback (only)
             policy.AllowAnyOrigin()
                   .AllowAnyHeader()
                   .AllowAnyMethod();
         }
         else
         {
-            // production: deny by default (or set a secure default)
             policy.DisallowCredentials();
         }
     });
 });
-
-
-// Add services to the container.
 
 builder.Services.AddHttpContextAccessor();
 
@@ -145,8 +132,6 @@ builder.Services.AddControllers(x =>
 builder.Services.AddValidatorsFromAssemblyContaining<UserInsertRequestValidator>();
 
 
-
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -169,8 +154,6 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 
-
-// Connection string: set ConnectionStrings__DefaultConnection in .env or the environment. Optional dev fallback: Yamore__Development__DefaultConnection
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 if (string.IsNullOrWhiteSpace(connectionString) && builder.Environment.IsDevelopment())
 {
@@ -197,8 +180,6 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// Apply EF Core migrations so a fresh Docker SQL volume gets tables (avoids "Invalid object name").
-// Set SKIP_EF_DATABASE_MIGRATE=true to skip (diagnostics only). Retries help if SQL is slow right after healthcheck.
 var skipMigrate = string.Equals(
     app.Configuration["SKIP_EF_DATABASE_MIGRATE"],
     "true",
@@ -297,8 +278,6 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Configure the HTTP request pipeline.
-// Swagger: Development locally, or Docker Compose (ENABLE_SWAGGER=true) so http://localhost:5096/swagger works reliably.
 var enableSwagger = app.Environment.IsDevelopment()
     || string.Equals(
         Environment.GetEnvironmentVariable("ENABLE_SWAGGER"),
@@ -310,7 +289,6 @@ if (enableSwagger)
     app.UseSwaggerUI();
 }
 
-// Android emulator / Docker HTTP port mapping: HTTPS redirect breaks http://localhost:5096.
 var disableHttpsRedirect = string.Equals(
     Environment.GetEnvironmentVariable("DISABLE_HTTPS_REDIRECT"),
     "true",
@@ -320,7 +298,6 @@ if (!app.Environment.IsDevelopment() && !disableHttpsRedirect)
     app.UseHttpsRedirection();
 }
 
-// apply the named CORS policy
 app.UseCors("DefaultCorsPolicy");
 
 app.UseAuthentication();

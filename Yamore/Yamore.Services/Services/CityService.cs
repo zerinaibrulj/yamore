@@ -37,7 +37,6 @@ namespace Yamore.Services.Services
 
         public override Model.City Delete(int id)
         {
-            // Safety net if Delete is called without the controller's non-throwing pre-check.
             var err = GetDeleteBlockingErrorMessage(id);
             if (err != null) throw new UserException(err);
             return base.Delete(id);

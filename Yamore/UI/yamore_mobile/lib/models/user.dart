@@ -33,14 +33,12 @@ class AppUser {
 
   factory AppUser.fromJson(Map<String, dynamic> json) {
     final roles = <String>[];
-    // New API format: top-level "roles" array
     final rolesRaw = _key(json, 'roles', 'Roles');
     if (rolesRaw is List<dynamic>) {
       for (final r in rolesRaw) {
         if (r is String && r.isNotEmpty) roles.add(r);
       }
     }
-    // Legacy format: userRoles[].role.name
     if (roles.isEmpty) {
       final userRolesRaw = _key(json, 'userRoles', 'UserRoles');
       final userRoles = userRolesRaw is List<dynamic> ? userRolesRaw : <dynamic>[];

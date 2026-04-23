@@ -106,7 +106,7 @@ class _MobileProfileTabState extends State<MobileProfileTab> {
       if (!mounted) return;
       setState(() {
         _notificationsLoading = false;
-        _notificationsError = e.body;
+        _notificationsError = e.displayMessage;
       });
     } catch (e) {
       if (!mounted) return;
@@ -185,7 +185,7 @@ class _MobileProfileTabState extends State<MobileProfileTab> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _profileSaving = false);
-      _showError('Update failed', e.body);
+      _showError('Update failed', e.displayMessage);
     } catch (e) {
       if (!mounted) return;
       setState(() => _profileSaving = false);
@@ -235,7 +235,7 @@ class _MobileProfileTabState extends State<MobileProfileTab> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _passwordSaving = false);
-      _showError('Password change failed', e.body);
+      _showError('Password change failed', e.displayMessage);
     } catch (e) {
       if (!mounted) return;
       setState(() => _passwordSaving = false);

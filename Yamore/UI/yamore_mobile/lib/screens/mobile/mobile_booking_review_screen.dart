@@ -353,7 +353,6 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
       final isCard = widget.paymentMethod == 'card';
       String offlineMethod = 'Cash';
       if (isCard) {
-        // No reservation in DB until Stripe reports success. Server recalculates the total to match the PaymentIntent.
         final intentResult = await widget.api.prepareCardBooking(
           userId: widget.user.userId,
           yachtId: widget.overview.yachtId,
@@ -491,7 +490,6 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
           ],
         ),
       );
-      // Always return to the Home tab after a successful reservation.
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (_) => MobileShell(

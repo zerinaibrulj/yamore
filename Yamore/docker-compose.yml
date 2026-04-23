@@ -62,10 +62,6 @@ services:
       # Keep Docker behavior deterministic: always migrate + seed on first empty DB.
       SKIP_EF_DATABASE_MIGRATE: "false"
       SKIP_DEMO_SEED: "false"
-      # If the API exits with code 139, set to "true" temporarily to test whether Migrate() is involved; then apply migrations from the host with dotnet ef.
-      # SKIP_EF_DATABASE_MIGRATE: "true"
-      # Set to "true" to skip demo users/yachts seed (production-like empty DB after migrate).
-      # SKIP_DEMO_SEED: "true"
       # Set in Yamore/.env (see .env.example) — required for card payments in the mobile app
       Stripe__SecretKey: "${STRIPE_SECRET_KEY:-}"
       Stripe__PublishableKey: "${STRIPE_PUBLISHABLE_KEY:-}"

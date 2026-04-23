@@ -9,8 +9,6 @@ public static class StripeKeyResolver
 {
     public static string? GetSecretKey(IConfiguration configuration)
     {
-        // Order: process env (set by .env) → flat config (also maps STRIPE_SECRET_KEY from env provider)
-        // → nested Stripe:SecretKey (e.g. User Secrets / appsettings)
         return PickStripeKey(
             "sk_",
             Environment.GetEnvironmentVariable("STRIPE_SECRET_KEY"),
@@ -56,7 +54,6 @@ public static class StripeKeyResolver
             else if (value[0] == '"' && value[^1] == '"')
                 value = value[1..^1].Trim();
         }
-        // Strip stray \r in case of line folding in .env
         value = value.Replace("\r", string.Empty, StringComparison.Ordinal);
         if (string.IsNullOrEmpty(value))
             return null;

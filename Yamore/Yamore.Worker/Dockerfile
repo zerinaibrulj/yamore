@@ -2,6 +2,7 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
+COPY ["Yamore.Configuration/Yamore.Configuration.csproj", "Yamore.Configuration/"]
 COPY ["Yamore.Worker/Yamore.Worker.csproj", "Yamore.Worker/"]
 COPY ["Yamore.Services/Yamore.Services.csproj", "Yamore.Services/"]
 COPY ["Yamore.Model/Yamore.Model.csproj", "Yamore.Model/"]

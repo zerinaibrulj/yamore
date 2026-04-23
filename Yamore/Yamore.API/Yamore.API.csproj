@@ -9,7 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="DotNetEnv" Version="3.1.1" />
     <PackageReference Include="FluentValidation" Version="12.1.1" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageReference Include="Mapster" Version="7.4.0" />
@@ -31,6 +30,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Yamore.Configuration\Yamore.Configuration.csproj" />
     <ProjectReference Include="..\Yamore.Model\Yamore.Model.csproj" />
     <ProjectReference Include="..\Yamore.Services\Yamore.Services.csproj" />
   </ItemGroup>

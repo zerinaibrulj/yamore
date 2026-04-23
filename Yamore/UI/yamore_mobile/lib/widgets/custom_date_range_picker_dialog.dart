@@ -246,8 +246,6 @@ class _CustomDateRangePickerDialogState extends State<CustomDateRangePickerDialo
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  // Same column width for weekday labels and day cells (no fixed 7×40
-                  // grid centered under a full-width Expanded row — that caused misalignment).
                   final cellW = constraints.maxWidth / 7;
                   final cellH = cellW.clamp(36.0, 46.0);
                   final leadingEmpty = firstWeekday - 1;

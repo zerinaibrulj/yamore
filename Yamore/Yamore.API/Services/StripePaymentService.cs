@@ -16,7 +16,6 @@ public class StripePaymentService
 
     public StripePaymentService(IConfiguration configuration)
     {
-        // IConfiguration (Stripe:SecretKey) and/or STRIPE_SECRET_KEY from .env; avoids stale/wrong nested env alone.
         _secretKey = StripeKeyResolver.GetSecretKey(configuration);
         if (!string.IsNullOrWhiteSpace(_secretKey))
             _stripeClient = new StripeClient(_secretKey);

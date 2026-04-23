@@ -85,7 +85,6 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
                 (r.status ?? '').toLowerCase() == _filterStatus.toLowerCase())
             .toList();
 
-    // Preload yacht and guest details for nicer display.
     final yachtIds = list.map((r) => r.yachtId).toSet();
     final userIds = list.map((r) => r.userId).toSet();
 
@@ -126,7 +125,6 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
       _error = null;
     });
     try {
-      // Owner-specific: only reservations whose `yachtId` belongs to this owner.
       final myYachtsPaged = await _api.getMyYachts(page: 0, pageSize: 200);
       final myYachtIds = myYachtsPaged.resultList.map((y) => y.yachtId).toSet();
 

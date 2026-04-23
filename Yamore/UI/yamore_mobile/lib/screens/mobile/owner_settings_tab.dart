@@ -105,7 +105,7 @@ class _OwnerSettingsTabState extends State<OwnerSettingsTab> {
       if (!mounted) return;
       setState(() {
         _notificationsLoading = false;
-        _notificationsError = e.body;
+        _notificationsError = e.displayMessage;
       });
     } catch (e) {
       if (!mounted) return;
@@ -192,7 +192,7 @@ class _OwnerSettingsTabState extends State<OwnerSettingsTab> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _profileSaving = false);
-      _showError('Update failed', e.body);
+      _showError('Update failed', e.displayMessage);
     } catch (e) {
       if (!mounted) return;
       setState(() => _profileSaving = false);
@@ -242,7 +242,7 @@ class _OwnerSettingsTabState extends State<OwnerSettingsTab> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _passwordSaving = false);
-      _showError('Password change failed', e.body);
+      _showError('Password change failed', e.displayMessage);
     } catch (e) {
       if (!mounted) return;
       setState(() => _passwordSaving = false);
@@ -305,7 +305,6 @@ class _OwnerSettingsTabState extends State<OwnerSettingsTab> {
           ),
           const SizedBox(height: 20),
 
-          // Profile card
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             elevation: 2,
@@ -364,7 +363,6 @@ class _OwnerSettingsTabState extends State<OwnerSettingsTab> {
           ),
           const SizedBox(height: 20),
 
-          // Editable profile fields
           const Text(
             'Profile',
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
@@ -438,7 +436,6 @@ class _OwnerSettingsTabState extends State<OwnerSettingsTab> {
 
           const SizedBox(height: 24),
 
-          // Contact details (read-only summary)
           const Text(
             'Contact Details',
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
@@ -455,7 +452,6 @@ class _OwnerSettingsTabState extends State<OwnerSettingsTab> {
 
           const SizedBox(height: 24),
 
-          // Password section
           const Text(
             'Security',
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),

@@ -19,14 +19,12 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     password: widget.authService.password,
   );
 
-  // Profile form
   late final TextEditingController _firstNameCtrl;
   late final TextEditingController _lastNameCtrl;
   late final TextEditingController _emailCtrl;
   late final TextEditingController _phoneCtrl;
   bool _profileSaving = false;
 
-  // Password form
   final _oldPasswordCtrl = TextEditingController();
   final _newPasswordCtrl = TextEditingController();
   final _confirmPasswordCtrl = TextEditingController();
@@ -35,7 +33,6 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
   bool _showNewPassword = false;
   bool _showConfirmPassword = false;
 
-  // Connection test
   _ConnectionStatus _connectionStatus = _ConnectionStatus.idle;
   String _connectionMessage = '';
 
@@ -85,7 +82,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _profileSaving = false);
-        _showErrorDialog('Update Failed', 'Could not update profile.\n\n${e.body}');
+        _showErrorDialog('Update Failed', 'Could not update profile.\n\n${e.displayMessage}');
       }
     } catch (e) {
       if (mounted) {
@@ -135,7 +132,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _passwordSaving = false);
-        _showErrorDialog('Password Change Failed', 'Could not change password.\n\n${e.body}');
+        _showErrorDialog('Password Change Failed', 'Could not change password.\n\n${e.displayMessage}');
       }
     } catch (e) {
       if (mounted) {
@@ -162,7 +159,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
       if (mounted) {
         setState(() {
           _connectionStatus = _ConnectionStatus.error;
-          _connectionMessage = 'Connection failed: ${e.statusCode} ${e.body}';
+          _connectionMessage = 'Connection failed: ${e.statusCode} ${e.displayMessage}';
         });
       }
     } catch (e) {
@@ -297,7 +294,6 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
             ),
             const SizedBox(height: 24),
 
-            // ── Profile & Security ──
             _buildSectionHeader(
               icon: Icons.person_outline,
               title: 'Profile & Security',
@@ -307,17 +303,14 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Profile card
                 Expanded(child: _buildProfileCard(user, textTheme)),
                 const SizedBox(width: 16),
-                // Password card
                 Expanded(child: _buildPasswordCard(textTheme)),
               ],
             ),
 
             const SizedBox(height: 32),
 
-            // ── Application Info ──
             _buildSectionHeader(
               icon: Icons.info_outline,
               title: 'Application Info',

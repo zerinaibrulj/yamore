@@ -192,7 +192,7 @@ namespace Yamore.Services.Services
         {
             var entity = LoadYachtUnrestricted(id)
                 ?? throw new KeyNotFoundException($"Yacht with id {id} not found.");
-            var state = BaseYachtState.CreateState(entity.StateMachine);   //u entity.StateMachine se nalazi draft i on predstavlja trenutno stanje u kojem se nalazi jahta
+            var state = BaseYachtState.CreateState(entity.StateMachine);
             return state.Update(id, request);
         }
 
@@ -251,7 +251,6 @@ namespace Yamore.Services.Services
 
             if (userId.HasValue)
             {
-                // User profile from past reservations (confirmed) and positive reviews (rating >= 4)
                 var userReservationYachtIds = Context.Reservations
                     .Where(r => r.UserId == userId && r.Status != "Cancelled")
                     .Select(r => r.YachtId).Distinct().ToList();
@@ -272,25 +271,21 @@ namespace Yamore.Services.Services
                     .Where(y => userReservationYachtIds.Contains(y.YachtId) && y.Location != null)
                     .Select(y => y.Location!.CountryId).Distinct().ToList();
 
-                // Services the user often added to reservations (skipper, catering, etc.)
                 var preferredServiceIds = Context.ReservationServices
                     .Where(rs => rs.Reservation != null && rs.Reservation.UserId == userId)
                     .Select(rs => rs.ServiceId).Distinct().ToList();
 
-                // Content-based + collaborative: exclude already-booked, prefer same category/location/country and yachts offering preferred services
                 var candidates = activeYachts
                     .Where(y => !userReservationYachtIds.Contains(y.YachtId));
 
                 if (preferredCategoryIds.Count == 0 && preferredLocationIds.Count == 0 && preferredCountryIds.Count == 0)
                 {
-                    // No history: fall back to popular (collaborative - most booked, then by rating)
                     ordered = candidates
                         .OrderByDescending(y => y.Reservations.Count(r => r.Status != "Cancelled"))
                         .ThenByDescending(y => y.Reviews.Any(r => r.Rating.HasValue) ? y.Reviews.Average(r => r.Rating ?? 0) : 0);
                 }
                 else
                 {
-                    // Score: prefer category match, then location, then country; then order by rating and popularity
                     ordered = candidates
                         .OrderByDescending(y => preferredCategoryIds.Contains(y.CategoryId))
                         .ThenByDescending(y => preferredLocationIds.Contains(y.LocationId))
@@ -306,7 +301,6 @@ namespace Yamore.Services.Services
             }
             else
             {
-                // Anonymous: most popular active yachts by booking count, then rating
                 ordered = activeYachts
                     .OrderByDescending(y => y.Reservations.Count(r => r.Status != "Cancelled"))
                     .ThenByDescending(y => y.Reviews.Any(r => r.Rating.HasValue) ? y.Reviews.Average(r => r.Rating ?? 0) : 0);

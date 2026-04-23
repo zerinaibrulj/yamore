@@ -11,7 +11,6 @@ import 'theme/app_theme.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Center the window and give it a reasonable default size on desktop.
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     window_size.setWindowTitle('Yamore Admin');
     window_size.setWindowMinSize(const Size(1100, 750));

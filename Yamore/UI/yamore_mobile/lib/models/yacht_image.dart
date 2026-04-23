@@ -16,7 +16,6 @@ class YachtImageModel {
   });
 
   factory YachtImageModel.fromJson(Map<String, dynamic> json) {
-    // Support both camelCase and PascalCase (e.g. .NET API)
     int readInt(String camel, String pascal) {
       final v = json[camel] ?? json[pascal];
       if (v == null) return 0;

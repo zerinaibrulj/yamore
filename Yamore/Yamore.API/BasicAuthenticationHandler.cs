@@ -38,7 +38,6 @@ namespace Yamore.API
             {
                 var credentialBytes = Convert.FromBase64String(authHeader.Parameter);
                 var credentials = Encoding.UTF8.GetString(credentialBytes);
-                // Password may contain ':'; only split on the first colon.
                 var i = credentials.IndexOf(':');
                 if (i <= 0)
                     return AuthenticateResult.Fail("Invalid credentials format");
@@ -72,7 +71,7 @@ namespace Yamore.API
 
                 foreach(var role in user.Roles)
                 {
-                    claims.Add(new Claim(ClaimTypes.Role, role));     //Name se mora slagati sa onim koji se nalazi u Controlleru, odnosno [Authorize(Roles = "Admin")]
+                    claims.Add(new Claim(ClaimTypes.Role, role));
                 }
 
 

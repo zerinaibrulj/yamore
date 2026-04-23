@@ -16,7 +16,6 @@ public class WorkerService : BackgroundService
         _logger.LogInformation("Yamore.Worker starting.");
         _consumer.Start();
 
-        // Exponential backoff when the consumer is down: 1s -> 2s -> 4s -> 8s (then cap at 8s).
         var reconnectWaitSeconds = 1;
 
         while (!stoppingToken.IsCancellationRequested)

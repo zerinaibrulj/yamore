@@ -8,7 +8,6 @@ public sealed class FluentValidationActionFilter : IAsyncActionFilter
 {
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
-        // Let ASP.NET Core handle null-body / binding errors first.
         if (!context.ModelState.IsValid)
         {
             await next();

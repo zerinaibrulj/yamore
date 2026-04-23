@@ -1,6 +1,6 @@
+using Yamore.Configuration;
 using Yamore.Worker;
 
-// Load the same .env as the API (RabbitMQ, SMTP, etc.) before host configuration.
 LocalEnvFileLoader.Load();
 ConfigurationEnvAliases.Apply();
 

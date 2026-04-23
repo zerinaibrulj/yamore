@@ -18,6 +18,7 @@ It includes:
 - 📊 **Admin dashboard** with statistics and export/print  
 - 💡 **Recommendations** for destinations and yachts  
 - 🐰 **RabbitMQ** — API publishes messages; **Worker** sends email notifications (reservation created, payment confirmed)
+- **Flutter client:** central HTTP error handling (including session reset on **401**), optional **deep links** (`yamore://…`; see Android manifest), and **`Future.wait`** where independent API calls can run in parallel
 
 ---
 
@@ -174,7 +175,8 @@ Further configuration: **`Yamore/CONFIGURATION.md`**. Payment testing: **`Yamore
 | Path | Description |
 |------|-------------|
 | `Yamore/` | Solution: API, services, worker, `docker-compose.yml` |
-| `Yamore/UI/yamore_mobile` | Flutter app |
+| `Yamore/Yamore.Configuration` | Shared library: `.env` loading and environment aliases for API and Worker (DRY) |
+| `Yamore/UI/yamore_mobile` | Flutter app (desktop admin + mobile); uses `API_BASE_URL` for the backend |
 
 ---
 

@@ -144,9 +144,9 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
   Future<void> _showRouteValidationDialog(ApiException e) async {
     if (!mounted) return;
 
-    final body = e.body;
+    final text = e.displayMessage;
     final isStartEndSameError =
-        body.contains('Start city and end city must be different');
+        text.contains('Start city and end city must be different');
 
     final message = isStartEndSameError
         ? 'Start city and end city must be different.'

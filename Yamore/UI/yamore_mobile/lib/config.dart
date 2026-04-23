@@ -22,7 +22,6 @@ class AppConfig {
         '(e.g. http://10.0.2.2:5096 for Android emulator, http://localhost:5096 for desktop, same port as Docker 5096).',
       );
     }
-    // Debug / profile: local development defaults (not used in kReleaseMode).
     String raw;
     if (kIsWeb) {
       raw = 'http://localhost:5096';

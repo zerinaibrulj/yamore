@@ -669,7 +669,6 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
   Future<void> _showWeatherForReservation(Reservation r) async {
     List<RouteModel> routes = const <RouteModel>[];
     try {
-      // Refresh routes live in case admin added/edited routes after this tab was loaded.
       routes = await _api.getRoutesForYacht(r.yachtId);
       _routesByYachtId[r.yachtId] = routes;
     } catch (e) {
@@ -699,8 +698,6 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
     try {
       final weatherByRoute = <MapEntry<RouteModel, List<WeatherForecastModel>>>[];
       for (final route in routes) {
-        // Load all forecasts for the route, then keep all entries that match
-        // reservation calendar dates (inclusive), regardless of forecast time.
         final allRouteForecasts = await _api.getWeatherForRoute(route.routeId);
         final matchingDates = _forecastsForReservationDates(
           allRouteForecasts,

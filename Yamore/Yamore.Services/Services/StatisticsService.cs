@@ -32,7 +32,6 @@ namespace Yamore.Services.Services
             var yachtsCount = _context.Yachts.Count(y => y.StateMachine == "active");
             var reportedReviewsCount = _context.Reviews.Count(r => r.IsReported);
 
-            // Group by scalar keys only (YachtId + YachtName) so EF Core can translate it.
             var yachtBookings = completedReservations
                 .Where(r => r.Yacht != null)
                 .Select(r => new
@@ -66,7 +65,6 @@ namespace Yamore.Services.Services
                 .OrderBy(x => x.Year).ThenBy(x => x.Month)
                 .ToList();
 
-            // Project first, then group by scalar CityName to avoid grouping on a complex EF Core shaper expression.
             var reservationsByCity = completedReservations
                 .Where(r => r.Yacht != null && r.Yacht.Location != null)
                 .Select(r => new

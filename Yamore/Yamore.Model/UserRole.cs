@@ -12,7 +12,6 @@ namespace Yamore.Model
         public int RoleId { get; set; }
         public DateTime DateModification { get; set; }
 
-        // Break JSON serialization cycles; Mapster is configured in the API project.
         [JsonIgnore]
         public virtual User User { get; set; } = null!;
 

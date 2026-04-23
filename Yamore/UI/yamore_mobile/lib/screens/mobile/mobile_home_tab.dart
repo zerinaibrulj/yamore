@@ -93,7 +93,6 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
       return;
     }
     if (oldWidget.showOnlyFavorites != widget.showOnlyFavorites) {
-      // Re-apply filters when switching between Home and Favorites tabs.
       _applyFilters();
     }
   }
@@ -296,8 +295,6 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
     });
   }
 }
-
-// ── UI building blocks ──
 
 extension on _MobileHomeTabState {
   Widget _buildHero() {
@@ -565,10 +562,8 @@ extension on _MobileHomeTabState {
     if (name.isNotEmpty) {
       list = list.where((y) => y.name.toLowerCase().contains(name)).toList();
     }
-    // Capacity filter based on guests
     list = list.where((y) => y.capacity >= _guests).toList();
 
-    // Type filter based on category (sailing, motor, catamaran)
     if (_selectedType != 'All') {
       final sailingIds = _categories
           .where((c) => c.name.toLowerCase().contains('sail'))
@@ -602,7 +597,6 @@ extension on _MobileHomeTabState {
       }
     }
 
-    // Sort by price
     list.sort((a, b) =>
         _sortAscending ? a.pricePerDay.compareTo(b.pricePerDay) : b.pricePerDay.compareTo(a.pricePerDay));
 
@@ -744,7 +738,6 @@ extension on _MobileHomeTabState {
     try {
       await FavoritesService.saveFavorites(widget.user.userId, _favoriteIds);
       if (!mounted) return;
-      // Favorites tab lists _filteredYachts; recompute so removed yachts disappear immediately.
       _applyFilters();
       if (makeFavorite) {
         await showDialog<void>(

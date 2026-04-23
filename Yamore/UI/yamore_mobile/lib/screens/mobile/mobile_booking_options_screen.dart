@@ -193,8 +193,6 @@ class _MobileBookingOptionsScreenState
   }
 
   DateTime _calculateEndDateTime(DateTime start, String durationKey) {
-    // The app later computes price using the day difference, so for "half" we still
-    // move forward enough days to avoid a 0-day range (payment clamps to >= 1 day).
     return switch (durationKey) {
       'half' => start.add(const Duration(hours: 12)),
       'full' => start.add(const Duration(days: 1)),

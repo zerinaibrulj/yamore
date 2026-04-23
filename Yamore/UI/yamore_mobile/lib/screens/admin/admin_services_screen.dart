@@ -27,7 +27,6 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
 
   late final TabController _tabController;
 
-  // Categories state
   List<ServiceCategory> _categories = [];
   int? _catTotalCount;
   bool _catLoading = true;
@@ -36,7 +35,6 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
   final int _catPageSize = 10;
   String _catSearch = '';
 
-  // Services state
   List<ServiceModel> _services = [];
   int? _svcTotalCount;
   bool _svcLoading = true;
@@ -45,10 +43,8 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
   final int _svcPageSize = 10;
   String _svcSearch = '';
 
-  // Cached categories for service dropdown
   List<ServiceCategory> _allCategories = [];
 
-  // Yacht Categories state
   List<YachtCategoryModel> _yachtCategories = [];
   int? _ycTotalCount;
   bool _ycLoading = true;
@@ -181,8 +177,6 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
       _showError('Failed to load category list: $e');
     }
   }
-
-  // ── Categories ──
 
   Future<void> _loadCategories() async {
     setState(() {
@@ -413,8 +407,6 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
     }
   }
 
-  // ── Services ──
-
   Future<void> _loadServices() async {
     setState(() {
       _svcLoading = true;
@@ -545,8 +537,6 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
       }
     }
   }
-
-  // ── Yacht Categories ──
 
   Future<void> _loadYachtCategories() async {
     setState(() {
@@ -795,8 +785,6 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
     );
   }
 
-  // ── Categories Tab ──
-
   Widget _buildCategoriesTab() {
     return Column(
       children: [
@@ -919,8 +907,6 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
       ],
     );
   }
-
-  // ── Services Tab ──
 
   Widget _buildServicesTab() {
     return Column(
@@ -1052,8 +1038,6 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
       ],
     );
   }
-
-  // ── Yacht Categories Tab ──
 
   Widget _buildYachtCategoriesTab() {
     return Column(

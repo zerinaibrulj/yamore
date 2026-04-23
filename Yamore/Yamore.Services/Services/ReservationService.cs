@@ -91,7 +91,6 @@ namespace Yamore.Services.Services
                     "This yacht is not available for booking. Only published (active) yachts can be reserved.");
             }
 
-            // Check for overlapping reservations for the same yacht (excluding cancelled)
             var overlapping = Context.Set<Database.Reservation>()
                 .Where(r => r.YachtId == yachtId && r.Status != null && r.Status != "Cancelled")
                 .Any(r => start < r.EndDate && end > r.StartDate);

@@ -567,7 +567,6 @@ class _OwnerYachtsTabState extends State<OwnerYachtsTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Image with gradient overlay
           Stack(
             children: [
               if (yacht.thumbnailImageId != null)
@@ -789,7 +788,6 @@ class _OwnerYachtsTabState extends State<OwnerYachtsTab> {
 
   bool _canEditYacht(String? stateMachine) {
     final s = (stateMachine ?? '').toLowerCase();
-    // Editable only when yacht is in Draft or Active state.
     return s == 'draft' || s == 'active' || s == 'activate';
   }
 
@@ -816,10 +814,6 @@ class _OwnerYachtsTabState extends State<OwnerYachtsTab> {
     );
   }
 }
-
-// ═══════════════════════════════════════════════════════════════════
-//  Full-screen form — Add / Edit yacht
-// ═══════════════════════════════════════════════════════════════════
 
 class _OwnerYachtFormScreen extends StatefulWidget {
   final ApiService api;
@@ -970,8 +964,6 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
     super.dispose();
   }
 
-  // ── Images ──
-
   Future<void> _loadImages() async {
     setState(() => _imagesLoading = true);
     try {
@@ -1075,8 +1067,6 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
       }
     }
   }
-
-  // ── Availability ──
 
   Future<void> _loadAvailabilities() async {
     setState(() => _availLoading = true);
@@ -1254,8 +1244,6 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
   String _fmtDate(DateTime dt) =>
       '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
 
-  // ── Services ──
-
   Future<void> _loadServices() async {
     setState(() => _servicesLoading = true);
     try {
@@ -1297,8 +1285,6 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
       }
     }
   }
-
-  // ── Save ──
 
   Future<void> _save() async {
     if (!_canEdit) {
@@ -1346,14 +1332,12 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
     } on ApiException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Save failed: ${e.body}')),
+          SnackBar(content: Text('Save failed: ${e.displayMessage}')),
         );
         setState(() => _saving = false);
       }
     }
   }
-
-  // ── Build ──
 
   @override
   Widget build(BuildContext context) {
@@ -1401,7 +1385,6 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Section: Basic Info ──
               _sectionHeader(Icons.info_outline, 'Basic Information'),
               const SizedBox(height: 12),
               _card([
@@ -1428,7 +1411,6 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
 
               const SizedBox(height: 20),
 
-              // ── Section: Specifications ──
               _sectionHeader(Icons.build_outlined, 'Specifications'),
               const SizedBox(height: 12),
               _card([
@@ -1529,7 +1511,6 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
 
               const SizedBox(height: 20),
 
-              // ── Section: Pricing & Location ──
               _sectionHeader(Icons.euro_outlined, 'Pricing & Location'),
               const SizedBox(height: 12),
               _card([
@@ -1581,7 +1562,6 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                 ),
               ]),
 
-              // ── Section: Photos (edit only) ──
               if (_isEdit) ...[
                 const SizedBox(height: 20),
                 _sectionHeader(Icons.photo_library_outlined, 'Photos'),
@@ -1656,7 +1636,6 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                 ]),
               ],
 
-              // ── Section: Availability (edit only) ──
               if (_isEdit) ...[
                 const SizedBox(height: 20),
                 _sectionHeader(
@@ -1745,7 +1724,6 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                 ]),
               ],
 
-              // ── Section: Services (edit only) ──
               if (_isEdit) ...[
                 const SizedBox(height: 20),
                 _sectionHeader(Icons.room_service_outlined, 'Services Offered'),
@@ -1836,8 +1814,6 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
       ),
     );
   }
-
-  // ── UI helpers ──
 
   IconData _serviceIcon(String name) {
     final n = name.toLowerCase();

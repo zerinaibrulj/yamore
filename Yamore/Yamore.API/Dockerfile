@@ -12,6 +12,9 @@ EXPOSE 8081
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
+COPY ["Yamore.Configuration/Yamore.Configuration.csproj", "Yamore.Configuration/"]
+COPY ["Yamore.Model/Yamore.Model.csproj", "Yamore.Model/"]
+COPY ["Yamore.Services/Yamore.Services.csproj", "Yamore.Services/"]
 COPY ["Yamore.API/Yamore.API.csproj", "Yamore.API/"]
 RUN dotnet restore "./Yamore.API/Yamore.API.csproj"
 COPY . .

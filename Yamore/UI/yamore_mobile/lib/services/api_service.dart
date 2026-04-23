@@ -429,7 +429,6 @@ class ApiService {
       body['Password'] = password;
       body['PasswordConfirmation'] = password;
     }
-    // Email and username are omitted from update for now to keep semantics simple.
     final response = await http.put(
       uri,
       headers: _headers,
@@ -539,8 +538,6 @@ class ApiService {
     return stopwatch.elapsed;
   }
 
-  // ── Yacht Images ──
-
   String yachtImageUrl(int imageId) => '$baseUrl/YachtImages/$imageId';
 
   Future<List<YachtImageModel>> getYachtImages(int yachtId) async {
@@ -600,8 +597,6 @@ class ApiService {
     _ensureSuccess(response);
   }
 
-  // ── Notifications ──
-
   Future<void> sendNotification({required int userId, required String message}) async {
     final uri = Uri.parse('$baseUrl/Notification');
     final response = await http.post(
@@ -659,8 +654,6 @@ class ApiService {
       jsonDecode(response.body) as Map<String, dynamic>,
     );
   }
-
-  // ── Reviews ──
 
   Future<PagedReviews> getReviews({
     int? page,
@@ -765,8 +758,6 @@ class ApiService {
     _ensureSuccess(response);
   }
 
-  // ── Yacht Availability ──
-
   Future<PagedYachtAvailabilities> getYachtAvailabilities({
     required int yachtId,
     int? page,
@@ -814,8 +805,6 @@ class ApiService {
     _ensureSuccess(response);
   }
 
-  // ── Yacht Services (many-to-many) ──
-
   Future<List<int>> getYachtServiceIds(int yachtId) async {
     final uri = Uri.parse('$baseUrl/YachtService')
         .replace(queryParameters: {'YachtId': yachtId.toString(), 'PageSize': '200'});
@@ -849,8 +838,6 @@ class ApiService {
     final delResp = await http.delete(delUri, headers: _headers);
     _ensureSuccess(delResp);
   }
-
-  // ── Service Categories ──
 
   Future<PagedServiceCategories> getServiceCategories({
     int? page,
@@ -904,8 +891,6 @@ class ApiService {
     final response = await http.delete(uri, headers: _headers);
     _ensureSuccess(response);
   }
-
-  // ── Services ──
 
   Future<PagedServices> getServices({
     int? page,
@@ -971,8 +956,6 @@ class ApiService {
     _ensureSuccess(response);
   }
 
-  // ── Reservations ──
-
   Future<PagedReservations> getReservations({
     int? page,
     int? pageSize,
@@ -994,8 +977,6 @@ class ApiService {
       jsonDecode(response.body) as Map<String, dynamic>,
     );
   }
-
-  // ── Routes & Weather ──
 
   Future<List<RouteModel>> getRoutesForYacht(int yachtId) async {
     final uri = Uri.parse('$baseUrl/Route').replace(
@@ -1160,7 +1141,6 @@ class ApiService {
       headers: _headers,
       body: jsonEncode({
         'RouteId': routeId,
-        // Local wall-clock time as selected in the app (no UTC shift).
         'ForecastDate': _weatherForecastDateToJson(forecastDate),
         'Temperature': temperature,
         'Condition': condition,
@@ -1262,8 +1242,6 @@ class ApiService {
     _ensureSuccess(response);
   }
 
-  // ── Reservation Services (extras) ──
-
   Future<void> addServiceToReservation({
     required int reservationId,
     required int serviceId,
@@ -1279,8 +1257,6 @@ class ApiService {
     );
     _ensureSuccess(response, allow201: true);
   }
-
-  // ── Payment (Stripe + offline) ──
 
   /// Fetches Stripe publishable key (endpoint is AllowAnonymous). Use to init Stripe SDK.
   Future<String> getStripePublishableKey() async {

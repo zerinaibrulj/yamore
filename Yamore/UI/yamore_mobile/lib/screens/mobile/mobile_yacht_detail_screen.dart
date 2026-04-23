@@ -469,10 +469,8 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Images carousel
           _buildImageCarousel(),
           const SizedBox(height: 12),
-          // Title + rating row
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -815,14 +813,12 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
   Widget _buildImageCarousel() {
     final overview = widget.overview;
 
-    // Deduplicate by yachtImageId (keep first occurrence), then sort by sortOrder
     final seenIds = <int>{};
     final images = _yachtImages
         .where((img) => seenIds.add(img.yachtImageId))
         .toList()
       ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
 
-    // If no images from API, use thumbnail so we always show at least one
     final List<int> imageIds;
     if (images.isEmpty && overview.thumbnailImageId != null) {
       imageIds = [overview.thumbnailImageId!];

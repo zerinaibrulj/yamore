@@ -1,19 +1,15 @@
 using DotNetEnv;
 
-namespace Yamore.API.Configuration;
+namespace Yamore.Configuration;
 
 /// <summary>
-/// Loads a <c>.env</c> file into process environment variables so <c>WebApplication.CreateBuilder</c> picks them up.
-/// Searches upward from the current directory and app base path for a file named <c>.env</c> (e.g. <c>Yamore/.env</c> next to <c>docker-compose.yml</c>).
-/// Does not load committed JSON for secrets; Docker Compose and CI still inject the same <c>KEY__Nested</c> variable names.
+/// Loads a <c>.env</c> file into process environment variables before host or web configuration runs.
+/// Prefers <c>.env</c> next to <c>docker-compose.yml</c>, then walks up from the current directory for <c>.env</c>.
 /// </summary>
 public static class LocalEnvFileLoader
 {
     public static void Load()
     {
-        // Prefer .env in the same folder as docker-compose.yml (e.g. Yamore/.env next to Yamore/docker-compose.yml).
-        // A plain "first .env walking up" can match an unrelated file if one exists high in the tree, leaving STRIPE_*
-        // unset in process and allowing User Secrets to supply a different (invalid) Stripe key.
         if (TryLoadEnvInDockerComposeDirectory())
             return;
 
@@ -21,7 +17,6 @@ public static class LocalEnvFileLoader
         if (string.IsNullOrEmpty(path) || !File.Exists(path))
             return;
 
-        // Makes KEY=value available as environment variables; nested keys use double-underscore, e.g. ConnectionStrings__DefaultConnection
         Env.Load(path, new LoadOptions(onlyExactPath: true, setEnvVars: true, clobberExistingVars: true));
     }
 
@@ -39,20 +34,35 @@ public static class LocalEnvFileLoader
                 return true;
             }
         }
+
         return false;
     }
 
     private static IEnumerable<string> GetPathsToCheckFromDirectoryWalk()
     {
         var seeds = new List<string?>();
-        try { seeds.Add(Directory.GetCurrentDirectory()); } catch { }
-        try { if (!string.IsNullOrEmpty(AppContext.BaseDirectory)) seeds.Add(AppContext.BaseDirectory); } catch { }
+        try
+        {
+            seeds.Add(Directory.GetCurrentDirectory());
+        }
+        catch
+        {
+        }
+
+        try
+        {
+            if (!string.IsNullOrEmpty(AppContext.BaseDirectory))
+                seeds.Add(AppContext.BaseDirectory);
+        }
+        catch
+        {
+        }
 
         foreach (var start in seeds)
         {
             if (string.IsNullOrEmpty(start))
                 continue;
-            for (var dir = new DirectoryInfo(start); dir != null && dir.Exists; dir = dir.Parent)
+            for (var dir = new DirectoryInfo(start); dir is { Exists: true }; dir = dir.Parent)
             {
                 var p = Path.Combine(dir.FullName, "docker-compose.yml");
                 if (File.Exists(p))
@@ -81,7 +91,6 @@ public static class LocalEnvFileLoader
         }
         catch
         {
-            // ignored
         }
 
         try
@@ -91,14 +100,13 @@ public static class LocalEnvFileLoader
         }
         catch
         {
-            // ignored
         }
 
         foreach (var start in seeds)
         {
             if (string.IsNullOrEmpty(start))
                 continue;
-            for (var dir = new DirectoryInfo(start); dir != null && dir.Exists; dir = dir.Parent)
+            for (var dir = new DirectoryInfo(start); dir is { Exists: true }; dir = dir.Parent)
             {
                 var p = Path.Combine(dir.FullName, ".env");
                 if (File.Exists(p) && seen.Add(p))
