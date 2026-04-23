@@ -504,10 +504,10 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      final bodyLower = e.body.toLowerCase();
+      final bodyLower = e.displayMessage.toLowerCase();
       final msg = bodyLower.contains('already reserved') || bodyLower.contains('selected dates')
           ? 'This yacht is already reserved for the selected dates. Please choose different dates or times.'
-          : (e.body.isNotEmpty ? e.body : 'Request failed.');
+          : (e.displayMessage.isNotEmpty ? e.displayMessage : 'Request failed.');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(msg), duration: const Duration(seconds: 5)),
       );

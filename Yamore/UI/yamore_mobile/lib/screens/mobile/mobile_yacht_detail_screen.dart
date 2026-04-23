@@ -88,12 +88,22 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
       final images = results[3] as List<YachtImageModel>;
       final authorIds = allReviews.map((r) => r.userId).toSet().where((id) => id != widget.user.userId).toList();
       final names = <int, String>{};
-      for (final id in authorIds) {
-        try {
-          final u = await widget.api.getUserById(id);
-          if (u.displayName.isNotEmpty) names[id] = u.displayName;
-        } catch (e) {
-          debugPrint('Failed to load review author $id: $e');
+      if (authorIds.isNotEmpty) {
+        final authorResults = await Future.wait(
+          authorIds.map((id) async {
+            try {
+              final u = await widget.api.getUserById(id);
+              if (u.displayName.isNotEmpty) {
+                return MapEntry<int, String>(id, u.displayName);
+              }
+            } catch (e) {
+              debugPrint('Failed to load review author $id: $e');
+            }
+            return null;
+          }),
+        );
+        for (final e in authorResults) {
+          if (e != null) names[e.key] = e.value;
         }
       }
       if (!mounted) return;

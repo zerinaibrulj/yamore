@@ -53,7 +53,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       });
     } on ApiException catch (e) {
       setState(() {
-        _error = '${e.statusCode}: ${e.body}';
+        _error = '${e.statusCode}: ${e.displayMessage}';
         _loading = false;
       });
     } catch (e) {
@@ -526,6 +526,35 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     );
   }
 
+  Future<Map<int, String>> _loadAllYachtNamesForReport() async {
+    final yachtNames = <int, String>{};
+    for (var page = 0; ; page++) {
+      const pageSize = 200;
+      final p = await _api.getYachtOverviewForAdmin(page: page, pageSize: pageSize);
+      for (final y in p.resultList) {
+        yachtNames[y.yachtId] = y.name;
+      }
+      if (p.resultList.isEmpty || p.resultList.length < pageSize) break;
+      if (p.count != null && yachtNames.length >= p.count!) break;
+    }
+    return yachtNames;
+  }
+
+  Future<Map<int, String>> _loadAllUserNamesForReport() async {
+    final userNames = <int, String>{};
+    for (var page = 0; ; page++) {
+      const pageSize = 200;
+      final p = await _api.getUsers(page: page, pageSize: pageSize);
+      for (final u in p.resultList) {
+        userNames[u.userId] =
+            u.displayName.isNotEmpty ? u.displayName : u.username;
+      }
+      if (p.resultList.length < pageSize) break;
+      if (p.count != null && userNames.length >= p.count!) break;
+    }
+    return userNames;
+  }
+
   /// Loads paged data for the reservations PDF (current calendar year, by created date
   /// when set—otherwise by trip start year—to align with the statistics API’s year filter).
   Future<_ReservationsReportData> _loadReservationsReportData() async {
@@ -548,34 +577,16 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         return bc.compareTo(ac);
       });
 
-    final yachtNames = <int, String>{};
-    for (var page = 0; ; page++) {
-      const pageSize = 200;
-      final p = await _api.getYachtOverviewForAdmin(page: page, pageSize: pageSize);
-      for (final y in p.resultList) {
-        yachtNames[y.yachtId] = y.name;
-      }
-      if (p.resultList.isEmpty || p.resultList.length < pageSize) break;
-      if (p.count != null && yachtNames.length >= p.count!) break;
-    }
-
-    final userNames = <int, String>{};
-    for (var page = 0; ; page++) {
-      const pageSize = 200;
-      final p = await _api.getUsers(page: page, pageSize: pageSize);
-      for (final u in p.resultList) {
-        userNames[u.userId] =
-            u.displayName.isNotEmpty ? u.displayName : u.username;
-      }
-      if (p.resultList.length < pageSize) break;
-      if (p.count != null && userNames.length >= p.count!) break;
-    }
+    final maps = await Future.wait([
+      _loadAllYachtNamesForReport(),
+      _loadAllUserNamesForReport(),
+    ]);
 
     return _ReservationsReportData(
       year: year,
       reservations: inYear,
-      yachtNames: yachtNames,
-      userNames: userNames,
+      yachtNames: maps[0],
+      userNames: maps[1],
     );
   }
 

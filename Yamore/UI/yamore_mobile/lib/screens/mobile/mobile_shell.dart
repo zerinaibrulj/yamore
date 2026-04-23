@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../models/user.dart';
+import '../../models/yacht_overview.dart';
+import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/session_controller.dart';
 import '../login/login_screen.dart';
 import 'mobile_home_tab.dart';
 import 'mobile_bookings_tab.dart';
@@ -9,16 +12,19 @@ import 'mobile_profile_tab.dart';
 import 'owner_reservations_tab.dart';
 import 'owner_yachts_tab.dart';
 import 'owner_services_tab.dart';
+import 'mobile_yacht_detail_screen.dart';
 import 'owner_settings_tab.dart';
 
 class MobileShell extends StatefulWidget {
   final AppUser user;
   final AuthService authService;
+  final int? initialYachtIdToOpen;
 
   const MobileShell({
     super.key,
     required this.user,
     required this.authService,
+    this.initialYachtIdToOpen,
   });
 
   @override
@@ -37,6 +43,10 @@ class _MobileShellState extends State<MobileShell> {
   @override
   void initState() {
     super.initState();
+    final pendingId = widget.initialYachtIdToOpen;
+    if (pendingId != null && pendingId > 0 && !_sessionUser.isAdmin) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _openDeepLinkedYacht(pendingId));
+    }
     if (widget.user.isYachtOwner) {
       _tabs = [
         const _TabItem(icon: Icons.calendar_month_outlined, activeIcon: Icons.calendar_month, label: 'Reservations'),
@@ -102,8 +112,35 @@ class _MobileShellState extends State<MobileShell> {
     }
   }
 
+  Future<void> _openDeepLinkedYacht(int yachtId) async {
+    if (!mounted) return;
+    try {
+      final api = ApiService(
+        baseUrl: widget.authService.baseUrl,
+        username: widget.authService.username,
+        password: widget.authService.password,
+      );
+      final detail = await api.getYachtById(yachtId);
+      final overview = YachtOverview.fromYachtDetail(detail);
+      if (!mounted) return;
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => MobileYachtDetailScreen(
+            api: api,
+            user: _sessionUser,
+            authService: widget.authService,
+            overview: overview,
+          ),
+        ),
+      );
+    } catch (e, st) {
+      debugPrint('Open deep-linked yacht failed: $e\n$st');
+    }
+  }
+
   void _logout() {
     widget.authService.logout();
+    SessionController.instance.clearAuthBinding();
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
     );

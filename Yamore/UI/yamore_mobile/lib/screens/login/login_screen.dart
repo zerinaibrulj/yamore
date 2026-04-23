@@ -4,6 +4,8 @@ import '../../config.dart';
 import '../../theme/app_theme.dart';
 import '../../models/user.dart';
 import '../../services/auth_service.dart';
+import '../../services/session_controller.dart';
+import '../../services/pending_deep_link.dart';
 import '../admin/admin_shell.dart';
 import '../mobile/mobile_shell.dart';
 import 'register_screen.dart';
@@ -103,6 +105,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   }
 
   void _navigateByRole(AppUser user, AuthService auth) {
+    SessionController.instance.bindAuth(auth);
+    final pendingYachtId = PendingDeepLink.takeYachtId();
     if (user.isAdmin) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
@@ -112,7 +116,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     } else {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => MobileShell(user: user, authService: auth),
+          builder: (_) => MobileShell(
+            user: user,
+            authService: auth,
+            initialYachtIdToOpen: pendingYachtId,
+          ),
         ),
       );
     }

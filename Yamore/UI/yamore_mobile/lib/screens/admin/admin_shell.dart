@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/auth_service.dart';
+import '../../services/session_controller.dart';
 import '../login/login_screen.dart';
 import 'admin_home_screen.dart';
 import 'admin_users_screen.dart';
@@ -185,6 +186,7 @@ class _AdminShellState extends State<AdminShell> {
               TextButton.icon(
                 onPressed: () {
                   widget.authService.logout();
+                  SessionController.instance.clearAuthBinding();
                   Navigator.of(context).pushReplacement(
                     MaterialPageRoute(builder: (_) => const LoginScreen()),
                   );

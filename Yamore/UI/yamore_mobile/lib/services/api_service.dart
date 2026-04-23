@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+
+import 'api_exception.dart';
+import 'api_response_handler.dart';
 import '../models/yacht_overview.dart';
 import '../models/yacht_detail.dart';
 import '../models/yacht_image.dart';
@@ -18,6 +21,8 @@ import '../models/reservation.dart';
 import '../models/route.dart';
 import '../models/weather_forecast.dart';
 import '../models/notification.dart';
+
+export 'api_exception.dart';
 
 class ApiService {
   final String baseUrl;
@@ -51,6 +56,10 @@ class ApiService {
     return headers;
   }
 
+  void _ensureSuccess(http.Response response, {bool allow201 = false}) {
+    ApiResponseHandler.ensureSuccess(response, allow201: allow201);
+  }
+
   Future<PagedYachtOverview> getYachtOverviewForAdmin({
     int? page,
     int? pageSize,
@@ -77,9 +86,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Yachts/admin/overview')
         .replace(queryParameters: query.isNotEmpty ? query : null);
     final response = await http.get(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     return PagedYachtOverview.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -95,9 +102,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Yachts/owner/my')
         .replace(queryParameters: query.isNotEmpty ? query : null);
     final response = await http.get(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     return PagedYachtOverview.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -117,9 +122,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Yachts/recommendations')
         .replace(queryParameters: query);
     final response = await http.get(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     return PagedYachtOverview.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -128,9 +131,7 @@ class ApiService {
   Future<YachtDetail> getYachtById(int id) async {
     final uri = Uri.parse('$baseUrl/Yachts/$id');
     final response = await http.get(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     return YachtDetail.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -143,9 +144,7 @@ class ApiService {
       headers: _headers,
       body: jsonEncode(yacht.toJsonForSave()),
     );
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response, allow201: true);
     return YachtDetail.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -161,9 +160,7 @@ class ApiService {
       headers: _headers,
       body: jsonEncode(yacht.toJsonForSave()),
     );
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     return YachtDetail.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -172,36 +169,28 @@ class ApiService {
   Future<void> deleteYacht(int id) async {
     final uri = Uri.parse('$baseUrl/Yachts/$id');
     final response = await http.delete(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   /// Move yacht to active (visible to users). Allowed from draft.
   Future<void> activateYacht(int id) async {
     final uri = Uri.parse('$baseUrl/Yachts/$id/activate');
     final response = await http.put(uri, headers: _headers, body: '{}');
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   /// Move yacht to hidden (not visible). Allowed from draft or active.
   Future<void> hideYacht(int id) async {
     final uri = Uri.parse('$baseUrl/Yachts/$id/hide');
     final response = await http.put(uri, headers: _headers, body: '{}');
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   /// Move yacht from hidden back to draft. Allowed from hidden only.
   Future<void> setYachtToDraft(int id) async {
     final uri = Uri.parse('$baseUrl/Yachts/$id/edit');
     final response = await http.put(uri, headers: _headers, body: '{}');
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   Future<List<CityModel>> getCities() async {
@@ -212,9 +201,7 @@ class ApiService {
       },
     );
     final response = await http.get(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final list = json['resultList'] as List<dynamic>? ?? json['ResultList'] as List<dynamic>? ?? [];
     return list.map((e) => CityModel.fromJson(e as Map<String, dynamic>)).toList();
@@ -227,9 +214,7 @@ class ApiService {
       headers: _headers,
       body: jsonEncode({'CountryId': countryId, 'Name': name}),
     );
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response, allow201: true);
   }
 
   Future<void> updateCity(int id, {required int countryId, required String name}) async {
@@ -239,17 +224,13 @@ class ApiService {
       headers: _headers,
       body: jsonEncode({'CountryId': countryId, 'Name': name}),
     );
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   Future<void> deleteCity(int id) async {
     final uri = Uri.parse('$baseUrl/City/$id');
     final response = await http.delete(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   Future<List<CountryModel>> getCountries() async {
@@ -260,9 +241,7 @@ class ApiService {
       },
     );
     final response = await http.get(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final list = json['resultList'] as List<dynamic>? ?? json['ResultList'] as List<dynamic>? ?? [];
     return list.map((e) => CountryModel.fromJson(e as Map<String, dynamic>)).toList();
@@ -275,9 +254,7 @@ class ApiService {
       headers: _headers,
       body: jsonEncode({'Name': name}),
     );
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response, allow201: true);
   }
 
   Future<void> updateCountry(int id, {required String name}) async {
@@ -287,17 +264,13 @@ class ApiService {
       headers: _headers,
       body: jsonEncode({'Name': name}),
     );
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   Future<void> deleteCountry(int id) async {
     final uri = Uri.parse('$baseUrl/Country/$id');
     final response = await http.delete(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   Future<List<YachtCategoryModel>> getYachtCategories() async {
@@ -308,9 +281,7 @@ class ApiService {
       },
     );
     final response = await http.get(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final list = json['resultList'] as List<dynamic>? ?? [];
     return list
@@ -325,9 +296,7 @@ class ApiService {
       headers: _headers,
       body: jsonEncode({'Name': name}),
     );
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response, allow201: true);
   }
 
   Future<void> updateYachtCategory(int id, {required String name}) async {
@@ -337,26 +306,20 @@ class ApiService {
       headers: _headers,
       body: jsonEncode({'Name': name}),
     );
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   Future<void> deleteYachtCategory(int id) async {
     final uri = Uri.parse('$baseUrl/YachtCategory/$id');
     final response = await http.delete(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   /// All users who have the YachtOwner/Owner role, sorted by display name.
   Future<List<AppUser>> getOwners() async {
     final uri = Uri.parse('$baseUrl/Users/owners');
     final response = await http.get(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final list = json['resultList'] as List<dynamic>? ?? [];
     final users =
@@ -371,9 +334,7 @@ class ApiService {
           year != null ? <String, String>{'year': year.toString()} : null,
     );
     final response = await http.get(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     return StatisticsDtoModel.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -404,9 +365,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Users')
         .replace(queryParameters: query.isNotEmpty ? query : null);
     final response = await http.get(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     return PagedUsers.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -441,9 +400,7 @@ class ApiService {
       headers: _headers,
       body: jsonEncode(body),
     );
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response, allow201: true);
     return AppUser.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -478,9 +435,7 @@ class ApiService {
       headers: _headers,
       body: jsonEncode(body),
     );
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     return AppUser.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -489,25 +444,19 @@ class ApiService {
   Future<void> deleteUser(int id) async {
     final uri = Uri.parse('$baseUrl/Users/$id');
     final response = await http.delete(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   Future<void> suspendUser(int id) async {
     final uri = Uri.parse('$baseUrl/Users/$id/suspend');
     final response = await http.put(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   Future<void> activateUser(int id) async {
     final uri = Uri.parse('$baseUrl/Users/$id/activate');
     final response = await http.put(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   Future<AppUser> updateProfile({
@@ -531,9 +480,7 @@ class ApiService {
       headers: _headers,
       body: jsonEncode(body),
     );
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     return AppUser.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -564,9 +511,7 @@ class ApiService {
       headers: _headers,
       body: jsonEncode(body),
     );
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     return AppUser.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -575,9 +520,7 @@ class ApiService {
   Future<AppUser> getUserById(int id) async {
     final uri = Uri.parse('$baseUrl/Users/$id');
     final response = await http.get(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     return AppUser.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -592,9 +535,7 @@ class ApiService {
       onTimeout: () => throw ApiException(0, 'Connection timed out after 10 seconds.'),
     );
     stopwatch.stop();
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     return stopwatch.elapsed;
   }
 
@@ -605,9 +546,7 @@ class ApiService {
   Future<List<YachtImageModel>> getYachtImages(int yachtId) async {
     final uri = Uri.parse('$baseUrl/YachtImages/byYacht/$yachtId');
     final response = await http.get(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     final decoded = jsonDecode(response.body);
     List<dynamic> list;
     if (decoded is List<dynamic>) {
@@ -643,9 +582,7 @@ class ApiService {
         'FileName': filePath.split(Platform.pathSeparator).last,
       }),
     );
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response, allow201: true);
     return YachtImageModel.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -654,17 +591,13 @@ class ApiService {
   Future<void> deleteYachtImage(int imageId) async {
     final uri = Uri.parse('$baseUrl/YachtImages/$imageId');
     final response = await http.delete(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   Future<void> setYachtImageThumbnail(int imageId) async {
     final uri = Uri.parse('$baseUrl/YachtImages/$imageId/thumbnail');
     final response = await http.put(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   // ── Notifications ──
@@ -681,9 +614,7 @@ class ApiService {
         'IsRead': false,
       }),
     );
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response, allow201: true);
   }
 
   Future<void> sendWarningToUserAndOwners({
@@ -699,9 +630,7 @@ class ApiService {
         'Message': message,
       }),
     );
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response, allow201: true);
   }
 
   Future<PagedNotifications> getNotifications({
@@ -724,9 +653,7 @@ class ApiService {
     );
 
     final response = await http.get(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
 
     return PagedNotifications.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
@@ -751,9 +678,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Review')
         .replace(queryParameters: query.isNotEmpty ? query : null);
     final response = await http.get(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     return PagedReviews.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -779,9 +704,7 @@ class ApiService {
         'DatePosted': DateTime.now().toUtc().toIso8601String(),
       }),
     );
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response, allow201: true);
     return Review.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -808,9 +731,7 @@ class ApiService {
         'DatePosted': DateTime.now().toUtc().toIso8601String(),
       }),
     );
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     return Review.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -819,25 +740,19 @@ class ApiService {
   Future<void> deleteReview(int id) async {
     final uri = Uri.parse('$baseUrl/Review/$id');
     final response = await http.delete(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   Future<void> reportReview(int id) async {
     final uri = Uri.parse('$baseUrl/Review/$id/report');
     final response = await http.put(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   Future<void> unreportReview(int id) async {
     final uri = Uri.parse('$baseUrl/Review/$id/unreport');
     final response = await http.put(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   Future<void> respondToReview(int id, String ownerResponse) async {
@@ -847,9 +762,7 @@ class ApiService {
       headers: _headers,
       body: jsonEncode({'OwnerResponse': ownerResponse}),
     );
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   // ── Yacht Availability ──
@@ -867,9 +780,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/YachtAvailability')
         .replace(queryParameters: query);
     final response = await http.get(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     return PagedYachtAvailabilities.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -894,17 +805,13 @@ class ApiService {
         'Note': note,
       }),
     );
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response, allow201: true);
   }
 
   Future<void> deleteYachtAvailability(int id) async {
     final uri = Uri.parse('$baseUrl/YachtAvailability/$id');
     final response = await http.delete(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   // ── Yacht Services (many-to-many) ──
@@ -913,9 +820,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/YachtService')
         .replace(queryParameters: {'YachtId': yachtId.toString(), 'PageSize': '200'});
     final response = await http.get(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final list = (json['resultList'] ?? json['ResultList'] ?? []) as List;
     return list.map((e) => e['serviceId'] as int).toList();
@@ -928,27 +833,21 @@ class ApiService {
       headers: _headers,
       body: jsonEncode({'YachtId': yachtId, 'ServiceId': serviceId}),
     );
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response, allow201: true);
   }
 
   Future<void> removeYachtService({required int yachtId, required int serviceId}) async {
     final uri = Uri.parse('$baseUrl/YachtService')
         .replace(queryParameters: {'YachtId': yachtId.toString(), 'ServiceId': serviceId.toString(), 'PageSize': '1'});
     final response = await http.get(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final list = (json['resultList'] ?? json['ResultList'] ?? []) as List;
     if (list.isEmpty) return;
     final ysId = list.first['yachtServiceId'] as int;
     final delUri = Uri.parse('$baseUrl/YachtService/$ysId');
     final delResp = await http.delete(delUri, headers: _headers);
-    if (delResp.statusCode != 200) {
-      throw ApiException(delResp.statusCode, delResp.body);
-    }
+    _ensureSuccess(delResp);
   }
 
   // ── Service Categories ──
@@ -965,9 +864,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/ServiceCategory')
         .replace(queryParameters: query.isNotEmpty ? query : null);
     final response = await http.get(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     return PagedServiceCategories.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -986,9 +883,7 @@ class ApiService {
         'Description': description,
       }),
     );
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response, allow201: true);
   }
 
   Future<void> updateServiceCategory(int id, {String? name, String? description}) async {
@@ -1001,17 +896,13 @@ class ApiService {
         'Description': description,
       }),
     );
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   Future<void> deleteServiceCategory(int id) async {
     final uri = Uri.parse('$baseUrl/ServiceCategory/$id');
     final response = await http.delete(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   // ── Services ──
@@ -1028,9 +919,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Service')
         .replace(queryParameters: query.isNotEmpty ? query : null);
     final response = await http.get(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     return PagedServices.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -1053,9 +942,7 @@ class ApiService {
         'ServiceCategoryId': serviceCategoryId,
       }),
     );
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response, allow201: true);
   }
 
   Future<void> updateService(int id, {
@@ -1075,17 +962,13 @@ class ApiService {
         'ServiceCategoryId': serviceCategoryId,
       }),
     );
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   Future<void> deleteService(int id) async {
     final uri = Uri.parse('$baseUrl/Service/$id');
     final response = await http.delete(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   // ── Reservations ──
@@ -1106,9 +989,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Reservation')
         .replace(queryParameters: query.isNotEmpty ? query : null);
     final response = await http.get(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     return PagedReservations.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -1125,9 +1006,7 @@ class ApiService {
       },
     );
     final response = await http.get(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final list = (json['resultList'] ?? json['ResultList'] ?? []) as List;
     return list
@@ -1145,9 +1024,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Route')
         .replace(queryParameters: query.isNotEmpty ? query : null);
     final response = await http.get(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final list = (json['resultList'] ?? json['ResultList'] ?? []) as List;
     return list
@@ -1174,9 +1051,7 @@ class ApiService {
         'Description': description,
       }),
     );
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response, allow201: true);
     return RouteModel.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -1202,9 +1077,7 @@ class ApiService {
         'Description': description,
       }),
     );
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     return RouteModel.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -1213,9 +1086,7 @@ class ApiService {
   Future<void> deleteRoute(int routeId) async {
     final uri = Uri.parse('$baseUrl/Route/$routeId');
     final response = await http.delete(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   /// When [tripStart] / [tripEnd] are set, the API returns only forecasts on those
@@ -1240,9 +1111,7 @@ class ApiService {
       queryParameters: query,
     );
     final response = await http.get(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final list = (json['resultList'] ?? json['ResultList'] ?? []) as List;
     return list
@@ -1270,9 +1139,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/WeatherForecast')
         .replace(queryParameters: query.isNotEmpty ? query : null);
     final response = await http.get(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final list = (json['resultList'] ?? json['ResultList'] ?? []) as List;
     return list
@@ -1300,9 +1167,7 @@ class ApiService {
         'WindSpeed': windSpeed,
       }),
     );
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response, allow201: true);
     return WeatherForecastModel.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -1328,9 +1193,7 @@ class ApiService {
         'WindSpeed': windSpeed,
       }),
     );
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     return WeatherForecastModel.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -1356,9 +1219,7 @@ class ApiService {
   Future<void> deleteWeatherForecast(int forecastId) async {
     final uri = Uri.parse('$baseUrl/WeatherForecast/$forecastId');
     final response = await http.delete(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   Future<Reservation> createReservation({
@@ -1383,9 +1244,7 @@ class ApiService {
         'CreatedAt': DateTime.now().toUtc().toIso8601String(),
       }),
     );
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response, allow201: true);
     return Reservation.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
@@ -1394,17 +1253,13 @@ class ApiService {
   Future<void> cancelReservation(int id) async {
     final uri = Uri.parse('$baseUrl/Reservation/$id/cancel');
     final response = await http.put(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   Future<void> confirmReservation(int id) async {
     final uri = Uri.parse('$baseUrl/Reservation/$id/confirm');
     final response = await http.put(uri, headers: _headers);
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
   }
 
   // ── Reservation Services (extras) ──
@@ -1422,9 +1277,7 @@ class ApiService {
         'ServiceId': serviceId,
       }),
     );
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response, allow201: true);
   }
 
   // ── Payment (Stripe + offline) ──
@@ -1463,9 +1316,7 @@ class ApiService {
         'ServiceIds': serviceIds,
       }),
     );
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     final map = jsonDecode(response.body) as Map<String, dynamic>;
     return PaymentIntentResult(
       clientSecret: map['clientSecret'] as String? ?? map['ClientSecret'] as String?,
@@ -1493,9 +1344,7 @@ class ApiService {
         'PaymentMethod': paymentMethod,
       }),
     );
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     final map = jsonDecode(response.body) as Map<String, dynamic>;
     return PaymentIntentResult(
       clientSecret: map['clientSecret'] as String? ?? map['ClientSecret'] as String?,
@@ -1528,9 +1377,7 @@ class ApiService {
       headers: _headers,
       body: jsonEncode(body),
     );
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
-    }
+    _ensureSuccess(response);
     final map = jsonDecode(response.body) as Map<String, dynamic>;
     return map['status'] as String? ?? map['Status'] as String? ?? 'succeeded';
   }
@@ -1541,12 +1388,4 @@ class PaymentIntentResult {
   final String? paymentIntentId;
   final String? status;
   PaymentIntentResult({this.clientSecret, this.paymentIntentId, this.status});
-}
-
-class ApiException implements Exception {
-  final int statusCode;
-  final String body;
-  ApiException(this.statusCode, this.body);
-  @override
-  String toString() => 'ApiException: $statusCode $body';
 }

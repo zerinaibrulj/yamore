@@ -4,6 +4,7 @@ import '../../models/user.dart';
 import '../../models/notification.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
+import '../../services/session_controller.dart';
 import '../login/login_screen.dart';
 
 class OwnerSettingsTab extends StatefulWidget {
@@ -145,6 +146,7 @@ class _OwnerSettingsTabState extends State<OwnerSettingsTab> {
 
   void _logout(BuildContext context) {
     widget.authService.logout();
+    SessionController.instance.clearAuthBinding();
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
     );
