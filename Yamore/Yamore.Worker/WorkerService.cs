@@ -27,4 +27,10 @@ public class WorkerService : BackgroundService
             await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
         }
     }
+
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        _consumer.Dispose();
+        await base.StopAsync(cancellationToken);
+    }
 }

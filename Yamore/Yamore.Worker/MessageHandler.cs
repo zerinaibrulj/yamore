@@ -205,7 +205,7 @@ public class MessageHandler
         client.EnableSsl = useSsl;
         client.Credentials = new NetworkCredential(userName, password);
 
-        var mail = new MailMessage(from, to, subject, body) { IsBodyHtml = false };
+        using var mail = new MailMessage(from, to, subject, body) { IsBodyHtml = false };
         mail.From = new MailAddress(from, fromName);
 
         await client.SendMailAsync(mail);

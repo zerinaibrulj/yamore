@@ -88,7 +88,9 @@ public class RabbitMQMessagePublisher : IMessagePublisher, IDisposable
 
     public void Dispose()
     {
-        _channel?.Close();
-        _connection?.Close();
+        try { _channel?.Close(); } catch { /* ignore */ }
+        try { _connection?.Close(); } catch { /* ignore */ }
+        _channel?.Dispose();
+        _connection?.Dispose();
     }
 }

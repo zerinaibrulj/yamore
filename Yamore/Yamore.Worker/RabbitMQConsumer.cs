@@ -112,5 +112,7 @@ public class RabbitMQConsumer : IDisposable
     {
         try { _channel?.Close(); } catch { }
         try { _connection?.Close(); } catch { }
+        _channel?.Dispose();
+        _connection?.Dispose();
     }
 }

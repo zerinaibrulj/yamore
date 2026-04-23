@@ -326,10 +326,8 @@ namespace Yamore.Services.Services
 
         public static string GenerateSalt()
         {
-            RNGCryptoServiceProvider provider = new RNGCryptoServiceProvider();
             var byteArray = new byte[16];
-            provider.GetBytes(byteArray);
-
+            RandomNumberGenerator.Fill(byteArray);
             return Convert.ToBase64String(byteArray);
         }
 
@@ -343,7 +341,7 @@ namespace Yamore.Services.Services
             Buffer.BlockCopy(src, 0, dst, 0, src.Length);
             Buffer.BlockCopy(bytes, 0, dst, src.Length, bytes.Length);
 
-            HashAlgorithm algorithm = HashAlgorithm.Create("SHA1");
+            using var algorithm = SHA1.Create();
             byte[] inArray = algorithm.ComputeHash(dst);
             return Convert.ToBase64String(inArray);
         }
