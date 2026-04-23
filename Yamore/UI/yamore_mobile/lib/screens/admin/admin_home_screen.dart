@@ -774,13 +774,18 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             pw.Text('No data yet.')
           else
             pw.Table.fromTextArray(
-              headers: const ['Month', 'Revenue', 'Bookings'],
+              headers: const ['ID', 'Month', 'Revenue', 'Bookings'],
               data: stats.revenueByMonth
-                  .map((m) => [
-                        '${m.month}/${m.year}',
-                        formatEuroDashboard(m.revenue),
-                        m.bookingCount.toString(),
-                      ])
+                  .asMap()
+                  .entries
+                  .map(
+                    (e) => [
+                      (e.key + 1).toString(),
+                      '${e.value.month}/${e.value.year}',
+                      formatEuroDashboard(e.value.revenue),
+                      e.value.bookingCount.toString(),
+                    ],
+                  )
                   .toList(),
             ),
           pw.SizedBox(height: 16),
@@ -796,13 +801,18 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             pw.Text('No data yet.')
           else
             pw.Table.fromTextArray(
-              headers: const ['City', 'Reservations', 'Revenue'],
+              headers: const ['ID', 'City', 'Reservations', 'Revenue'],
               data: stats.reservationsByCity
-                  .map((c) => [
-                        c.cityName,
-                        c.reservationCount.toString(),
-                        formatEuroDashboard(c.revenue),
-                      ])
+                  .asMap()
+                  .entries
+                  .map(
+                    (e) => [
+                      (e.key + 1).toString(),
+                      e.value.cityName,
+                      e.value.reservationCount.toString(),
+                      formatEuroDashboard(e.value.revenue),
+                    ],
+                  )
                   .toList(),
             ),
           pw.SizedBox(height: 16),
@@ -818,13 +828,18 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             pw.Text('No data yet.')
           else
             pw.Table.fromTextArray(
-              headers: const ['Yacht', 'Bookings', 'Revenue'],
+              headers: const ['ID', 'Yacht', 'Bookings', 'Revenue'],
               data: stats.mostPopularYachts
-                  .map((y) => [
-                        y.yachtName,
-                        y.bookingCount.toString(),
-                        formatEuroDashboard(y.totalRevenue),
-                      ])
+                  .asMap()
+                  .entries
+                  .map(
+                    (e) => [
+                      (e.key + 1).toString(),
+                      e.value.yachtName,
+                      e.value.bookingCount.toString(),
+                      formatEuroDashboard(e.value.totalRevenue),
+                    ],
+                  )
                   .toList(),
             ),
         ],
@@ -942,10 +957,15 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             ),
             pw.SizedBox(height: 4),
             pw.Table.fromTextArray(
-              headers: const ['Status', 'Count'],
-              data: statusRows
-                  .map((e) => [e.key, e.value.toString()])
-                  .toList(),
+              headers: const ['ID', 'Status', 'Count'],
+              data: [
+                for (var i = 0; i < statusRows.length; i++)
+                  [
+                    (i + 1).toString(),
+                    statusRows[i].key,
+                    statusRows[i].value.toString(),
+                  ],
+              ],
             ),
           ],
           pw.SizedBox(height: 16),
