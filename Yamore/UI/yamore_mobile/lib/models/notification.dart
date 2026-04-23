@@ -26,7 +26,7 @@ class NotificationModel {
     final createdRaw = _key(json, 'createdAt', 'CreatedAt');
     DateTime? createdAt;
     if (createdRaw is String && createdRaw.trim().isNotEmpty) {
-      createdAt = DateTime.tryParse(createdRaw);
+      createdAt = _parseApiDateTime(createdRaw);
     } else if (createdRaw is DateTime) {
       createdAt = createdRaw;
     }
@@ -50,6 +50,26 @@ class NotificationModel {
     );
   }
 }
+
+/// If the server sends an ISO-8601 instant without a timezone, Dart may parse
+/// it as *local* wall time and skip [toLocal], which looks "wrong" (often ~UTC offset).
+/// API timestamps for notifications are UTC; treat offset-less ISO strings as UTC.
+DateTime? _parseApiDateTime(String raw) {
+  final t = raw.trim();
+  if (t.isEmpty) return null;
+  if (t.endsWith('Z')) return DateTime.tryParse(t);
+  // e.g. ...+02:00 or ...-05:00
+  if (RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(t)) {
+    return DateTime.tryParse(t);
+  }
+  if (t.contains('T') && t.length > 10) {
+    return DateTime.tryParse('${t}Z') ?? DateTime.tryParse(t);
+  }
+  return DateTime.tryParse(t);
+}
+
+/// Formats [DateTime] from the API (usually UTC) for local display.
+DateTime notificationDisplayTime(DateTime t) => t.isUtc ? t.toLocal() : t;
 
 class PagedNotifications {
   final int? count;

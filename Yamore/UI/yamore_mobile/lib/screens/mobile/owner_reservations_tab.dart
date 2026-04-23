@@ -38,7 +38,7 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
   final Map<int, YachtDetail> _yachtCache = {};
   final Map<int, AppUser> _guestCache = {};
 
-  static const _statuses = ['All', 'Pending', 'Confirmed', 'Cancelled'];
+  static const _statuses = ['All', 'Pending', 'Confirmed', 'Completed', 'Cancelled'];
 
   @override
   void initState() {
@@ -235,6 +235,45 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
     }
   }
 
+  Future<void> _markTripCompleted(Reservation r) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Mark trip as completed?'),
+        content: const Text(
+          'This marks the booking as completed so the guest can leave a review. Use this after the rental period has ended.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Not now')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Mark completed'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) {
+      try {
+        await _api.completeReservation(r.reservationId);
+        await _loadReservations();
+        if (mounted) {
+          await showOperationSuccessDialog(
+            context,
+            title: 'Trip completed',
+            message: 'The reservation is marked as completed. The guest can now submit a review.',
+          );
+          _scrollReservationsListToTop();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not complete: $e')),
+          );
+        }
+      }
+    }
+  }
+
   String _fmtDate(DateTime dt) =>
       '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
 
@@ -244,6 +283,8 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
         return Colors.green;
       case 'pending':
         return Colors.orange;
+      case 'completed':
+        return Colors.blueGrey;
       case 'cancelled':
         return Colors.red;
       default:
@@ -257,6 +298,8 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
         return Icons.check_circle;
       case 'pending':
         return Icons.hourglass_bottom;
+      case 'completed':
+        return Icons.flag;
       case 'cancelled':
         return Icons.cancel;
       default:
@@ -329,6 +372,12 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
             icon: Icons.check_circle,
           ),
           statCard(
+            label: 'Completed',
+            value: _countStatus('completed'),
+            color: Colors.blueGrey.shade700,
+            icon: Icons.flag,
+          ),
+          statCard(
             label: 'Cancelled',
             value: _countStatus('cancelled'),
             color: Colors.red.shade700,
@@ -337,6 +386,11 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
         ],
       ),
     );
+  }
+
+  bool _canMarkTripCompleted(Reservation r) {
+    if ((r.status ?? '').toLowerCase() != 'confirmed') return false;
+    return !DateTime.now().isBefore(r.endDate);
   }
 
   @override
@@ -486,7 +540,8 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
                 _infoRow(Icons.timelapse, 'Duration', '${r.durationDays} day${r.durationDays == 1 ? '' : 's'}'),
                 if (r.totalPrice != null)
                   _infoRow(Icons.euro, 'Total', '€${r.totalPrice!.toStringAsFixed(2)}'),
-                if (r.status?.toLowerCase() != 'cancelled') ...[
+                if (r.status?.toLowerCase() != 'cancelled' &&
+                    r.status?.toLowerCase() != 'completed') ...[
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
@@ -498,6 +553,16 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
                           label: const Text('Confirm'),
                           style: TextButton.styleFrom(
                             foregroundColor: Colors.green.shade700,
+                          ),
+                        ),
+                      if ((r.status ?? '').toLowerCase() == 'confirmed' &&
+                          _canMarkTripCompleted(r))
+                        TextButton.icon(
+                          onPressed: () => _markTripCompleted(r),
+                          icon: const Icon(Icons.flag_outlined, size: 18),
+                          label: const Text('Mark completed'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.blueGrey.shade800,
                           ),
                         ),
                       const SizedBox(width: 8),

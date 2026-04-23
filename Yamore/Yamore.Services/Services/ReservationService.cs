@@ -1,3 +1,4 @@
+using System.Globalization;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using Yamore.Model;
@@ -339,11 +340,14 @@ namespace Yamore.Services.Services
             entity.Status = ReservationStatuses.Cancelled;
             Context.SaveChanges();
 
-            var msg = $"Reservation #{id} was cancelled.";
             if (isGuest && !actorIsAdmin)
-                _notifications.InsertUserNotification(entity.Yacht.OwnerId, msg);
+                _notifications.InsertUserNotification(
+                    entity.Yacht.OwnerId,
+                    TruncateNotification(BuildOwnerCancelMessage(entity)));
             else if ((isOwner || actorIsAdmin) && entity.UserId != actorUserId)
-                _notifications.InsertUserNotification(entity.UserId, msg);
+                _notifications.InsertUserNotification(
+                    entity.UserId,
+                    TruncateNotification(BuildGuestNotifiedOnOwnerOrAdminCancelMessage(entity)));
 
             return new CancelReservationOutcome
             {
@@ -368,7 +372,9 @@ namespace Yamore.Services.Services
             Context.SaveChanges();
 
             var note = trimmed.Length > 200 ? trimmed[..200] + "…" : trimmed;
-            _notifications.InsertUserNotification(entity.UserId, $"Your booking request #{id} was declined. Reason: {note}");
+            _notifications.InsertUserNotification(
+                entity.UserId,
+                TruncateNotification(BuildRejectionNotificationMessage(entity, note)));
 
             return Mapper.Map<Model.Reservation>(entity);
         }
@@ -425,6 +431,57 @@ namespace Yamore.Services.Services
                 UserDisplayName = user == null ? null : $"{user.FirstName} {user.LastName}".Trim(),
                 YachtName = yacht?.Name,
             };
+        }
+
+        public int AutoCompletePastTrips()
+        {
+            var now = DateTime.UtcNow;
+            var candidates = Context.Set<Database.Reservation>()
+                .Include(r => r.Yacht)
+                .Where(r => r.Status == ReservationStatuses.Confirmed && now >= r.EndDate)
+                .ToList();
+
+            if (candidates.Count == 0)
+                return 0;
+
+            foreach (var e in candidates)
+            {
+                ApplyStatusAudit(e, null, now, "Auto-completed (trip ended)");
+                e.Status = ReservationStatuses.Completed;
+            }
+
+            Context.SaveChanges();
+            return candidates.Count;
+        }
+
+        private static string TruncateNotification(string text, int maxLen = 255) =>
+            string.IsNullOrEmpty(text) || text.Length <= maxLen
+                ? text
+                : text.Substring(0, maxLen);
+
+        private string BuildOwnerCancelMessage(Database.Reservation r)
+        {
+            var ctx = GetReservationMessageContext(r.UserId, r.YachtId);
+            var guest = string.IsNullOrWhiteSpace(ctx.UserDisplayName) ? "A guest" : ctx.UserDisplayName.Trim();
+            var vessel = string.IsNullOrWhiteSpace(ctx.YachtName) ? "Your listing" : ctx.YachtName.Trim();
+            var period = $"{r.StartDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)} – {r.EndDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
+            return $"Cancelled: {guest} · {vessel} · {period}";
+        }
+
+        private string BuildGuestNotifiedOnOwnerOrAdminCancelMessage(Database.Reservation r)
+        {
+            var ctx = GetReservationMessageContext(r.UserId, r.YachtId);
+            var vessel = string.IsNullOrWhiteSpace(ctx.YachtName) ? "the yacht" : ctx.YachtName.Trim();
+            var period = $"{r.StartDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)} – {r.EndDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
+            return $"Your booking for {vessel} ({period}) was cancelled.";
+        }
+
+        private string BuildRejectionNotificationMessage(Database.Reservation r, string reasonNote)
+        {
+            var ctx = GetReservationMessageContext(r.UserId, r.YachtId);
+            var vessel = string.IsNullOrWhiteSpace(ctx.YachtName) ? "a yacht" : ctx.YachtName.Trim();
+            var period = $"{r.StartDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)} – {r.EndDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
+            return $"Declined: {vessel} ({period}). Reason: {reasonNote}";
         }
     }
 }

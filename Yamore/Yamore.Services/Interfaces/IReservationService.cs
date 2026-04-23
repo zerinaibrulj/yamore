@@ -29,5 +29,8 @@ namespace Yamore.Services.Interfaces
 
         /// <summary>Loads user and yacht fields for messaging (no visibility filtering).</summary>
         ReservationMessageContext GetReservationMessageContext(int userId, int yachtId);
+
+        /// <summary>Sets <see cref="ReservationStatuses.Confirmed"/> reservations to <see cref="ReservationStatuses.Completed"/> when <c>EndDate</c> has passed (background use).</summary>
+        int AutoCompletePastTrips();
     }
 }

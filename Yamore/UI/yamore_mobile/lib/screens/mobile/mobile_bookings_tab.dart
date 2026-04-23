@@ -590,6 +590,22 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
                     spacing: 8,
                     runSpacing: 6,
                     children: [
+                      if (isConfirmed && _canGuestMarkTripCompleted(r))
+                        TextButton(
+                          onPressed: () => _markTripCompletedAsGuest(r),
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 8),
+                          ),
+                          child: Text(
+                            'Mark trip completed',
+                            style: TextStyle(
+                              color: Colors.blueGrey.shade800,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                       if (isActive)
                         TextButton(
                           onPressed: () => _confirmCancel(r),
@@ -882,6 +898,51 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
           SnackBar(content: Text('Failed to cancel: $e')),
         );
       }
+    }
+  }
+
+  bool _canGuestMarkTripCompleted(Reservation r) {
+    if ((r.status ?? '').toLowerCase() != 'confirmed') return false;
+    return !DateTime.now().isBefore(r.endDate);
+  }
+
+  Future<void> _markTripCompletedAsGuest(Reservation r) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Mark trip as completed?'),
+        content: const Text(
+          'After the rental period has ended, mark this so you can leave a review. The owner is notified by the system when trips are completed.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Not now'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Mark completed'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await _api.completeReservation(r.reservationId);
+      if (!mounted) return;
+      await _loadReservations();
+      if (!mounted) return;
+      await showOperationSuccessDialog(
+        context,
+        title: 'Trip completed',
+        message: 'You can now leave a review for this yacht from the yacht page.',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not mark completed: $e')),
+      );
     }
   }
 }

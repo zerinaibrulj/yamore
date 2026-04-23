@@ -117,12 +117,14 @@ class _MobileProfileTabState extends State<MobileProfileTab> {
     }
   }
 
-  String _formatDateTime(DateTime d) =>
-      '${d.day.toString().padLeft(2, '0')}.'
-      '${d.month.toString().padLeft(2, '0')}.'
-      '${d.year} '
-      '${d.hour.toString().padLeft(2, '0')}:'
-      '${d.minute.toString().padLeft(2, '0')}';
+  String _formatDateTime(DateTime d) {
+    final local = notificationDisplayTime(d);
+    return '${local.day.toString().padLeft(2, '0')}.'
+        '${local.month.toString().padLeft(2, '0')}.'
+        '${local.year} '
+        '${local.hour.toString().padLeft(2, '0')}:'
+        '${local.minute.toString().padLeft(2, '0')}';
+  }
 
   bool _isStrongPassword(String value) {
     if (value.length < 8 || value.length > 128) return false;
