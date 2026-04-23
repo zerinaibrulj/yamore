@@ -227,5 +227,17 @@ namespace Yamore.Services.Services
             Context.SaveChanges();
             return Mapper.Map<Model.Reservation>(entity);
         }
+
+        public ReservationMessageContext GetReservationMessageContext(int userId, int yachtId)
+        {
+            var user = Context.Set<Database.User>().Find(userId);
+            var yacht = Context.Set<Database.Yacht>().Find(yachtId);
+            return new ReservationMessageContext
+            {
+                UserEmail = user?.Email,
+                UserDisplayName = user == null ? null : $"{user.FirstName} {user.LastName}".Trim(),
+                YachtName = yacht?.Name,
+            };
+        }
     }
 }

@@ -81,39 +81,38 @@ builder.Services.AddCors(options =>
 // Add services to the container.
 
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddTransient<IYachtsService, YachtsService>();  //dodamo servis
-//builder.Services.AddTransient<YachtsService, YachtsService>(); 
-//builder.Services.AddTransient<YachtsService, DummyYachtsService>();
-//builder.Services.AddTransient<IYachtsService, DummyYachtsService>();
-builder.Services.AddTransient<IUsersService, UsersService>();
-builder.Services.AddTransient<IYachtCategoryService, YachtCategoryService>();
-builder.Services.AddTransient<ICountryService, CountryService>();
-builder.Services.AddTransient<ICityService, CityService>();
-builder.Services.AddTransient<IServiceService, ServiceService>();
-builder.Services.AddTransient<IRouteService, RouteService>();
-builder.Services.AddTransient<IRoleService, RoleService>();
-builder.Services.AddTransient<IUserRoleService, UserRoleService>();
-builder.Services.AddTransient<IWeatherForecastService, WeatherForecastService>();
-builder.Services.AddTransient<IReservationService, Yamore.Services.Services.ReservationService>();   //imam klasu ReservationService pa sam zbog toga morala navesti tacnu putanju da se odnosi na servis a ne na klasu
-builder.Services.AddTransient<IReservationServiceService, ReservationServiceService>();
-builder.Services.AddTransient<IReviewService, ReviewService>();
-builder.Services.AddTransient<INotificationService, NotificationService>();
-builder.Services.AddTransient<IPaymentService, PaymentService>();
-builder.Services.AddTransient<IYachtAvailabilityService, YachtAvailabilityService>();
-builder.Services.AddTransient<IServiceCategoryService, ServiceCategoryService>();
-builder.Services.AddTransient<IStatisticsService, StatisticsService>();
-builder.Services.AddTransient<IYachtImageService, YachtImageService>();
-builder.Services.AddTransient<IYachtServiceService, YachtServiceService>();
+
+builder.Services.AddScoped<IYachtsService, YachtsService>();
+builder.Services.AddScoped<IUsersService, UsersService>();
+builder.Services.AddScoped<IYachtCategoryService, YachtCategoryService>();
+builder.Services.AddScoped<ICountryService, CountryService>();
+builder.Services.AddScoped<ICityService, CityService>();
+builder.Services.AddScoped<IServiceService, ServiceService>();
+builder.Services.AddScoped<IRouteService, RouteService>();
+builder.Services.AddScoped<IRoleService, RoleService>();
+builder.Services.AddScoped<IUserRoleService, UserRoleService>();
+builder.Services.AddScoped<IWeatherForecastService, WeatherForecastService>();
+builder.Services.AddScoped<IReservationService, Yamore.Services.Services.ReservationService>();
+builder.Services.AddScoped<IReservationServiceService, ReservationServiceService>();
+builder.Services.AddScoped<IReviewService, ReviewService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<IYachtAvailabilityService, YachtAvailabilityService>();
+builder.Services.AddScoped<IServiceCategoryService, ServiceCategoryService>();
+builder.Services.AddScoped<IStatisticsService, StatisticsService>();
+builder.Services.AddScoped<IYachtImageService, YachtImageService>();
+builder.Services.AddScoped<IYachtServiceService, YachtServiceService>();
+builder.Services.AddScoped<ISampleYachtSeedService, SampleYachtSeedService>();
 builder.Services.AddSingleton<StripePaymentService>();
 builder.Services.AddSingleton<IMessagePublisher, RabbitMQMessagePublisher>();
 
+builder.Services.AddScoped<BaseYachtState>();
+builder.Services.AddScoped<InitialYachtState>();
+builder.Services.AddScoped<DraftYachtState>();
+builder.Services.AddScoped<ActiveYachtState>();
+builder.Services.AddScoped<HiddenYachtState>();
 
-
-builder.Services.AddTransient<BaseYachtState>();
-builder.Services.AddTransient<InitialYachtState>();
-builder.Services.AddTransient<DraftYachtState>();
-builder.Services.AddTransient<ActiveYachtState>();
-builder.Services.AddTransient<HiddenYachtState>();
+builder.Services.AddScoped<IPaymentWorkflowService, PaymentWorkflowService>();
 
 
 
@@ -187,7 +186,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
 
 builder.Services.AddDbContext<_220245Context>(options => options.UseSqlServer(connectionString));
 
-builder.Services.AddMapster();      //dodamo Mapster za automatsko mapiranje entiteta u modele
+builder.Services.AddMapster();
 
 
 

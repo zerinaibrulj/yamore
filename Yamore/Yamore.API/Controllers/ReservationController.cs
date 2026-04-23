@@ -6,7 +6,6 @@ using Yamore.Model;
 using Yamore.Model.Messages;
 using Yamore.Model.Requests.Reservation;
 using Yamore.Model.SearchObjects;
-using Yamore.Services.Database;
 using Yamore.Services.Interfaces;
 
 namespace Yamore.API.Controllers
@@ -17,33 +16,30 @@ namespace Yamore.API.Controllers
     {
         private readonly IReservationService _reservationService;
         private readonly IMessagePublisher _messagePublisher;
-        private readonly _220245Context _context;
 
-        public ReservationController(IReservationService service, IMessagePublisher messagePublisher, _220245Context context)
+        public ReservationController(IReservationService service, IMessagePublisher messagePublisher)
             : base(service)
         {
             _reservationService = service;
             _messagePublisher = messagePublisher;
-            _context = context;
         }
 
         [HttpPost]
         public override ActionResult<Model.Reservation> Insert(ReservationInsertRequest request)
         {
             var result = _reservationService.Insert(request);
-            var user = _context.Users.Find(result.UserId);
-            var yacht = _context.Yachts.Find(result.YachtId);
+            var ctx = _reservationService.GetReservationMessageContext(result.UserId, result.YachtId);
             var msg = new ReservationCreatedMessage
             {
                 ReservationId = result.ReservationId,
                 UserId = result.UserId,
                 YachtId = result.YachtId,
-                YachtName = yacht?.Name,
+                YachtName = ctx.YachtName,
                 StartDate = result.StartDate,
                 EndDate = result.EndDate,
                 TotalPrice = result.TotalPrice,
-                UserEmail = user?.Email,
-                UserName = user == null ? null : $"{user.FirstName} {user.LastName}".Trim(),
+                UserEmail = ctx.UserEmail,
+                UserName = ctx.UserDisplayName,
             };
             _messagePublisher.Publish(MessageEnvelope.ReservationCreated, JsonSerializer.Serialize(msg));
             Response.Headers["X-Operation-Message"] = "Reservation created successfully.";

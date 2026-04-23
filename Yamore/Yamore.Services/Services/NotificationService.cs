@@ -3,7 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using Yamore.Model.Requests.Notification;
 using Yamore.Model.SearchObjects;
 using Yamore.Services.Database;
@@ -33,6 +35,40 @@ namespace Yamore.Services.Services
             }
 
             return filteredQurey;
+        }
+
+        public async Task<int> SendWarningToUserAndOwnersAsync(int userId, string message, CancellationToken cancellationToken = default)
+        {
+            var text = message.Trim();
+            if (text.Length > 255)
+                text = text[..255];
+
+            var now = DateTime.UtcNow;
+
+            await using var tx = await Context.Database.BeginTransactionAsync(cancellationToken);
+            var ownerIds = await Context.Reservations
+                .Where(r => r.UserId == userId)
+                .Where(r => (r.Status ?? "").ToLower() != "cancelled")
+                .Select(r => r.Yacht.OwnerId)
+                .Distinct()
+                .ToListAsync(cancellationToken);
+
+            var recipientIds = ownerIds.Append(userId).Distinct().ToList();
+
+            foreach (var recipientId in recipientIds)
+            {
+                Context.Notifications.Add(new Database.Notification
+                {
+                    UserId = recipientId,
+                    Message = text,
+                    CreatedAt = now,
+                    IsRead = false
+                });
+            }
+
+            await Context.SaveChangesAsync(cancellationToken);
+            await tx.CommitAsync(cancellationToken);
+            return recipientIds.Count;
         }
     }
 }

@@ -10,5 +10,7 @@ namespace Yamore.Services.Interfaces
 {
     public interface INotificationService : ICRUDService<Model.Notification, NotificationSearchObject, NotificationInsertRequest, NotificationUpdateRequest, NotificationDeleteRequest>
     {
+        /// <summary>Notify the user and yacht owners involved in non-cancelled reservations.</summary>
+        Task<int> SendWarningToUserAndOwnersAsync(int userId, string message, CancellationToken cancellationToken = default);
     }
 }

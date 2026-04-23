@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Yamore.Model;
 using Yamore.Model.Requests.Reservation;
 using Yamore.Model.SearchObjects;
 
@@ -18,5 +19,8 @@ namespace Yamore.Services.Interfaces
 
         /// <summary>Creates a confirmed reservation and add-on lines in one transaction. Total must match <see cref="ValidateAndQuoteCardBooking"/> for the same inputs (within 0.02 EUR).</summary>
         Model.Reservation InsertConfirmedReservationWithServices(ReservationInsertRequest request, IReadOnlyList<int> serviceIds);
+
+        /// <summary>Loads user and yacht fields for messaging (no visibility filtering).</summary>
+        ReservationMessageContext GetReservationMessageContext(int userId, int yachtId);
     }
 }
