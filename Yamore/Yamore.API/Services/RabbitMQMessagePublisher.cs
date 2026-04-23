@@ -8,6 +8,7 @@ namespace Yamore.API.Services;
 /// <summary>
 /// Sends message envelopes to the configured RabbitMQ queue. Configure via environment variables
 /// (RabbitMQ__HostName, RabbitMQ__UserName, etc.) or User Secrets — avoid committing credentials in appsettings.
+/// Registered as a <b>singleton</b>: one <see cref="IConnection"/> and <see cref="IModel"/> for the app lifetime, not per publish.
 /// </summary>
 public class RabbitMQMessagePublisher : IMessagePublisher, IDisposable
 {
@@ -65,7 +66,9 @@ public class RabbitMQMessagePublisher : IMessagePublisher, IDisposable
     public void Publish(string messageType, string payloadJson)
     {
         if (!_isConfigured || _channel == null)
+        {
             return;
+        }
 
         try
         {
@@ -88,9 +91,43 @@ public class RabbitMQMessagePublisher : IMessagePublisher, IDisposable
 
     public void Dispose()
     {
-        try { _channel?.Close(); } catch { /* ignore */ }
-        try { _connection?.Close(); } catch { /* ignore */ }
-        _channel?.Dispose();
-        _connection?.Dispose();
+        try
+        {
+            if (_channel is { IsOpen: true })
+            {
+                _channel.Close();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "RabbitMQ publisher: channel close during dispose.");
+        }
+
+        try
+        {
+            _connection?.Close();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "RabbitMQ publisher: connection close during dispose.");
+        }
+
+        try
+        {
+            _channel?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "RabbitMQ publisher: channel dispose.");
+        }
+
+        try
+        {
+            _connection?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "RabbitMQ publisher: connection dispose.");
+        }
     }
 }
