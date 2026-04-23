@@ -12,5 +12,8 @@ namespace Yamore.Services.Interfaces
     {
         /// <summary>Notify the user and yacht owners involved in non-cancelled reservations.</summary>
         Task<int> SendWarningToUserAndOwnersAsync(int userId, string message, CancellationToken cancellationToken = default);
+
+        /// <summary>Persist a single in-app notification (message truncated to 255 chars).</summary>
+        void InsertUserNotification(int userId, string message);
     }
 }

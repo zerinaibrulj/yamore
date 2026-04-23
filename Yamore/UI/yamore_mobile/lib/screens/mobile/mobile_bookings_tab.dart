@@ -9,6 +9,7 @@ import '../../models/yacht_detail.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/operation_success_dialog.dart';
 
 class MobileBookingsTab extends StatefulWidget {
   final AuthService authService;
@@ -840,26 +841,6 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
     }
   }
 
-  Future<void> _showCancelSuccessDialog() async {
-    if (!mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Success'),
-        content: const Text(
-          'Your reservation has been cancelled successfully.',
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _confirmCancel(Reservation r) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -884,11 +865,17 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
     );
     if (confirmed == true) {
       try {
-        await _api.cancelReservation(r.reservationId);
+        final cancelResult = await _api.cancelReservation(r.reservationId);
         if (!mounted) return;
         await _loadReservations();
         if (!mounted) return;
-        await _showCancelSuccessDialog();
+        await showOperationSuccessDialog(
+          context,
+          title: 'Reservation cancelled',
+          message: cancelResult.hadCardPayment
+              ? 'Your booking is cancelled. You had a card payment on this reservation—please contact support if you need a refund or have questions.'
+              : 'Your reservation has been cancelled successfully.',
+        );
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(

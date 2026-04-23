@@ -112,6 +112,11 @@ public partial class _220245Context : DbContext
                 .HasColumnType("datetime");
             entity.Property(e => e.Status).HasMaxLength(20);
             entity.Property(e => e.TotalPrice).HasColumnType("decimal(10, 2)");
+            entity.Property(e => e.StatusChangedAt).HasColumnType("datetime2");
+            entity.Property(e => e.StatusChangeReason).HasMaxLength(500);
+
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.YachtId);
 
             entity.HasOne(d => d.User).WithMany(p => p.Reservations)
                 .HasForeignKey(d => d.UserId)

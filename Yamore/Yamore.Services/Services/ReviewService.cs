@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Yamore.Model;
 using Yamore.Model.Requests.Review;
 using Yamore.Model.SearchObjects;
 using Yamore.Services.Database;
@@ -16,6 +17,17 @@ namespace Yamore.Services.Services
         public ReviewService(_220245Context context, IMapper mapper) 
             : base(context, mapper)
         {
+        }
+
+        public override Model.Review Insert(ReviewInsertRequest request)
+        {
+            var reservation = Context.Set<Database.Reservation>().Find(request.ReservationId);
+            if (reservation == null)
+                throw new KeyNotFoundException($"Reservation with id {request.ReservationId} not found.");
+            if (!string.Equals(reservation.Status, ReservationStatuses.Completed, StringComparison.OrdinalIgnoreCase))
+                throw new UserException("You can only leave a review after the trip is completed.");
+
+            return base.Insert(request);
         }
 
         public override IQueryable<Database.Review> AddFilter(ReviewSearchObject search, IQueryable<Database.Review> query)

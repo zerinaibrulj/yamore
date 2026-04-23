@@ -28,5 +28,14 @@ namespace Yamore.Model
 
         [JsonPropertyName("createdAt")]
         public DateTime? CreatedAt { get; set; }
+
+        [JsonPropertyName("statusChangedAt")]
+        public DateTime? StatusChangedAt { get; set; }
+
+        [JsonPropertyName("statusChangedByUserId")]
+        public int? StatusChangedByUserId { get; set; }
+
+        [JsonPropertyName("statusChangeReason")]
+        public string? StatusChangeReason { get; set; }
     }
 }

@@ -1255,15 +1255,58 @@ class ApiService {
     );
   }
 
-  Future<void> cancelReservation(int id) async {
+  Future<CancelReservationResult> cancelReservation(int id, {String? reason}) async {
     final uri = Uri.parse('$baseUrl/Reservation/$id/cancel');
-    final response = await http.put(uri, headers: _headers);
+    final response = await http.put(
+      uri,
+      headers: _headers,
+      body: jsonEncode({'reason': reason}),
+    );
+    _ensureSuccess(response);
+    final hadCard = _headerEqualsTrue(
+      response,
+      'x-reservation-cancel-has-card-payment',
+    );
+    final reservation = Reservation.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+    return CancelReservationResult(
+      reservation: reservation,
+      hadCardPayment: hadCard,
+    );
+  }
+
+  static bool _headerEqualsTrue(http.Response response, String name) {
+    final want = name.toLowerCase();
+    for (final e in response.headers.entries) {
+      if (e.key.toLowerCase() == want) {
+        return e.value.trim().toLowerCase() == 'true';
+      }
+    }
+    return false;
+  }
+
+  /// Marks a confirmed reservation completed after the trip end time (API enforces rules).
+  Future<void> completeReservation(int id) async {
+    final uri = Uri.parse('$baseUrl/Reservation/$id/complete');
+    final response = await http.put(uri, headers: _headers, body: '{}');
+    _ensureSuccess(response);
+  }
+
+  /// Admin-only: reject a pending reservation with a required reason.
+  Future<void> rejectReservation(int id, String reason) async {
+    final uri = Uri.parse('$baseUrl/Reservation/$id/reject');
+    final response = await http.put(
+      uri,
+      headers: _headers,
+      body: jsonEncode({'reason': reason}),
+    );
     _ensureSuccess(response);
   }
 
   Future<void> confirmReservation(int id) async {
     final uri = Uri.parse('$baseUrl/Reservation/$id/confirm');
-    final response = await http.put(uri, headers: _headers);
+    final response = await http.put(uri, headers: _headers, body: '{}');
     _ensureSuccess(response);
   }
 

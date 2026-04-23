@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -46,11 +47,46 @@ namespace Yamore.API.Controllers
             return Ok(result);
         }
 
+        [HttpDelete("{id}")]
+        public override ActionResult<Model.Reservation> Delete(int id) =>
+            RejectWithUserError("Reservations cannot be deleted. Use cancel instead.");
+
         [HttpPut("{id}/cancel")]
-        public ActionResult<Model.Reservation> Cancel(int id)
+        [Authorize]
+        public ActionResult<Model.Reservation> Cancel(int id, [FromBody] CancelReservationRequest? body)
         {
-            var result = _reservationService.Cancel(id);
+            if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId))
+                return Unauthorized();
+
+            var isAdmin = User.IsInRole("Admin");
+            var outcome = _reservationService.Cancel(id, actorId, isAdmin, body?.Reason);
             Response.Headers["X-Operation-Message"] = "Reservation cancelled.";
+            Response.Headers["X-Reservation-Cancel-Has-Card-Payment"] = outcome.HadCardPayment ? "true" : "false";
+            return Ok(outcome.Reservation);
+        }
+
+        [HttpPut("{id}/reject")]
+        [Authorize(Roles = "Admin")]
+        public ActionResult<Model.Reservation> Reject(int id, [FromBody] RejectReservationRequest body)
+        {
+            if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var adminId))
+                return Unauthorized();
+
+            var result = _reservationService.Reject(id, adminId, body.Reason);
+            Response.Headers["X-Operation-Message"] = "Reservation rejected.";
+            return Ok(result);
+        }
+
+        [HttpPut("{id}/complete")]
+        [Authorize]
+        public ActionResult<Model.Reservation> Complete(int id)
+        {
+            if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId))
+                return Unauthorized();
+
+            var isAdmin = User.IsInRole("Admin");
+            var result = _reservationService.Complete(id, actorId, isAdmin);
+            Response.Headers["X-Operation-Message"] = "Reservation marked completed.";
             return Ok(result);
         }
 
@@ -58,7 +94,12 @@ namespace Yamore.API.Controllers
         [Authorize(Roles = "Admin,YachtOwner")]
         public ActionResult<Model.Reservation> Confirm(int id)
         {
-            var result = _reservationService.Confirm(id);
+            if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId))
+                return Unauthorized();
+
+            var isAdmin = User.IsInRole("Admin");
+            var isYachtOwner = User.IsInRole("YachtOwner");
+            var result = _reservationService.Confirm(id, actorId, isAdmin, isYachtOwner);
             Response.Headers["X-Operation-Message"] = "Reservation confirmed.";
             return Ok(result);
         }

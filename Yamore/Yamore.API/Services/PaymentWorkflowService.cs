@@ -91,7 +91,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
         var reservation = await _context.Reservations.FindAsync(new object[] { request.ReservationId }, cancellationToken);
         if (reservation == null)
             throw new KeyNotFoundException("Reservation not found.");
-        if (reservation.Status == "Cancelled")
+        if (string.Equals(reservation.Status, ReservationStatuses.Cancelled, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Reservation is cancelled.");
 
         var method = (request.PaymentMethod ?? "stripe").ToLowerInvariant();
@@ -140,7 +140,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
             var resOffline = await _context.Reservations.FindAsync(new object[] { request.ReservationId }, cancellationToken);
             if (resOffline == null)
                 throw new KeyNotFoundException("Reservation not found.");
-            if (resOffline.Status == "Cancelled")
+            if (string.Equals(resOffline.Status, ReservationStatuses.Cancelled, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("Reservation is cancelled.");
 
             var paymentMethod = string.IsNullOrWhiteSpace(request.PaymentMethod)
@@ -197,7 +197,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
             || resFromMeta != request.ReservationId)
             throw new InvalidOperationException("Payment does not match this reservation.");
 
-        return await ConfirmCardForExistingReservationAsync(request, cancellationToken);
+        return await ConfirmCardForExistingReservationAsync(request, currentUserId, cancellationToken);
     }
 
     private async Task<PaymentIntentDto> ConfirmProvisionalCardBookingAsync(
@@ -305,6 +305,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
 
     private async Task<PaymentIntentDto> ConfirmCardForExistingReservationAsync(
         ConfirmPaymentRequest request,
+        int? currentUserId,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.PaymentIntentId))
@@ -319,12 +320,13 @@ public class PaymentWorkflowService : IPaymentWorkflowService
         var reservation = await _context.Reservations.FindAsync(new object[] { request.ReservationId }, cancellationToken);
         if (reservation == null)
             throw new KeyNotFoundException("Reservation not found.");
-        if (reservation.Status == "Cancelled")
+        if (string.Equals(reservation.Status, ReservationStatuses.Cancelled, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Reservation is cancelled.");
 
         const string paymentMethod = "Card";
         const string status = "pending";
-        reservation.Status = "Confirmed";
+        _reservationService.ConfirmFromSuccessfulCardPayment(request.ReservationId, currentUserId);
+        await _context.Entry(reservation).ReloadAsync(cancellationToken);
 
         var payCard = new DbPayment
         {

@@ -138,12 +138,12 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
       _reviews.where((r) => r.rating != null && r.rating! > 0).length;
 
   bool get _canReview =>
-      _myReservationsForYacht.any((r) => (r.status ?? '').toLowerCase() == 'confirmed');
+      _myReservationsForYacht.any((r) => (r.status ?? '').toLowerCase() == 'completed');
 
   void _showReviewNotAllowedMessage() {
     final hasReservation = _myReservationsForYacht.isNotEmpty;
     final message = hasReservation
-        ? 'Only users who have reserved this yacht with a confirmed booking can leave a review.\n\nYour reservation is currently ${_myReservationsForYacht.first.status ?? 'pending'}.'
+        ? 'You can leave a review only after your trip is marked completed.\n\nYour reservation is currently ${_myReservationsForYacht.first.status ?? 'pending'}.'
         : 'Only users who have reserved this yacht can leave a review. Please make a reservation first.';
     showDialog<void>(
       context: context,

@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Yamore.Model;
 using Yamore.Model.Requests.Notification;
 using Yamore.Model.SearchObjects;
 using Yamore.Services.Database;
@@ -48,7 +49,7 @@ namespace Yamore.Services.Services
             await using var tx = await Context.Database.BeginTransactionAsync(cancellationToken);
             var ownerIds = await Context.Reservations
                 .Where(r => r.UserId == userId)
-                .Where(r => (r.Status ?? "").ToLower() != "cancelled")
+                .Where(r => ReservationStatuses.BlocksAvailability(r.Status))
                 .Select(r => r.Yacht.OwnerId)
                 .Distinct()
                 .ToListAsync(cancellationToken);
@@ -69,6 +70,22 @@ namespace Yamore.Services.Services
             await Context.SaveChangesAsync(cancellationToken);
             await tx.CommitAsync(cancellationToken);
             return recipientIds.Count;
+        }
+
+        public void InsertUserNotification(int userId, string message)
+        {
+            var text = (message ?? string.Empty).Trim();
+            if (text.Length > 255)
+                text = text[..255];
+
+            Context.Notifications.Add(new Database.Notification
+            {
+                UserId = userId,
+                Message = text,
+                CreatedAt = DateTime.UtcNow,
+                IsRead = false
+            });
+            Context.SaveChanges();
         }
     }
 }

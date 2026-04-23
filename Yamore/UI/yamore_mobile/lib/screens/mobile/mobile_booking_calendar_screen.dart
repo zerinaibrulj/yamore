@@ -42,6 +42,12 @@ class _MobileBookingCalendarScreenState
 
   DateTime _calendarMonth = DateTime.now();
 
+  /// Matches server rules: past / cancelled / completed do not block new bookings.
+  static bool _reservationBlocksAvailability(Reservation r) {
+    final s = (r.status ?? '').toLowerCase();
+    return s != 'cancelled' && s != 'completed';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -96,8 +102,7 @@ class _MobileBookingCalendarScreenState
         return false;
       }
     }
-    for (final r in _reservations.where(
-        (r) => (r.status ?? '').toLowerCase() != 'cancelled')) {
+    for (final r in _reservations.where(_reservationBlocksAvailability)) {
       if (start.isBefore(r.endDate) && end.isAfter(r.startDate)) {
         return false;
       }
@@ -112,8 +117,7 @@ class _MobileBookingCalendarScreenState
     for (final a in _blocks.where((b) => b.isBlocked)) {
       if (dayStart.isBefore(a.endDate) && dayEnd.isAfter(a.startDate)) return true;
     }
-    for (final r in _reservations.where(
-        (r) => (r.status ?? '').toLowerCase() != 'cancelled')) {
+    for (final r in _reservations.where(_reservationBlocksAvailability)) {
       if (dayStart.isBefore(r.endDate) && dayEnd.isAfter(r.startDate)) return true;
     }
     return false;

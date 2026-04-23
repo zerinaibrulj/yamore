@@ -21,6 +21,12 @@ public partial class Reservation
 
     public DateTime? CreatedAt { get; set; }
 
+    public DateTime? StatusChangedAt { get; set; }
+
+    public int? StatusChangedByUserId { get; set; }
+
+    public string? StatusChangeReason { get; set; }
+
     public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
 
     public virtual ICollection<ReservationService> ReservationServices { get; set; } = new List<ReservationService>();

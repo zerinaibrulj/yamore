@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/operation_success_dialog.dart';
 import '../../models/reservation.dart';
 import '../../models/user.dart';
 import '../../models/yacht_detail.dart';
@@ -57,24 +58,6 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
       if (!_listScrollController.hasClients) return;
       _listScrollController.jumpTo(0);
     });
-  }
-
-  Future<void> _showSuccessDialog(String title, String message) async {
-    if (!mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<void> _applyStatusFilter() async {
@@ -191,12 +174,15 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
     );
     if (confirmed == true) {
       try {
-        await _api.cancelReservation(r.reservationId);
+        final cancelResult = await _api.cancelReservation(r.reservationId);
         await _loadReservations();
         if (mounted) {
-          await _showSuccessDialog(
-            'Reservation cancelled',
-            'The reservation has been cancelled successfully.',
+          await showOperationSuccessDialog(
+            context,
+            title: 'Reservation cancelled',
+            message: cancelResult.hadCardPayment
+                ? 'The reservation is cancelled. A card payment was on file—ask the guest to contact support for refund questions if needed.'
+                : 'The reservation has been cancelled successfully.',
           );
           _scrollReservationsListToTop();
         }
@@ -232,9 +218,10 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
         await _api.confirmReservation(r.reservationId);
         await _loadReservations();
         if (mounted) {
-          await _showSuccessDialog(
-            'Reservation confirmed',
-            'The reservation has been confirmed successfully.',
+          await showOperationSuccessDialog(
+            context,
+            title: 'Reservation confirmed',
+            message: 'The reservation has been confirmed successfully.',
           );
           _scrollReservationsListToTop();
         }

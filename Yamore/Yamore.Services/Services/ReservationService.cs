@@ -1,23 +1,21 @@
 using MapsterMapper;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using Yamore.Model;
 using Yamore.Model.Requests.Reservation;
 using Yamore.Model.SearchObjects;
 using Yamore.Services.Database;
 using Yamore.Services.Interfaces;
-using Microsoft.EntityFrameworkCore;
 
 namespace Yamore.Services.Services
 {
     public class ReservationService : BaseCRUDService<Model.Reservation, ReservationSearchObject, Database.Reservation, ReservationInsertRequest, ReservationUpdateRequest, ReservationDeleteRequest>, IReservationService
     {
-        public ReservationService(_220245Context context, IMapper mapper) 
+        private readonly INotificationService _notifications;
+
+        public ReservationService(_220245Context context, IMapper mapper, INotificationService notifications)
             : base(context, mapper)
         {
+            _notifications = notifications;
         }
 
         public override PagedResponse<Model.Reservation> GetPaged(ReservationSearchObject search)
@@ -33,17 +31,7 @@ namespace Yamore.Services.Services
             query = query.Skip(search.Page!.Value * search.PageSize!.Value).Take(search.PageSize.Value);
 
             var list = query.ToList();
-            var result = list.Select(r => new Model.Reservation
-            {
-                ReservationId = r.ReservationId,
-                UserId = r.UserId,
-                YachtId = r.YachtId,
-                StartDate = r.StartDate,
-                EndDate = r.EndDate,
-                TotalPrice = r.TotalPrice,
-                Status = r.Status,
-                CreatedAt = r.CreatedAt
-            }).ToList();
+            var result = list.Select(MapToModel).ToList();
 
             return new PagedResponse<Model.Reservation>
             {
@@ -51,6 +39,21 @@ namespace Yamore.Services.Services
                 ResultList = result
             };
         }
+
+        private static Model.Reservation MapToModel(Database.Reservation r) => new()
+        {
+            ReservationId = r.ReservationId,
+            UserId = r.UserId,
+            YachtId = r.YachtId,
+            StartDate = r.StartDate,
+            EndDate = r.EndDate,
+            TotalPrice = r.TotalPrice,
+            Status = r.Status,
+            CreatedAt = r.CreatedAt,
+            StatusChangedAt = r.StatusChangedAt,
+            StatusChangedByUserId = r.StatusChangedByUserId,
+            StatusChangeReason = r.StatusChangeReason
+        };
 
         public override IQueryable<Database.Reservation> AddFilter(ReservationSearchObject search, IQueryable<Database.Reservation> query)
         {
@@ -79,6 +82,18 @@ namespace Yamore.Services.Services
             return filteredQurey;
         }
 
+        public override void BeforeInsret(ReservationInsertRequest request, Database.Reservation entity)
+        {
+            var now = DateTime.UtcNow;
+            entity.Status = ReservationStatuses.Pending;
+            if (entity.CreatedAt == null)
+                entity.CreatedAt = now;
+            entity.StatusChangedAt = now;
+            entity.StatusChangedByUserId = request.UserId;
+            entity.StatusChangeReason = "Created";
+            base.BeforeInsret(request, entity);
+        }
+
         public override Model.Reservation Insert(ReservationInsertRequest request)
         {
             var yachtId = request.YachtId;
@@ -94,15 +109,37 @@ namespace Yamore.Services.Services
                     "This yacht is not available for booking. Only published (active) yachts can be reserved.");
             }
 
-            var overlapping = Context.Set<Database.Reservation>()
-                .Where(r => r.YachtId == yachtId && r.Status != null && r.Status != "Cancelled")
-                .Any(r => start < r.EndDate && end > r.StartDate);
-
-            if (overlapping)
-                throw new InvalidOperationException("This yacht is already reserved for the selected dates. Please choose different dates or times.");
+            if (HasOverlap(yachtId, start, end))
+                throw new UserException("This yacht is already reserved for the selected dates. Please choose different dates or times.");
 
             return base.Insert(request);
         }
+
+        public override Model.Reservation Update(int id, ReservationUpdateRequest request)
+        {
+            var entity = Context.Set<Database.Reservation>().Find(id);
+            if (entity == null)
+                throw new KeyNotFoundException($"Reservation with id {id} not found.");
+
+            var preserveStatus = entity.Status;
+            var sAt = entity.StatusChangedAt;
+            var sBy = entity.StatusChangedByUserId;
+            var sReason = entity.StatusChangeReason;
+
+            Mapper.Map(request, entity);
+
+            entity.Status = preserveStatus;
+            entity.StatusChangedAt = sAt;
+            entity.StatusChangedByUserId = sBy;
+            entity.StatusChangeReason = sReason;
+
+            BeforeUpdate(request, entity);
+            Context.SaveChanges();
+            return Mapper.Map<Model.Reservation>(entity);
+        }
+
+        public override Model.Reservation Delete(int id) =>
+            throw new UserException("Reservations cannot be deleted. Cancel the booking instead.");
 
         public decimal ValidateAndQuoteCardBooking(int yachtId, DateTime start, DateTime end, IReadOnlyList<int> serviceIds)
         {
@@ -129,9 +166,11 @@ namespace Yamore.Services.Services
                 }
 
                 var entity = Mapper.Map<Database.Reservation>(request);
-                entity.Status = "Confirmed";
-                if (entity.CreatedAt == null)
-                    entity.CreatedAt = DateTime.UtcNow;
+                var now = DateTime.UtcNow;
+                entity.Status = ReservationStatuses.Confirmed;
+                entity.CreatedAt ??= now;
+                ApplyStatusAudit(entity, request.UserId, now, "Paid card booking");
+
                 Context.Add(entity);
                 Context.SaveChanges();
 
@@ -156,7 +195,9 @@ namespace Yamore.Services.Services
 
         private bool HasOverlap(int yachtId, DateTime start, DateTime end) =>
             Context.Set<Database.Reservation>()
-                .Where(r => r.YachtId == yachtId && r.Status != null && r.Status != "Cancelled")
+                .AsNoTracking()
+                .Where(r => r.YachtId == yachtId)
+                .Where(r => ReservationStatuses.BlocksAvailability(r.Status))
                 .Any(r => start < r.EndDate && end > r.StartDate);
 
         private decimal ComputeQuotedTotalForCardBooking(int yachtId, DateTime start, DateTime end, IReadOnlyList<int> serviceIds)
@@ -207,33 +248,172 @@ namespace Yamore.Services.Services
 
         private static int GetBookingDurationDays(DateTime start, DateTime end)
         {
-            var raw = (int)Math.Floor((end - start).TotalDays);
-            return Math.Max(1, Math.Min(365, raw));
+            var span = end - start;
+            var fractionalDays = span.TotalHours / 24.0;
+            var days = (int)Math.Ceiling(fractionalDays);
+            return Math.Max(1, Math.Min(365, days));
         }
 
-        public Model.Reservation Cancel(int id)
+        private static void ApplyStatusAudit(Database.Reservation entity, int? byUserId, DateTime utcNow, string? reason)
         {
-            var set = Context.Set<Database.Reservation>();
-            var entity = set.Find(id);
-            if (entity == null)
-                throw new KeyNotFoundException($"Reservation with id {id} not found.");
-            entity.Status = "Cancelled";
+            entity.StatusChangedAt = utcNow;
+            entity.StatusChangedByUserId = byUserId;
+            entity.StatusChangeReason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
+            if (entity.StatusChangeReason != null && entity.StatusChangeReason.Length > 500)
+                entity.StatusChangeReason = entity.StatusChangeReason[..500];
+        }
+
+        public Model.Reservation Confirm(int id, int actorUserId, bool actorIsAdmin, bool actorIsYachtOwner)
+        {
+            var entity = LoadReservationWithYacht(id);
+
+            if (string.Equals(entity.Status, ReservationStatuses.Confirmed, StringComparison.OrdinalIgnoreCase))
+                return Mapper.Map<Model.Reservation>(entity);
+
+            if (ReservationStatuses.IsTerminal(entity.Status))
+                throw new UserException("This reservation can no longer be confirmed.");
+
+            if (!string.Equals(entity.Status, ReservationStatuses.Pending, StringComparison.OrdinalIgnoreCase))
+                throw new UserException("Only pending reservations can be confirmed.");
+
+            if (actorIsAdmin)
+            {
+                // allowed
+            }
+            else if (actorIsYachtOwner && entity.Yacht.OwnerId == actorUserId)
+            {
+                // allowed
+            }
+            else
+                throw new UnauthorizedAccessException("You are not allowed to confirm this reservation.");
+
+            ApplyStatusAudit(entity, actorUserId, DateTime.UtcNow, "Confirmed");
+            entity.Status = ReservationStatuses.Confirmed;
             Context.SaveChanges();
             return Mapper.Map<Model.Reservation>(entity);
         }
 
-        public Model.Reservation Confirm(int id)
+        public Model.Reservation ConfirmFromSuccessfulCardPayment(int reservationId, int? paidByUserId)
         {
-            var set = Context.Set<Database.Reservation>();
-            var entity = set.Find(id);
-            if (entity == null)
-                throw new KeyNotFoundException($"Reservation with id {id} not found.");
-            if (string.Equals(entity.Status, "Cancelled", StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("Cannot confirm a cancelled reservation.");
-            entity.Status = "Confirmed";
+            var entity = LoadReservationWithYacht(reservationId);
+
+            if (string.Equals(entity.Status, ReservationStatuses.Confirmed, StringComparison.OrdinalIgnoreCase))
+                return Mapper.Map<Model.Reservation>(entity);
+
+            if (ReservationStatuses.IsTerminal(entity.Status))
+                throw new InvalidOperationException("Reservation is not in a state that can be paid for.");
+
+            if (!string.Equals(entity.Status, ReservationStatuses.Pending, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Only pending reservations can be confirmed by card payment.");
+
+            ApplyStatusAudit(entity, paidByUserId, DateTime.UtcNow, "Card payment succeeded");
+            entity.Status = ReservationStatuses.Confirmed;
             Context.SaveChanges();
             return Mapper.Map<Model.Reservation>(entity);
         }
+
+        public CancelReservationOutcome Cancel(int id, int actorUserId, bool actorIsAdmin, string? reason)
+        {
+            var entity = LoadReservationWithYacht(id);
+
+            if (string.Equals(entity.Status, ReservationStatuses.Cancelled, StringComparison.OrdinalIgnoreCase))
+            {
+                return new CancelReservationOutcome
+                {
+                    Reservation = Mapper.Map<Model.Reservation>(entity),
+                    HadCardPayment = HasCardPayment(entity.ReservationId),
+                };
+            }
+
+            if (string.Equals(entity.Status, ReservationStatuses.Completed, StringComparison.OrdinalIgnoreCase))
+                throw new UserException("Completed reservations cannot be cancelled.");
+
+            var isGuest = entity.UserId == actorUserId;
+            var isOwner = entity.Yacht.OwnerId == actorUserId;
+            if (!actorIsAdmin && !isGuest && !isOwner)
+                throw new UnauthorizedAccessException("You are not allowed to cancel this reservation.");
+
+            var hadCardPayment = HasCardPayment(entity.ReservationId);
+
+            ApplyStatusAudit(entity, actorUserId, DateTime.UtcNow, string.IsNullOrWhiteSpace(reason) ? "Cancelled" : reason.Trim());
+            entity.Status = ReservationStatuses.Cancelled;
+            Context.SaveChanges();
+
+            var msg = $"Reservation #{id} was cancelled.";
+            if (isGuest && !actorIsAdmin)
+                _notifications.InsertUserNotification(entity.Yacht.OwnerId, msg);
+            else if ((isOwner || actorIsAdmin) && entity.UserId != actorUserId)
+                _notifications.InsertUserNotification(entity.UserId, msg);
+
+            return new CancelReservationOutcome
+            {
+                Reservation = Mapper.Map<Model.Reservation>(entity),
+                HadCardPayment = hadCardPayment,
+            };
+        }
+
+        public Model.Reservation Reject(int id, int adminUserId, string reason)
+        {
+            if (string.IsNullOrWhiteSpace(reason))
+                throw new UserException("A rejection reason is required.");
+
+            var entity = LoadReservationWithYacht(id);
+
+            if (!string.Equals(entity.Status, ReservationStatuses.Pending, StringComparison.OrdinalIgnoreCase))
+                throw new UserException("Only pending reservations can be rejected.");
+
+            var trimmed = reason.Trim();
+            ApplyStatusAudit(entity, adminUserId, DateTime.UtcNow, $"Rejected: {trimmed}");
+            entity.Status = ReservationStatuses.Cancelled;
+            Context.SaveChanges();
+
+            var note = trimmed.Length > 200 ? trimmed[..200] + "…" : trimmed;
+            _notifications.InsertUserNotification(entity.UserId, $"Your booking request #{id} was declined. Reason: {note}");
+
+            return Mapper.Map<Model.Reservation>(entity);
+        }
+
+        public Model.Reservation Complete(int id, int actorUserId, bool actorIsAdmin)
+        {
+            var entity = LoadReservationWithYacht(id);
+
+            if (string.Equals(entity.Status, ReservationStatuses.Completed, StringComparison.OrdinalIgnoreCase))
+                return Mapper.Map<Model.Reservation>(entity);
+
+            if (!string.Equals(entity.Status, ReservationStatuses.Confirmed, StringComparison.OrdinalIgnoreCase))
+                throw new UserException("Only confirmed reservations can be marked completed.");
+
+            var now = DateTime.UtcNow;
+            if (now < entity.EndDate)
+                throw new UserException("The trip must have ended before it can be marked completed.");
+
+            var isGuest = entity.UserId == actorUserId;
+            var isOwner = entity.Yacht.OwnerId == actorUserId;
+            if (!actorIsAdmin && !isGuest && !isOwner)
+                throw new UnauthorizedAccessException("You are not allowed to complete this reservation.");
+
+            ApplyStatusAudit(entity, actorUserId, now, "Completed");
+            entity.Status = ReservationStatuses.Completed;
+            Context.SaveChanges();
+            return Mapper.Map<Model.Reservation>(entity);
+        }
+
+        private Database.Reservation LoadReservationWithYacht(int id)
+        {
+            var entity = Context.Set<Database.Reservation>()
+                .Include(r => r.Yacht)
+                .FirstOrDefault(r => r.ReservationId == id);
+            if (entity == null)
+                throw new KeyNotFoundException($"Reservation with id {id} not found.");
+            return entity;
+        }
+
+        private bool HasCardPayment(int reservationId) =>
+            Context.Set<Database.Payment>().AsNoTracking()
+                .Any(p => p.ReservationId == reservationId
+                          && p.Amount > 0
+                          && p.PaymentMethod != null
+                          && p.PaymentMethod.ToLower().Contains("card"));
 
         public ReservationMessageContext GetReservationMessageContext(int userId, int yachtId)
         {

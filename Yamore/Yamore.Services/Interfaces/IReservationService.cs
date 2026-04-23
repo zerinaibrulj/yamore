@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Yamore.Model;
 using Yamore.Model.Requests.Reservation;
 using Yamore.Model.SearchObjects;
@@ -11,8 +6,20 @@ namespace Yamore.Services.Interfaces
 {
     public interface IReservationService : ICRUDService<Model.Reservation, ReservationSearchObject, ReservationInsertRequest, ReservationUpdateRequest, ReservationDeleteRequest>
     {
-        Model.Reservation Cancel(int id);
-        Model.Reservation Confirm(int id);
+        /// <summary>Admin or yacht owner confirms a <see cref="ReservationStatuses.Pending"/> reservation.</summary>
+        Model.Reservation Confirm(int id, int actorUserId, bool actorIsAdmin, bool actorIsYachtOwner);
+
+        /// <summary>Guest, owner, or admin cancels an active reservation (not completed).</summary>
+        CancelReservationOutcome Cancel(int id, int actorUserId, bool actorIsAdmin, string? reason);
+
+        /// <summary>Admin-only: decline a pending booking (stored as cancelled with audit reason).</summary>
+        Model.Reservation Reject(int id, int adminUserId, string reason);
+
+        /// <summary>Marks a confirmed trip as completed after <see cref="Model.Reservation.EndDate"/> (UTC).</summary>
+        Model.Reservation Complete(int id, int actorUserId, bool actorIsAdmin);
+
+        /// <summary>After Stripe reports success for an existing reservation; idempotent if already confirmed.</summary>
+        Model.Reservation ConfirmFromSuccessfulCardPayment(int reservationId, int? paidByUserId);
 
         /// <summary>Validates the yacht, overlap, and add-on services; returns the total price in EUR (server-side, same rules as the mobile app).</summary>
         decimal ValidateAndQuoteCardBooking(int yachtId, DateTime start, DateTime end, IReadOnlyList<int> serviceIds);

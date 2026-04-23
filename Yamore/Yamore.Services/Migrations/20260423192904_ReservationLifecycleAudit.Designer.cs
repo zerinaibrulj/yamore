@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Yamore.Services.Database;
 
@@ -11,9 +12,11 @@ using Yamore.Services.Database;
 namespace Yamore.Services.Migrations
 {
     [DbContext(typeof(_220245Context))]
-    partial class _220245ContextModelSnapshot : ModelSnapshot
+    [Migration("20260423192904_ReservationLifecycleAudit")]
+    partial class ReservationLifecycleAudit
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -43,7 +46,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("CountryId");
 
-                    b.ToTable("Cities", (string)null);
+                    b.ToTable("Cities");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.Country", b =>
@@ -62,7 +65,7 @@ namespace Yamore.Services.Migrations
                     b.HasKey("CountryId")
                         .HasName("PK__Countrie__10D1609FFB858505");
 
-                    b.ToTable("Countries", (string)null);
+                    b.ToTable("Countries");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.Notification", b =>
@@ -96,7 +99,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Notifications", (string)null);
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.Payment", b =>
@@ -129,7 +132,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("ReservationId");
 
-                    b.ToTable("Payments", (string)null);
+                    b.ToTable("Payments");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.Reservation", b =>
@@ -181,7 +184,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("YachtId");
 
-                    b.ToTable("Reservations", (string)null);
+                    b.ToTable("Reservations");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.ReservationService", b =>
@@ -206,7 +209,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("ServiceId");
 
-                    b.ToTable("ReservationServices", (string)null);
+                    b.ToTable("ReservationServices");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.Review", b =>
@@ -259,7 +262,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("YachtId");
 
-                    b.ToTable("Reviews", (string)null);
+                    b.ToTable("Reviews");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.Role", b =>
@@ -279,7 +282,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasKey("RoleId");
 
-                    b.ToTable("Roles", (string)null);
+                    b.ToTable("Roles");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.Route", b =>
@@ -315,7 +318,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("YachtId");
 
-                    b.ToTable("Routes", (string)null);
+                    b.ToTable("Routes");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.Service", b =>
@@ -346,7 +349,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("ServiceCategoryId");
 
-                    b.ToTable("Services", (string)null);
+                    b.ToTable("Services");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.ServiceCategory", b =>
@@ -369,7 +372,7 @@ namespace Yamore.Services.Migrations
                     b.HasKey("ServiceCategoryId")
                         .HasName("PK_ServiceCategories");
 
-                    b.ToTable("ServiceCategories", (string)null);
+                    b.ToTable("ServiceCategories");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.User", b =>
@@ -421,7 +424,7 @@ namespace Yamore.Services.Migrations
                         .IsUnique()
                         .HasFilter("[Email] IS NOT NULL");
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.UserRole", b =>
@@ -447,7 +450,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("UserRoles", (string)null);
+                    b.ToTable("UserRoles");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.WeatherForecast", b =>
@@ -479,7 +482,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("RouteId");
 
-                    b.ToTable("WeatherForecasts", (string)null);
+                    b.ToTable("WeatherForecasts");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.Yacht", b =>
@@ -543,7 +546,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("OwnerId");
 
-                    b.ToTable("Yachts", (string)null);
+                    b.ToTable("Yachts");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.YachtAvailability", b =>
@@ -575,7 +578,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("YachtId");
 
-                    b.ToTable("YachtAvailabilities", (string)null);
+                    b.ToTable("YachtAvailabilities");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.YachtCategory", b =>
@@ -594,7 +597,7 @@ namespace Yamore.Services.Migrations
                     b.HasKey("CategoryId")
                         .HasName("PK__YachtCat__19093A0B21D26F14");
 
-                    b.ToTable("YachtCategories", (string)null);
+                    b.ToTable("YachtCategories");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.YachtImage", b =>
@@ -636,7 +639,7 @@ namespace Yamore.Services.Migrations
 
                     b.HasIndex("YachtId");
 
-                    b.ToTable("YachtImages", (string)null);
+                    b.ToTable("YachtImages");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.YachtService", b =>
@@ -660,7 +663,7 @@ namespace Yamore.Services.Migrations
                     b.HasIndex("YachtId", "ServiceId")
                         .IsUnique();
 
-                    b.ToTable("YachtServices", (string)null);
+                    b.ToTable("YachtServices");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.City", b =>
