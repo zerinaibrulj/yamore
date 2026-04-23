@@ -1,12 +1,12 @@
-using System.Collections.Generic;
 using Yamore.Model;
 using Yamore.Model.Requests.YachtImage;
+using Yamore.Services.Database;
 
 namespace Yamore.Services.Interfaces
 {
     public interface IYachtImageService
     {
-        List<Model.YachtImage> GetByYachtId(int yachtId);
+        PagedResponse<Model.YachtImage> GetByYachtIdPaged(int yachtId, int page, int pageSize);
         Database.YachtImage? GetRawById(int imageId);
         Model.YachtImage Upload(int yachtId, YachtImageInsertRequest request);
         void Delete(int imageId);

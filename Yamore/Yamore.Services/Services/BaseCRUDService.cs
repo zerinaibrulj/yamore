@@ -15,7 +15,7 @@ namespace Yamore.Services.Services
 {
     public abstract class BaseCRUDService<TModel, TSearch, TDbEntity, TInsert, TUpdate, TDelete> : BaseService<TModel, TSearch, TDbEntity>, ICRUDService<TModel, TSearch, TInsert, TUpdate, TDelete>
         where TModel : class
-        where TSearch : BaseSearchObject
+        where TSearch : BaseSearchObject, new()
         where TDbEntity : class
     {
         public BaseCRUDService(_220245Context context, IMapper mapper) 

@@ -22,12 +22,15 @@ namespace Yamore.Services.Services
 
         public override PagedResponse<Model.Reservation> GetPaged(ReservationSearchObject search)
         {
+            search ??= new ReservationSearchObject();
+            search.Page = PagingConstraints.NormalizePage(search.Page);
+            search.PageSize = PagingConstraints.NormalizePageSize(search.PageSize);
+
             var query = Context.Set<Database.Reservation>().AsQueryable();
             query = AddFilter(search, query);
             int count = query.Count();
 
-            if (search?.Page.HasValue == true && search?.PageSize.HasValue == true)
-                query = query.Skip(search.Page.Value * search.PageSize.Value).Take(search.PageSize.Value);
+            query = query.Skip(search.Page!.Value * search.PageSize!.Value).Take(search.PageSize.Value);
 
             var list = query.ToList();
             var result = list.Select(r => new Model.Reservation
@@ -178,22 +181,27 @@ namespace Yamore.Services.Services
 
             var durationDays = GetBookingDurationDays(start, end);
             var baseTotal = yacht.PricePerDay * durationDays;
-            decimal servicesTotal = 0;
-            foreach (var sid in serviceIds.Distinct())
-            {
-                var available = Context.Set<Database.YachtService>().AsNoTracking()
-                    .Any(ys => ys.YachtId == yachtId && ys.ServiceId == sid);
-                if (!available)
-                {
-                    throw new UserException("One or more selected services are not available for this yacht.");
-                }
-                var svc = Context.Set<Database.Service>().AsNoTracking().FirstOrDefault(s => s.ServiceId == sid);
-                if (svc == null)
-                    throw new UserException("Invalid service selected.");
-                if (svc.Price.HasValue)
-                    servicesTotal += svc.Price.Value;
-            }
+            var distinctIds = serviceIds.Distinct().ToList();
+            if (distinctIds.Count == 0)
+                return baseTotal;
 
+            var linkedServiceIds = Context.Set<Database.YachtService>().AsNoTracking()
+                .Where(ys => ys.YachtId == yachtId && distinctIds.Contains(ys.ServiceId))
+                .Select(ys => ys.ServiceId)
+                .ToHashSet();
+
+            if (linkedServiceIds.Count != distinctIds.Count)
+                throw new UserException("One or more selected services are not available for this yacht.");
+
+            var services = Context.Set<Database.Service>().AsNoTracking()
+                .Where(s => distinctIds.Contains(s.ServiceId))
+                .Select(s => new { s.ServiceId, s.Price })
+                .ToList();
+
+            if (services.Count != distinctIds.Count)
+                throw new UserException("Invalid service selected.");
+
+            var servicesTotal = services.Sum(s => s.Price ?? 0m);
             return baseTotal + servicesTotal;
         }
 

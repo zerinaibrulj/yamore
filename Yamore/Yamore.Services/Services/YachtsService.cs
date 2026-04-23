@@ -72,6 +72,8 @@ namespace Yamore.Services.Services
         public override PagedResponse<Model.Yacht> GetPaged(YachtsSearchObject search)
         {
             search ??= new YachtsSearchObject();
+            search.Page = PagingConstraints.NormalizePage(search.Page);
+            search.PageSize = PagingConstraints.NormalizePageSize(search.PageSize);
             if (_httpContextAccessor?.HttpContext?.User?.IsInRole("Admin") == true)
                 return base.GetPaged(search);
 
@@ -79,10 +81,7 @@ namespace Yamore.Services.Services
                 .Where(y => y.StateMachine == "active");
             query = AddFilter(search, query);
             var count = query.Count();
-            if (search.Page.HasValue == true && search.PageSize.HasValue == true)
-            {
-                query = query.Skip(search.Page.Value * search.PageSize.Value).Take(search.PageSize.Value);
-            }
+            query = query.Skip(search.Page!.Value * search.PageSize!.Value).Take(search.PageSize.Value);
 
             var list = query.ToList();
             var result = new List<Model.Yacht>();
@@ -238,6 +237,9 @@ namespace Yamore.Services.Services
         /// <summary>Recommendation system: content-based (category, location, services) + collaborative (ratings, popularity). Returns overview DTOs.</summary>
         public PagedResponse<YachtOverviewDto> GetRecommendations(int? userId, int page = 0, int pageSize = 10)
         {
+            page = PagingConstraints.NormalizePage(page);
+            pageSize = PagingConstraints.NormalizePageSize(pageSize);
+
             var activeYachts = Context.Yachts
                 .Include(y => y.Owner)
                 .Include(y => y.Location).ThenInclude(c => c.Country)
@@ -344,6 +346,10 @@ namespace Yamore.Services.Services
 
         public PagedResponse<YachtOverviewDto> GetOverviewForAdmin(YachtsSearchObject search)
         {
+            search ??= new YachtsSearchObject();
+            search.Page = PagingConstraints.NormalizePage(search.Page);
+            search.PageSize = PagingConstraints.NormalizePageSize(search.PageSize);
+
             var query = Context.Yachts
                 .Include(y => y.Owner)
                 .Include(y => y.Location)
@@ -354,8 +360,7 @@ namespace Yamore.Services.Services
             query = AddFilter(search, query);
             var count = query.Count();
 
-            if (search?.Page.HasValue == true && search?.PageSize.HasValue == true)
-                query = query.Skip(search.Page.Value * search.PageSize.Value).Take(search.PageSize.Value);
+            query = query.Skip(search.Page!.Value * search.PageSize!.Value).Take(search.PageSize.Value);
 
             var list = query.ToList();
             var yachtIds = list.Select(y => y.YachtId).ToList();
@@ -391,6 +396,10 @@ namespace Yamore.Services.Services
         /// <inheritdoc />
         public PagedResponse<YachtOverviewDto> GetOverviewForPublicListing(YachtsSearchObject search)
         {
+            search ??= new YachtsSearchObject();
+            search.Page = PagingConstraints.NormalizePage(search.Page);
+            search.PageSize = PagingConstraints.NormalizePageSize(search.PageSize);
+
             var query = Context.Yachts
                 .Include(y => y.Owner)
                 .Include(y => y.Location)
@@ -402,8 +411,7 @@ namespace Yamore.Services.Services
             query = AddFilter(search, query);
             var count = query.Count();
 
-            if (search?.Page.HasValue == true && search?.PageSize.HasValue == true)
-                query = query.Skip(search.Page.Value * search.PageSize.Value).Take(search.PageSize.Value);
+            query = query.Skip(search.Page!.Value * search.PageSize!.Value).Take(search.PageSize.Value);
 
             var list = query.ToList();
             var yachtIds = list.Select(y => y.YachtId).ToList();
@@ -438,6 +446,10 @@ namespace Yamore.Services.Services
 
         public PagedResponse<YachtOverviewDto> GetOverviewForOwner(int ownerId, YachtsSearchObject search)
         {
+            search ??= new YachtsSearchObject();
+            search.Page = PagingConstraints.NormalizePage(search.Page);
+            search.PageSize = PagingConstraints.NormalizePageSize(search.PageSize);
+
             var query = Context.Yachts
                 .Include(y => y.Owner)
                 .Include(y => y.Location)
@@ -449,8 +461,7 @@ namespace Yamore.Services.Services
             query = AddFilter(search, query);
             var count = query.Count();
 
-            if (search?.Page.HasValue == true && search?.PageSize.HasValue == true)
-                query = query.Skip(search.Page.Value * search.PageSize.Value).Take(search.PageSize.Value);
+            query = query.Skip(search.Page!.Value * search.PageSize!.Value).Take(search.PageSize.Value);
 
             var list = query.ToList();
             var yachtIds = list.Select(y => y.YachtId).ToList();

@@ -30,18 +30,19 @@ namespace Yamore.Services.Services
         /// </summary>
         public override PagedResponse<Model.User> GetPaged(UsersSearchObject search)
         {
+            search ??= new UsersSearchObject();
+            search.Page = PagingConstraints.NormalizePage(search.Page);
+            search.PageSize = PagingConstraints.NormalizePageSize(search.PageSize);
+
             var query = Context.Users.AsQueryable();
 
             query = AddFilter(search, query);
 
             var count = query.Count();
 
-            if (search?.Page.HasValue == true && search?.PageSize.HasValue == true)
-            {
-                query = query
-                    .Skip(search.Page.Value * search.PageSize.Value)
-                    .Take(search.PageSize.Value);
-            }
+            query = query
+                .Skip(search.Page!.Value * search.PageSize!.Value)
+                .Take(search.PageSize.Value);
 
             var list = query
                 .Include(u => u.UserRoles)
@@ -405,24 +406,31 @@ namespace Yamore.Services.Services
             return user;
         }
 
-        public List<Model.LoginResponseDto> GetOwners()
+        public PagedResponse<Model.LoginResponseDto> GetOwnersPaged(int page, int pageSize)
         {
-            var list = Context.Users
+            page = PagingConstraints.NormalizePage(page);
+            pageSize = PagingConstraints.NormalizePageSize(pageSize);
+
+            var query = Context.Users
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
                 .Where(u => u.UserRoles.Any(ur => ur.Role != null &&
                     (ur.Role.Name == "YachtOwner" || ur.Role.Name == "Owner")))
-                .ToList();
+                .OrderBy(u => u.FirstName)
+                .ThenBy(u => u.LastName);
+
+            var count = query.Count();
+            var list = query.Skip(page * pageSize).Take(pageSize).ToList();
 
             var result = new List<Model.LoginResponseDto>();
             foreach (var u in list)
             {
                 var roles = u.UserRoles
                     .Where(ur => ur.Role != null)
-                    .Select(ur => ur.Role.Name)
+                    .Select(ur => ur.Role!.Name)
                     .Where(n => !string.IsNullOrWhiteSpace(n))
                     .Distinct()
-                    .ToList()!;
+                    .ToList();
 
                 result.Add(new Model.LoginResponseDto
                 {
@@ -437,7 +445,11 @@ namespace Yamore.Services.Services
                 });
             }
 
-            return result;
+            return new PagedResponse<Model.LoginResponseDto>
+            {
+                Count = count,
+                ResultList = result,
+            };
         }
     }
 }

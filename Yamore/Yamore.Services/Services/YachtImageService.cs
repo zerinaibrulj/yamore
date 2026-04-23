@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Yamore.Model;
 using Yamore.Model.Requests.YachtImage;
 using Yamore.Services.Database;
 using Yamore.Services.Interfaces;
@@ -16,12 +17,18 @@ namespace Yamore.Services.Services
             _context = context;
         }
 
-        public List<Model.YachtImage> GetByYachtId(int yachtId)
+        public PagedResponse<Model.YachtImage> GetByYachtIdPaged(int yachtId, int page, int pageSize)
         {
-            return _context.YachtImages
+            page = PagingConstraints.NormalizePage(page);
+            pageSize = PagingConstraints.NormalizePageSize(pageSize);
+
+            var q = _context.YachtImages
                 .Where(i => i.YachtId == yachtId)
                 .OrderBy(i => i.SortOrder)
-                .ThenBy(i => i.DateAdded)
+                .ThenBy(i => i.DateAdded);
+
+            var count = q.Count();
+            var list = q.Skip(page * pageSize).Take(pageSize)
                 .Select(i => new Model.YachtImage
                 {
                     YachtImageId = i.YachtImageId,
@@ -33,6 +40,12 @@ namespace Yamore.Services.Services
                     DateAdded = i.DateAdded,
                 })
                 .ToList();
+
+            return new PagedResponse<Model.YachtImage>
+            {
+                Count = count,
+                ResultList = list,
+            };
         }
 
         public Database.YachtImage? GetRawById(int imageId)

@@ -10,7 +10,7 @@ namespace Yamore.Services.Interfaces
         bool VerifyPassword(int userId, string password);
         /// <summary>Register a new end user and assign default "User" role.</summary>
         Model.User Register(UserInsertRequest request);
-        /// <summary>All users that have owner/yacht-owner role (for dropdowns).</summary>
-        List<Model.LoginResponseDto> GetOwners();
+        /// <summary>Yacht owners with server-side pagination (bounded page size).</summary>
+        PagedResponse<Model.LoginResponseDto> GetOwnersPaged(int page, int pageSize);
     }
 }

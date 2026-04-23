@@ -9,7 +9,7 @@ namespace Yamore.Services.Interfaces
 {
     public interface ICRUDService<TModel, TSearch, TInsert, TUpdate, TDelete> : IService<TModel, TSearch>
         where TModel : class
-        where TSearch : BaseSearchObject
+        where TSearch : BaseSearchObject, new()
     {
         TModel Insert(TInsert request);
         TModel Update(int id, TUpdate request);

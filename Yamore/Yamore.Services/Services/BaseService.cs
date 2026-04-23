@@ -15,7 +15,7 @@ namespace Yamore.Services.Services
 {
     public abstract class BaseService<TModel, TSearch, TDbEntity> : IService<TModel, TSearch>
         where TModel : class
-        where TSearch : BaseSearchObject 
+        where TSearch : BaseSearchObject, new()
         where TDbEntity : class
     {
         public _220245Context Context { get; set; }
@@ -31,6 +31,10 @@ namespace Yamore.Services.Services
 
         public virtual PagedResponse<TModel> GetPaged(TSearch search)
         {
+            search ??= new TSearch();
+            search.Page = PagingConstraints.NormalizePage(search.Page);
+            search.PageSize = PagingConstraints.NormalizePageSize(search.PageSize);
+
             List<TModel> result = new List<TModel>();
             var query = Context.Set<TDbEntity>().AsQueryable();
 
@@ -38,12 +42,7 @@ namespace Yamore.Services.Services
             query = AddFilter(search, query);
             int count = query.Count();
 
-        
-            if (search?.Page.HasValue == true && search?.PageSize.HasValue == true)
-            {
-                query = query.Skip(search.Page.Value * search.PageSize.Value).Take(search.PageSize.Value);
-            }
-
+            query = query.Skip(search.Page!.Value * search.PageSize!.Value).Take(search.PageSize.Value);
 
             var list = query.ToList();
             result = Mapper.Map(list, result);

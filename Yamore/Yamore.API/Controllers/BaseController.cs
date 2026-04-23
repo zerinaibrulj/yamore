@@ -15,7 +15,7 @@ namespace Yamore.API.Controllers
 
     public class BaseController<TModel, TSearch> : ControllerBase 
         where TModel : class
-        where TSearch : BaseSearchObject
+        where TSearch : BaseSearchObject, new()
     {
         protected IService<TModel, TSearch> _service;
 

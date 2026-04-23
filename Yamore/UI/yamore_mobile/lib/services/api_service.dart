@@ -315,17 +315,31 @@ class ApiService {
     _ensureSuccess(response);
   }
 
-  /// All users who have the YachtOwner/Owner role, sorted by display name.
+  /// All users who have the YachtOwner/Owner role, sorted by display name (fetches all pages).
   Future<List<AppUser>> getOwners() async {
-    final uri = Uri.parse('$baseUrl/Users/owners');
-    final response = await http.get(uri, headers: _headers);
-    _ensureSuccess(response);
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    final list = json['resultList'] as List<dynamic>? ?? [];
-    final users =
-        list.map((e) => AppUser.fromJson(e as Map<String, dynamic>)).toList();
-    users.sort((a, b) => a.displayName.compareTo(b.displayName));
-    return users;
+    const pageSize = 100;
+    final all = <AppUser>[];
+    var page = 0;
+    while (true) {
+      final uri = Uri.parse('$baseUrl/Users/owners').replace(
+        queryParameters: {
+          'Page': page.toString(),
+          'PageSize': pageSize.toString(),
+        },
+      );
+      final response = await http.get(uri, headers: _headers);
+      _ensureSuccess(response);
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
+      final list = json['resultList'] as List<dynamic>? ?? [];
+      final total = (json['count'] as num?)?.toInt() ?? 0;
+      all.addAll(
+        list.map((e) => AppUser.fromJson(e as Map<String, dynamic>)),
+      );
+      if (list.length < pageSize || all.length >= total) break;
+      page++;
+    }
+    all.sort((a, b) => a.displayName.compareTo(b.displayName));
+    return all;
   }
 
   Future<StatisticsDtoModel> getAdminStatistics({int? year}) async {
@@ -541,23 +555,34 @@ class ApiService {
   String yachtImageUrl(int imageId) => '$baseUrl/YachtImages/$imageId';
 
   Future<List<YachtImageModel>> getYachtImages(int yachtId) async {
-    final uri = Uri.parse('$baseUrl/YachtImages/byYacht/$yachtId');
-    final response = await http.get(uri, headers: _headers);
-    _ensureSuccess(response);
-    final decoded = jsonDecode(response.body);
-    List<dynamic> list;
-    if (decoded is List<dynamic>) {
-      list = decoded;
-    } else if (decoded is Map<String, dynamic>) {
-      list = (decoded['resultList'] ?? decoded['ResultList']
-              ?? decoded['data'] ?? decoded['Data']
-              ?? decoded['items'] ?? decoded['Items'] ?? []) as List<dynamic>? ?? [];
-    } else {
-      list = [];
+    const pageSize = 100;
+    final all = <YachtImageModel>[];
+    var page = 0;
+    while (true) {
+      final uri = Uri.parse('$baseUrl/YachtImages/byYacht/$yachtId').replace(
+        queryParameters: {
+          'Page': page.toString(),
+          'PageSize': pageSize.toString(),
+        },
+      );
+      final response = await http.get(uri, headers: _headers);
+      _ensureSuccess(response);
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      final list = (decoded['resultList'] ?? decoded['ResultList'] ?? [])
+          as List<dynamic>? ?? [];
+      final totalRaw = decoded['count'] ?? decoded['Count'];
+      final total = totalRaw is int
+          ? totalRaw
+          : totalRaw is num
+              ? totalRaw.toInt()
+              : 0;
+      all.addAll(
+        list.map((e) => YachtImageModel.fromJson(e as Map<String, dynamic>)),
+      );
+      if (list.length < pageSize || all.length >= total) break;
+      page++;
     }
-    return list
-        .map((e) => YachtImageModel.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return all;
   }
 
   Future<YachtImageModel> uploadYachtImage(int yachtId, String filePath) async {

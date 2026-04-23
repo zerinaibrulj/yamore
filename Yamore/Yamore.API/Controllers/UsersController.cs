@@ -118,10 +118,11 @@ namespace Yamore.API.Controllers
 
         [HttpGet("owners")]
         [Authorize(Roles = "Admin")]
-        public object GetOwners()
+        public ActionResult<PagedResponse<Model.LoginResponseDto>> GetOwners(
+            [FromQuery] int page = 0,
+            [FromQuery] int pageSize = PagingConstraints.DefaultPageSize)
         {
-            var owners = _usersService.GetOwners();
-            return new { resultList = owners };
+            return Ok(_usersService.GetOwnersPaged(page, pageSize));
         }
 
         /// <summary>Suspends (Status=false) the specified user.</summary>

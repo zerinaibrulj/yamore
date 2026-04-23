@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Yamore.Model;
 using Yamore.Model.Requests.YachtImage;
 using Yamore.Services.Interfaces;
 
@@ -18,9 +19,12 @@ namespace Yamore.API.Controllers
         }
 
         [HttpGet("byYacht/{yachtId}")]
-        public ActionResult<List<Model.YachtImage>> GetByYacht(int yachtId)
+        public ActionResult<PagedResponse<Model.YachtImage>> GetByYacht(
+            int yachtId,
+            [FromQuery] int page = 0,
+            [FromQuery] int pageSize = PagingConstraints.DefaultPageSize)
         {
-            return Ok(_service.GetByYachtId(yachtId));
+            return Ok(_service.GetByYachtIdPaged(yachtId, page, pageSize));
         }
 
         [HttpGet("{imageId}")]

@@ -72,9 +72,12 @@ public class SampleYachtSeedService : ISampleYachtSeedService
 
         var cityNames = new[] { "Split", "Dubrovnik", "Rijeka", "Opatija" };
         var cityIds = new List<int>();
+        var existingCities = _context.Cities
+            .Where(c => c.CountryId == countryId && cityNames.Contains(c.Name))
+            .ToList();
         foreach (var name in cityNames)
         {
-            var existing = _context.Cities.FirstOrDefault(x => x.Name == name);
+            var existing = existingCities.FirstOrDefault(x => x.Name == name);
             if (existing != null)
             {
                 cityIds.Add(existing.CityId);
@@ -84,6 +87,7 @@ public class SampleYachtSeedService : ISampleYachtSeedService
                 var city = new City { Name = name, CountryId = countryId };
                 _context.Cities.Add(city);
                 _context.SaveChanges();
+                existingCities.Add(city);
                 cityIds.Add(city.CityId);
             }
         }

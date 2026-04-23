@@ -8,7 +8,7 @@ namespace Yamore.API.Controllers
 {
     public class BaseCRUDController<TModel, TSearch, TInsert, TUpdate, TDelete> : BaseController<TModel, TSearch>
         where TModel : class
-        where TSearch : BaseSearchObject
+        where TSearch : BaseSearchObject, new()
     {
         protected new ICRUDService<TModel, TSearch, TInsert, TUpdate, TDelete> _service;      //na ovaj nacin smo omogucili da imamo pristip insertu i update-u
 

@@ -4,25 +4,47 @@ namespace Yamore.API.Configuration;
 /// Resolves Stripe keys from <c>IConfiguration</c> and process environment, even when
 /// the nested <c>Stripe:SecretKey</c> name is not populated (e.g. only <c>STRIPE_SECRET_KEY</c> is set).
 /// Trims and strips a UTF-8 BOM that sometimes appears in <c>.env</c> files.
+/// Process environment and configuration candidates are resolved once per process (first call).
 /// </summary>
 public static class StripeKeyResolver
 {
+    private static readonly object Sync = new();
+    private static bool _loaded;
+    private static string? _secretKey;
+    private static string? _publishableKey;
+
     public static string? GetSecretKey(IConfiguration configuration)
     {
-        return PickStripeKey(
-            "sk_",
-            Environment.GetEnvironmentVariable("STRIPE_SECRET_KEY"),
-            configuration["STRIPE_SECRET_KEY"],
-            configuration["Stripe:SecretKey"]);
+        EnsureLoaded(configuration);
+        return _secretKey;
     }
 
     public static string? GetPublishableKey(IConfiguration configuration)
     {
-        return PickStripeKey(
-            "pk_",
-            Environment.GetEnvironmentVariable("STRIPE_PUBLISHABLE_KEY"),
-            configuration["STRIPE_PUBLISHABLE_KEY"],
-            configuration["Stripe:PublishableKey"]);
+        EnsureLoaded(configuration);
+        return _publishableKey;
+    }
+
+    private static void EnsureLoaded(IConfiguration configuration)
+    {
+        if (_loaded)
+            return;
+        lock (Sync)
+        {
+            if (_loaded)
+                return;
+            _secretKey = PickStripeKey(
+                "sk_",
+                Environment.GetEnvironmentVariable("STRIPE_SECRET_KEY"),
+                configuration["STRIPE_SECRET_KEY"],
+                configuration["Stripe:SecretKey"]);
+            _publishableKey = PickStripeKey(
+                "pk_",
+                Environment.GetEnvironmentVariable("STRIPE_PUBLISHABLE_KEY"),
+                configuration["STRIPE_PUBLISHABLE_KEY"],
+                configuration["Stripe:PublishableKey"]);
+            _loaded = true;
+        }
     }
 
     private static string? PickStripeKey(string prefix, params string?[] candidates)

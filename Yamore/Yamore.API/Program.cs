@@ -171,7 +171,7 @@ builder.Services.AddDbContext<_220245Context>(options => options.UseSqlServer(co
 
 builder.Services.AddMapster();
 
-
+builder.Services.AddMemoryCache();
 
 builder.Services.AddAuthentication("BasicAuthentication")
     .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null);
@@ -185,7 +185,7 @@ var skipMigrate = string.Equals(
     "true",
     StringComparison.OrdinalIgnoreCase);
 
-using (var scope = app.Services.CreateScope())
+await using (var scope = app.Services.CreateAsyncScope())
 {
     var loggerFactory = scope.ServiceProvider.GetRequiredService<ILoggerFactory>();
     var startupLogger = loggerFactory.CreateLogger("Startup");
@@ -250,7 +250,7 @@ using (var scope = app.Services.CreateScope())
                     throw;
                 }
 
-                Thread.Sleep(TimeSpan.FromSeconds(3));
+                await Task.Delay(TimeSpan.FromSeconds(3));
             }
         }
 

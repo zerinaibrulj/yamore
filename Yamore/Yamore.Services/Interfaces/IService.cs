@@ -11,7 +11,7 @@ namespace Yamore.Services.Interfaces
 {
     public interface IService<TModel, TSearch>
         where TModel : class
-        where TSearch : BaseSearchObject
+        where TSearch : BaseSearchObject, new()
     {
         public PagedResponse<TModel> GetPaged(TSearch search);
         public TModel GetById(int id);
