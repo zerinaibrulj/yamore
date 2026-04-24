@@ -85,11 +85,51 @@ public class PaymentWorkflowService : IPaymentWorkflowService
                 Status = "requires_payment_method",
             };
         }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex, "Stripe API error in CreateProvisionalBookingIntentAsync (quote total {Total} EUR).", total);
+            throw new BusinessException(BuildStripeStartPaymentMessage(ex));
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Stripe CreateProvisionalBookingIntentAsync failed.");
-            throw new InvalidOperationException("Unable to start payment. Please try again later.");
+            _logger.LogError(ex, "Unexpected error in CreateProvisionalBookingIntentAsync.");
+            throw new BusinessException(
+                "Card payment could not be started. The payment service did not respond as expected. Please try again, or choose Pay on arrival if the problem continues.");
         }
+    }
+
+    private static string BuildStripeStartPaymentMessage(StripeException ex)
+    {
+        var detail = FormatStripeErrorDetail(ex);
+        if (string.IsNullOrEmpty(detail))
+        {
+            return "Card payment could not be started. On the server, set a valid Stripe secret key (Stripe:SecretKey or STRIPE_SECRET_KEY) from the same Stripe account as the publishable key, then restart the API.";
+        }
+
+        return "Card payment could not be started: " + detail;
+    }
+
+    /// <summary>User-visible fragment from a Stripe API error (bounded length).</summary>
+    private static string FormatStripeErrorDetail(StripeException ex)
+    {
+        var m = ex.StripeError?.Message;
+        if (string.IsNullOrWhiteSpace(m))
+        {
+            m = ex.Message;
+        }
+
+        if (string.IsNullOrWhiteSpace(m))
+        {
+            return string.Empty;
+        }
+
+        m = m.Trim();
+        if (m.Length > 400)
+        {
+            m = m.Substring(0, 400) + "…";
+        }
+
+        return m;
     }
 
     public async Task<PaymentIntentDto> CreateIntentForExistingReservationAsync(
@@ -139,10 +179,16 @@ public class PaymentWorkflowService : IPaymentWorkflowService
                 Status = "requires_payment_method",
             };
         }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex, "Stripe API error in CreatePaymentIntentAsync for reservation {ReservationId}.", request.ReservationId);
+            throw new BusinessException(BuildStripeStartPaymentMessage(ex));
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Stripe CreatePaymentIntentAsync failed for reservation {ReservationId}.", request.ReservationId);
-            throw new InvalidOperationException("Unable to create payment. Please try again later.");
+            _logger.LogError(ex, "Unexpected error in CreatePaymentIntentAsync for reservation {ReservationId}.", request.ReservationId);
+            throw new BusinessException(
+                "Card payment could not be started. Please try again, or choose Pay on arrival if the problem continues.");
         }
     }
 

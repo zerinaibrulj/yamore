@@ -14,6 +14,7 @@ namespace Yamore.Model
             string.Equals(status, Cancelled, StringComparison.OrdinalIgnoreCase)
             || string.Equals(status, Completed, StringComparison.OrdinalIgnoreCase);
 
+        /// <summary>True for reservations that still block a slot (not completed/cancelled). For LINQ-to-EF queries, use an inline predicate; this method is not translatable to SQL.</summary>
         public static bool BlocksAvailability(string? status) =>
             !string.Equals(status, Cancelled, StringComparison.OrdinalIgnoreCase)
             && !string.Equals(status, Completed, StringComparison.OrdinalIgnoreCase);

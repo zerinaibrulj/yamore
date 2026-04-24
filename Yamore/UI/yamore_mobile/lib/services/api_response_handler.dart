@@ -40,12 +40,37 @@ class ApiResponseHandler {
         }
         if (buffer.isNotEmpty) return buffer.join(' ');
       }
+      // Stripe API error shape: { "error": { "message": "..." } } or { "message": "Invalid API Key ..." }
+      if (decoded['error'] is Map<String, dynamic>) {
+        final errMap = decoded['error'] as Map<String, dynamic>;
+        final em = errMap['message'] as String?;
+        if (em != null && em.trim().isNotEmpty) {
+          return _stripKeyMaterial(em.trim());
+        }
+      }
+      final topMessage = decoded['message'] as String?;
+      if (topMessage != null && topMessage.trim().isNotEmpty) {
+        return _stripKeyMaterial(topMessage.trim());
+      }
       if (detail != null && detail.isNotEmpty) return detail;
       if (title != null && title.isNotEmpty) return title;
     } on FormatException {
       return null;
     }
     return null;
+  }
+
+  /// Masks `sk_…` / `pk_…` segments in user-facing error text (keys may appear in API messages).
+  static String _stripKeyMaterial(String s) {
+    return s
+        .replaceAllMapped(
+          RegExp(r'sk_(live|test)_[A-Za-z0-9_]{8,}'),
+          (_) => 'sk_…',
+        )
+        .replaceAllMapped(
+          RegExp(r'pk_(live|test)_[A-Za-z0-9_]{8,}'),
+          (_) => 'pk_…',
+        );
   }
 
   static void ensureSuccess(

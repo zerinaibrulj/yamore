@@ -75,7 +75,10 @@ namespace Yamore.Services.Services
             var ownerIds = await Context.Reservations
                 .AsNoTracking()
                 .Where(r => r.UserId == userId)
-                .Where(r => ReservationStatuses.BlocksAvailability(r.Status))
+                // Matches ReservationStatuses.BlocksAvailability; inline for EF Core SQL translation.
+                .Where(r => r.Status == null
+                    || (r.Status != ReservationStatuses.Cancelled
+                        && r.Status != ReservationStatuses.Completed))
                 .Select(r => r.Yacht.OwnerId)
                 .Distinct()
                 .ToListAsync(cancellationToken);

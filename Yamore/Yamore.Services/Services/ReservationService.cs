@@ -241,7 +241,10 @@ namespace Yamore.Services.Services
             Context.Set<Database.Reservation>()
                 .AsNoTracking()
                 .Where(r => r.YachtId == yachtId)
-                .Where(r => ReservationStatuses.BlocksAvailability(r.Status))
+                // Inline (see ReservationStatuses.BlocksAvailability): not cancelled/completed, including null. Must be translatable to SQL (no custom C# in Where).
+                .Where(r => r.Status == null
+                    || (r.Status != ReservationStatuses.Cancelled
+                        && r.Status != ReservationStatuses.Completed))
                 .Any(r => start < r.EndDate && end > r.StartDate);
 
         private decimal ComputeQuotedTotalForCardBooking(int yachtId, DateTime start, DateTime end, IReadOnlyList<int> serviceIds)
@@ -290,12 +293,22 @@ namespace Yamore.Services.Services
             return baseTotal + servicesTotal;
         }
 
+        /// <summary>Billable day count; matches Flutter <c>end.difference(start).inDays</c> (whole 24h periods, floored), minimum 1.</summary>
         private static int GetBookingDurationDays(DateTime start, DateTime end)
         {
+            if (end <= start)
+            {
+                return 1;
+            }
+
             var span = end - start;
-            var fractionalDays = span.TotalHours / 24.0;
-            var days = (int)Math.Ceiling(fractionalDays);
-            return Math.Max(1, Math.Min(365, days));
+            var days = (int)Math.Floor(span.TotalDays);
+            if (days < 1)
+            {
+                days = 1;
+            }
+
+            return Math.Min(365, days);
         }
 
         private static void ApplyStatusAudit(Database.Reservation entity, int? byUserId, DateTime utcNow, string? reason)

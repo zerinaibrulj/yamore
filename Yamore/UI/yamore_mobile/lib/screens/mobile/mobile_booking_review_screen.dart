@@ -266,33 +266,60 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
               children: [
                 const Icon(Icons.calendar_today_outlined, size: 18),
                 const SizedBox(width: 6),
-                Text(
-                  '${start.day.toString().padLeft(2, '0')}.'
-                  '${start.month.toString().padLeft(2, '0')}.'
-                  '${start.year}',
-                  style: const TextStyle(fontSize: 13),
+                Expanded(
+                  child: Text(
+                    'Start: ${start.day.toString().padLeft(2, '0')}.'
+                    '${start.month.toString().padLeft(2, '0')}.'
+                    '${start.year}  '
+                    '${start.hour.toString().padLeft(2, '0')}:'
+                    '${start.minute.toString().padLeft(2, '0')}',
+                    style: const TextStyle(fontSize: 13),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Row(
               children: [
-                const Icon(Icons.access_time, size: 18),
+                const Icon(Icons.event, size: 18),
                 const SizedBox(width: 6),
-                Text(
-                  '${start.hour.toString().padLeft(2, '0')}:'
-                  '${start.minute.toString().padLeft(2, '0')}h',
-                  style: const TextStyle(fontSize: 13),
+                Expanded(
+                  child: Text(
+                    'End: ${end.day.toString().padLeft(2, '0')}.'
+                    '${end.month.toString().padLeft(2, '0')}.'
+                    '${end.year}  '
+                    '${end.hour.toString().padLeft(2, '0')}:'
+                    '${end.minute.toString().padLeft(2, '0')}',
+                    style: const TextStyle(fontSize: 13),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Icon(Icons.schedule, size: 18),
                 const SizedBox(width: 6),
-                Text(durationLabel,
-                    style: const TextStyle(fontSize: 13)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        durationLabel,
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                      Text(
+                        'Charged in full 24h periods from start to end (one night → checkout the following day at the same time).',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade600,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 4),
