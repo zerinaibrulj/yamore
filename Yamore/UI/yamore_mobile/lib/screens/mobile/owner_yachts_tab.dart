@@ -12,6 +12,7 @@ import '../../models/yacht_category.dart';
 import '../../models/user.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../utils/yamore_service_icon.dart';
 import '../../widgets/custom_date_range_picker_dialog.dart';
 
 class OwnerYachtsTab extends StatefulWidget {
@@ -1773,7 +1774,7 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10)),
                           secondary: Icon(
-                            _serviceIcon(svc.name),
+                            yamoreServiceIcon(svc),
                             color: assigned
                                 ? AppTheme.primaryBlue
                                 : Colors.grey.shade400,
@@ -1813,25 +1814,6 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
         ),
       ),
     );
-  }
-
-  IconData _serviceIcon(String name) {
-    final n = name.toLowerCase();
-    if (n.contains('skipper') || n.contains('captain')) return Icons.person;
-    if (n.contains('cater') || n.contains('food') || n.contains('chef')) return Icons.restaurant;
-    if (n.contains('diving') || n.contains('snorkel')) return Icons.scuba_diving;
-    if (n.contains('wifi') || n.contains('internet')) return Icons.wifi;
-    if (n.contains('music') || n.contains('dj') || n.contains('entertainment')) return Icons.music_note;
-    if (n.contains('clean') || n.contains('laundry')) return Icons.cleaning_services;
-    if (n.contains('fuel') || n.contains('gas')) return Icons.local_gas_station;
-    if (n.contains('equip') || n.contains('gear')) return Icons.fitness_center;
-    if (n.contains('transfer') || n.contains('transport')) return Icons.directions_car;
-    if (n.contains('fishing')) return Icons.phishing;
-    if (n.contains('photo') || n.contains('video')) return Icons.camera_alt;
-    if (n.contains('drink') || n.contains('bar') || n.contains('beverage')) return Icons.local_bar;
-    if (n.contains('towel') || n.contains('linen')) return Icons.dry_cleaning;
-    if (n.contains('insurance') || n.contains('safety')) return Icons.health_and_safety;
-    return Icons.room_service_outlined;
   }
 
   Widget _sectionHeader(IconData icon, String title) {

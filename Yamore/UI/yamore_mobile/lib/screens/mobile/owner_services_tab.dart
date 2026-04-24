@@ -4,6 +4,7 @@ import '../../models/service_model.dart';
 import '../../models/service_category.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../utils/yamore_service_icon.dart';
 
 class OwnerServicesTab extends StatefulWidget {
   final AuthService authService;
@@ -198,7 +199,7 @@ class _OwnerServicesTabState extends State<OwnerServicesTab> {
                 leading: CircleAvatar(
                   backgroundColor: AppTheme.primaryBlue.withOpacity(0.1),
                   child: Icon(
-                    _serviceIcon(catName),
+                    yamoreServiceIcon(s, categoryName: catName),
                     color: AppTheme.primaryBlue,
                     size: 20,
                   ),
@@ -225,18 +226,4 @@ class _OwnerServicesTabState extends State<OwnerServicesTab> {
     );
   }
 
-  IconData _serviceIcon(String category) {
-    final lower = category.toLowerCase();
-    if (lower.contains('water') || lower.contains('sport')) return Icons.pool;
-    if (lower.contains('cater') || lower.contains('dining') || lower.contains('food')) return Icons.restaurant;
-    if (lower.contains('crew') || lower.contains('staff') || lower.contains('skipper')) return Icons.groups;
-    if (lower.contains('transport')) return Icons.local_taxi;
-    if (lower.contains('excurs') || lower.contains('tour')) return Icons.explore;
-    if (lower.contains('wellness') || lower.contains('spa')) return Icons.spa;
-    if (lower.contains('entertain') || lower.contains('music')) return Icons.music_note;
-    if (lower.contains('equip') || lower.contains('gear') || lower.contains('rental')) return Icons.surfing;
-    if (lower.contains('event') || lower.contains('party')) return Icons.celebration;
-    if (lower.contains('provision') || lower.contains('drink')) return Icons.local_bar;
-    return Icons.miscellaneous_services;
-  }
 }

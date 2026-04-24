@@ -7,6 +7,7 @@ import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../models/service_model.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/yamore_service_icon.dart';
 import 'mobile_shell.dart';
 
 String _formatCharterPeriod(DateTime start, DateTime end) {
@@ -169,7 +170,7 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
             ),
             const SizedBox(height: 8),
             ...widget.selectedServices.map((s) {
-              final icon = _serviceIcon(s.name);
+              final icon = yamoreServiceIcon(s);
               return Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Row(
@@ -203,21 +204,6 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
         ),
       ),
     );
-  }
-
-  IconData _serviceIcon(String name) {
-    final n = name.toLowerCase();
-    if (n.contains('drink') || n.contains('welcome'))
-      return Icons.local_bar;
-    if (n.contains('food') || n.contains('meal'))
-      return Icons.restaurant;
-    if (n.contains('music'))
-      return Icons.music_note;
-    if (n.contains('pet'))
-      return Icons.pets;
-    if (n.contains('safety') || n.contains('life jacket'))
-      return Icons.health_and_safety;
-    return Icons.check_circle_outline;
   }
 
   Widget _buildContactCard(AppUser user) {

@@ -6,6 +6,7 @@ import '../../models/service_model.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/yamore_service_icon.dart';
 import 'mobile_booking_payment_screen.dart';
 
 class MobileBookingServicesScreen extends StatefulWidget {
@@ -76,18 +77,6 @@ class _MobileBookingServicesScreenState
         _loading = false;
       });
     }
-  }
-
-  IconData _serviceIcon(String name) {
-    final n = name.toLowerCase();
-    if (n.contains('skipper') || n.contains('captain')) return Icons.sailing;
-    if (n.contains('drink') || n.contains('welcome')) return Icons.local_bar;
-    if (n.contains('food') || n.contains('meal')) return Icons.restaurant;
-    if (n.contains('clean') || n.contains('laundry')) return Icons.cleaning_services;
-    if (n.contains('music')) return Icons.music_note;
-    if (n.contains('pet')) return Icons.pets;
-    if (n.contains('safety') || n.contains('life')) return Icons.health_and_safety;
-    return Icons.room_service_outlined;
   }
 
   @override
@@ -176,7 +165,7 @@ class _MobileBookingServicesScreenState
                                   secondary: CircleAvatar(
                                     backgroundColor: AppTheme.primaryBlue.withOpacity(0.15),
                                     child: Icon(
-                                      _serviceIcon(s.name),
+                                      yamoreServiceIcon(s),
                                       color: AppTheme.primaryBlue,
                                       size: 22,
                                     ),
