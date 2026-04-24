@@ -6,6 +6,7 @@ import '../../models/city.dart';
 import '../../models/country.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/admin_pagination_bar.dart';
 
 class AdminCitiesCountriesScreen extends StatefulWidget {
   final AuthService authService;
@@ -25,19 +26,35 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
   );
 
   late TabController _tabController;
+
+  static const int _pageSize = 10;
+
+  final _countrySearchController = TextEditingController();
+  String _countryQuery = '';
+  int _countryPage = 0;
+  int _countryTotal = 0;
   List<CountryModel> _countries = [];
-  List<CityModel> _cities = [];
   bool _countriesLoading = true;
-  bool _citiesLoading = true;
   String? _countriesError;
+
+  final _citySearchController = TextEditingController();
+  String _cityQuery = '';
+  int _cityPage = 0;
+  int _cityTotal = 0;
+  List<CityModel> _cities = [];
+  bool _citiesLoading = true;
   String? _citiesError;
-  String _countrySearch = '';
-  String _citySearch = '';
+
+  /// Full lists for dropdowns, name lookup, and duplicate checks (same as before, via API).
+  List<CountryModel> _allCountries = [];
+  List<CityModel> _allCities = [];
+  bool _lookupLoading = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _loadLookups();
     _loadCountries();
     _loadCities();
   }
@@ -45,7 +62,34 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _countrySearchController.dispose();
+    _citySearchController.dispose();
     super.dispose();
+  }
+
+  /// Countries + cities for add-city dropdown, duplicate checks, and subtitle names.
+  Future<void> _loadLookups() async {
+    if (!mounted) return;
+    setState(() {
+      _lookupLoading = true;
+    });
+    try {
+      final countries = _api.getAllCountries();
+      final cities = _api.getAllCities();
+      final r = await Future.wait([countries, cities]);
+      if (!mounted) return;
+      setState(() {
+        _allCountries = r[0] as List<CountryModel>;
+        _allCities = r[1] as List<CityModel>;
+        _lookupLoading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _lookupLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _loadCountries() async {
@@ -54,10 +98,25 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
       _countriesError = null;
     });
     try {
-      final list = await _api.getCountries();
+      final p = await _api.getCountriesPaged(
+        page: _countryPage,
+        pageSize: _pageSize,
+        nameGte: _countryQuery.isEmpty ? null : _countryQuery,
+      );
+      if (!mounted) return;
+      var total = p.count ?? 0;
+      if (p.resultList.isEmpty && total > 0) {
+        final maxPage = ((total - 1) / _pageSize).floor();
+        if (_countryPage > maxPage) {
+          setState(() => _countryPage = maxPage);
+          await _loadCountries();
+          return;
+        }
+      }
       if (mounted) {
         setState(() {
-          _countries = list;
+          _countries = p.resultList;
+          _countryTotal = total;
           _countriesLoading = false;
         });
       }
@@ -71,16 +130,48 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
     }
   }
 
+  void _applyCountryFilter() {
+    setState(() {
+      _countryQuery = _countrySearchController.text.trim();
+      _countryPage = 0;
+    });
+    _loadCountries();
+  }
+
+  void _clearCountryFilter() {
+    _countrySearchController.clear();
+    setState(() {
+      _countryQuery = '';
+      _countryPage = 0;
+    });
+    _loadCountries();
+  }
+
   Future<void> _loadCities() async {
     setState(() {
       _citiesLoading = true;
       _citiesError = null;
     });
     try {
-      final list = await _api.getCities();
+      final p = await _api.getCitiesPaged(
+        page: _cityPage,
+        pageSize: _pageSize,
+        nameGte: _cityQuery.isEmpty ? null : _cityQuery,
+      );
+      if (!mounted) return;
+      var total = p.count ?? 0;
+      if (p.resultList.isEmpty && total > 0) {
+        final maxPage = ((total - 1) / _pageSize).floor();
+        if (_cityPage > maxPage) {
+          setState(() => _cityPage = maxPage);
+          await _loadCities();
+          return;
+        }
+      }
       if (mounted) {
         setState(() {
-          _cities = list;
+          _cities = p.resultList;
+          _cityTotal = total;
           _citiesLoading = false;
         });
       }
@@ -94,31 +185,33 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
     }
   }
 
+  void _applyCityFilter() {
+    setState(() {
+      _cityQuery = _citySearchController.text.trim();
+      _cityPage = 0;
+    });
+    _loadCities();
+  }
+
+  void _clearCityFilter() {
+    _citySearchController.clear();
+    setState(() {
+      _cityQuery = '';
+      _cityPage = 0;
+    });
+    _loadCities();
+  }
+
   String _countryName(int countryId) {
-    final match = _countries.where((c) => c.countryId == countryId);
+    final match = _allCountries.where((c) => c.countryId == countryId);
     return match.isEmpty ? '—' : match.first.name;
-  }
-
-  List<CountryModel> get _filteredCountries {
-    final q = _countrySearch.trim().toLowerCase();
-    if (q.isEmpty) return _countries;
-    return _countries.where((c) => c.name.toLowerCase().contains(q)).toList();
-  }
-
-  List<CityModel> get _filteredCities {
-    final q = _citySearch.trim().toLowerCase();
-    if (q.isEmpty) return _cities;
-    return _cities.where((c) {
-      final country = _countryName(c.countryId).toLowerCase();
-      return c.name.toLowerCase().contains(q) || country.contains(q);
-    }).toList();
   }
 
   /// Returns true if a city with the same name (case-insensitive) already exists in the given country.
   bool _cityExistsInCountry(int countryId, String name, {int? excludeCityId}) {
     final normalized = name.trim().toLowerCase();
     if (normalized.isEmpty) return false;
-    return _cities.any((c) {
+    return _allCities.any((c) {
       if (c.countryId != countryId) return false;
       if (excludeCityId != null && c.cityId == excludeCityId) return false;
       return c.name.trim().toLowerCase() == normalized;
@@ -200,10 +293,7 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
   }
 
   Widget _buildCountriesTab() {
-    if (_countriesLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_countriesError != null) {
+    if (_countriesError != null && !_countriesLoading) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -220,103 +310,161 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
         ),
       );
     }
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade300)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Icon(Icons.public, color: AppTheme.primaryBlue, size: 28),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Countries', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey.shade800)),
-                        const SizedBox(height: 2),
-                        Text('Add and manage countries used for routes and cities.', style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
-                      ],
-                    ),
-                  ),
-                  FilledButton.icon(
-                    onPressed: _addCountry,
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Add country'),
-                    style: FilledButton.styleFrom(backgroundColor: AppTheme.primaryBlue),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          TextField(
-            decoration: const InputDecoration(
-              hintText: 'Search countries',
-              prefixIcon: Icon(Icons.search),
-              border: OutlineInputBorder(),
-            ),
-            onChanged: (v) => setState(() => _countrySearch = v),
-          ),
-          const SizedBox(height: 12),
-          Card(
-            elevation: 1,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: _filteredCountries.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Center(
+    if (_countriesLoading && _countries.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade300)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Icon(Icons.public, color: AppTheme.primaryBlue, size: 28),
+                      const SizedBox(width: 12),
+                      Expanded(
                         child: Column(
-                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.flag_outlined, size: 48, color: Colors.grey.shade400),
-                            const SizedBox(height: 12),
-                            Text('No countries yet', style: TextStyle(fontSize: 15, color: Colors.grey.shade600)),
-                            const SizedBox(height: 4),
-                            Text('Use "Add country" above to create one.', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+                            Text('Countries', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey.shade800)),
+                            const SizedBox(height: 2),
+                            Text('Add and manage countries used for routes and cities.', style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
                           ],
                         ),
                       ),
-                    )
-                  : ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _filteredCountries.length,
-                      separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade200),
+                      FilledButton.icon(
+                        onPressed: _addCountry,
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('Add country'),
+                        style: FilledButton.styleFrom(backgroundColor: AppTheme.primaryBlue),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Card(
+                elevation: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _countrySearchController,
+                          decoration: const InputDecoration(
+                            labelText: 'Filter by name (starts with)',
+                            prefixIcon: Icon(Icons.search),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        onPressed: _countriesLoading ? null : _applyCountryFilter,
+                        icon: const Icon(Icons.filter_list, size: 20),
+                        label: const Text('Apply'),
+                      ),
+                      const SizedBox(width: 4),
+                      TextButton(
+                        onPressed: _countriesLoading
+                            ? null
+                            : () {
+                                if (_countrySearchController.text.isEmpty && _countryQuery.isEmpty) {
+                                  return;
+                                }
+                                _clearCountryFilter();
+                              },
+                        child: const Text('Clear'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (_countriesLoading) const LinearProgressIndicator(minHeight: 2),
+        Expanded(
+          child: _countries.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.flag_outlined, size: 48, color: Colors.grey.shade400),
+                        const SizedBox(height: 12),
+                        Text(
+                          _countryQuery.isEmpty ? 'No countries yet' : 'No countries match this filter',
+                          style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
+                        ),
+                        if (_countryQuery.isEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text('Use "Add country" above to create one.', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+                        ],
+                      ],
+                    ),
+                  ),
+                )
+              : Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 20),
+                  elevation: 1,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: ListView.separated(
+                      padding: EdgeInsets.zero,
+                      itemCount: _countries.length,
+                      separatorBuilder: (_, _) => Divider(height: 1, color: Colors.grey.shade200),
                       itemBuilder: (context, index) {
-                        final c = _filteredCountries[index];
+                        final c = _countries[index];
                         return ListTile(
-                          leading: CircleAvatar(radius: 20, backgroundColor: AppTheme.primaryBlue.withOpacity(0.1), child: Icon(Icons.flag, size: 20, color: AppTheme.primaryBlue)),
+                          leading: CircleAvatar(radius: 20, backgroundColor: AppTheme.primaryBlue.withValues(alpha: 0.1), child: Icon(Icons.flag, size: 20, color: AppTheme.primaryBlue)),
                           title: Text(c.name, style: const TextStyle(fontWeight: FontWeight.w500)),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              IconButton(icon: const Icon(Icons.edit_outlined, size: 20), onPressed: () => _editCountry(c), tooltip: 'Edit'),
-                              IconButton(icon: Icon(Icons.delete_outline, size: 20, color: Colors.red.shade700), onPressed: () => _deleteCountry(c), tooltip: 'Delete'),
+                              IconButton(icon: const Icon(Icons.edit_outlined, size: 20), onPressed: _countriesLoading ? null : () => _editCountry(c), tooltip: 'Edit'),
+                              IconButton(icon: Icon(Icons.delete_outline, size: 20, color: Colors.red.shade700), onPressed: _countriesLoading ? null : () => _deleteCountry(c), tooltip: 'Delete'),
                             ],
                           ),
                         );
                       },
                     ),
-            ),
+                  ),
+                ),
+        ),
+        if (!_countriesLoading)
+          AdminPaginationBar(
+            total: _countryTotal,
+            currentPage: _countryPage,
+            pageSize: _pageSize,
+            itemsOnPage: _countries.length,
+            loading: _countriesLoading,
+            onPrevious: () {
+              setState(() => _countryPage--);
+              _loadCountries();
+            },
+            onNext: () {
+              setState(() => _countryPage++);
+              _loadCountries();
+            },
           ),
-        ],
-      ),
+        const SizedBox(height: 8),
+      ],
     );
   }
 
   Widget _buildCitiesTab() {
-    if (_citiesLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_citiesError != null) {
+    if (_citiesError != null && !_citiesLoading) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -333,96 +481,167 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
         ),
       );
     }
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade300)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Icon(Icons.location_city, color: AppTheme.primaryBlue, size: 28),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Cities', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey.shade800)),
-                        const SizedBox(height: 2),
-                        Text(_countries.isEmpty ? 'Add a country first, then add cities.' : 'Add and manage cities for routes.', style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
-                      ],
-                    ),
-                  ),
-                  FilledButton.icon(
-                    onPressed: _countries.isEmpty ? null : _addCity,
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Add city'),
-                    style: FilledButton.styleFrom(backgroundColor: AppTheme.primaryBlue),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          TextField(
-            decoration: const InputDecoration(
-              hintText: 'Search cities or countries',
-              prefixIcon: Icon(Icons.search),
-              border: OutlineInputBorder(),
-            ),
-            onChanged: (v) => setState(() => _citySearch = v),
-          ),
-          const SizedBox(height: 12),
-          Card(
-            elevation: 1,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: _filteredCities.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Center(
+    if (_citiesLoading && _cities.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade300)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Icon(Icons.location_city, color: AppTheme.primaryBlue, size: 28),
+                      const SizedBox(width: 12),
+                      Expanded(
                         child: Column(
-                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.location_city_outlined, size: 48, color: Colors.grey.shade400),
-                            const SizedBox(height: 12),
-                            Text('No cities yet', style: TextStyle(fontSize: 15, color: Colors.grey.shade600)),
-                            const SizedBox(height: 4),
-                            Text(_countries.isEmpty ? 'Add a country in the Countries tab first.' : 'Use "Add city" above to create one.', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+                            Text('Cities', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey.shade800)),
+                            const SizedBox(height: 2),
+                            Text(
+                              _lookupLoading
+                                  ? 'Loading…'
+                                  : _allCountries.isEmpty
+                                      ? 'Add a country first, then add cities.'
+                                      : 'Add and manage cities for routes.',
+                              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                            ),
                           ],
                         ),
                       ),
-                    )
-                  : ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _filteredCities.length,
-                      separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade200),
+                      FilledButton.icon(
+                        onPressed: (_lookupLoading || _allCountries.isEmpty) ? null : _addCity,
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('Add city'),
+                        style: FilledButton.styleFrom(backgroundColor: AppTheme.primaryBlue),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Card(
+                elevation: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _citySearchController,
+                          decoration: const InputDecoration(
+                            labelText: 'Filter by city name (starts with)',
+                            prefixIcon: Icon(Icons.search),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        onPressed: _citiesLoading ? null : _applyCityFilter,
+                        icon: const Icon(Icons.filter_list, size: 20),
+                        label: const Text('Apply'),
+                      ),
+                      const SizedBox(width: 4),
+                      TextButton(
+                        onPressed: _citiesLoading
+                            ? null
+                            : () {
+                                if (_citySearchController.text.isEmpty && _cityQuery.isEmpty) {
+                                  return;
+                                }
+                                _clearCityFilter();
+                              },
+                        child: const Text('Clear'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (_citiesLoading) const LinearProgressIndicator(minHeight: 2),
+        Expanded(
+          child: _cities.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.location_city_outlined, size: 48, color: Colors.grey.shade400),
+                        const SizedBox(height: 12),
+                        Text(
+                          _cityQuery.isEmpty ? 'No cities yet' : 'No cities match this filter',
+                          style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
+                        ),
+                        if (_cityQuery.isEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            _allCountries.isEmpty && !_lookupLoading ? 'Add a country in the Countries tab first.' : 'Use "Add city" above to create one.',
+                            style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                )
+              : Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 20),
+                  elevation: 1,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: ListView.separated(
+                      padding: EdgeInsets.zero,
+                      itemCount: _cities.length,
+                      separatorBuilder: (_, _) => Divider(height: 1, color: Colors.grey.shade200),
                       itemBuilder: (context, index) {
-                        final city = _filteredCities[index];
+                        final city = _cities[index];
                         return ListTile(
-                          leading: CircleAvatar(radius: 20, backgroundColor: AppTheme.primaryBlue.withOpacity(0.1), child: Icon(Icons.location_on, size: 20, color: AppTheme.primaryBlue)),
+                          leading: CircleAvatar(radius: 20, backgroundColor: AppTheme.primaryBlue.withValues(alpha: 0.1), child: Icon(Icons.location_on, size: 20, color: AppTheme.primaryBlue)),
                           title: Text(city.name, style: const TextStyle(fontWeight: FontWeight.w500)),
                           subtitle: Text(_countryName(city.countryId), style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              IconButton(icon: const Icon(Icons.edit_outlined, size: 20), onPressed: () => _editCity(city), tooltip: 'Edit'),
-                              IconButton(icon: Icon(Icons.delete_outline, size: 20, color: Colors.red.shade700), onPressed: () => _deleteCity(city), tooltip: 'Delete'),
+                              IconButton(icon: const Icon(Icons.edit_outlined, size: 20), onPressed: _citiesLoading ? null : () => _editCity(city), tooltip: 'Edit'),
+                              IconButton(icon: Icon(Icons.delete_outline, size: 20, color: Colors.red.shade700), onPressed: _citiesLoading ? null : () => _deleteCity(city), tooltip: 'Delete'),
                             ],
                           ),
                         );
                       },
                     ),
-            ),
+                  ),
+                ),
+        ),
+        if (!_citiesLoading)
+          AdminPaginationBar(
+            total: _cityTotal,
+            currentPage: _cityPage,
+            pageSize: _pageSize,
+            itemsOnPage: _cities.length,
+            loading: _citiesLoading,
+            onPrevious: () {
+              setState(() => _cityPage--);
+              _loadCities();
+            },
+            onNext: () {
+              setState(() => _cityPage++);
+              _loadCities();
+            },
           ),
-        ],
-      ),
+        const SizedBox(height: 8),
+      ],
     );
   }
 
@@ -463,6 +682,7 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
       try {
         await _api.insertCountry(name: nameCtrl.text.trim());
         if (mounted) {
+          await _loadLookups();
           await _loadCountries();
           await _showSuccessPopup('Country added successfully.');
         }
@@ -511,6 +731,7 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
       try {
         await _api.updateCountry(c.countryId, name: nameCtrl.text.trim());
         if (mounted) {
+          await _loadLookups();
           await _loadCountries();
           await _loadCities();
           await _showSuccessPopup('Country updated successfully.');
@@ -544,6 +765,7 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
       try {
         await _api.deleteCountry(c.countryId);
         if (mounted) {
+          await _loadLookups();
           await _loadCountries();
           await _loadCities();
           await _showSuccessPopup('Country deleted successfully.');
@@ -575,9 +797,10 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
   }
 
   Future<void> _addCity() async {
-    if (_countries.isEmpty) return;
+    if (_allCountries.isEmpty) return;
+    final sortedCountries = List<CountryModel>.of(_allCountries)..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     final nameCtrl = TextEditingController();
-    int? selectedCountryId = _countries.first.countryId;
+    int? selectedCountryId = sortedCountries.first.countryId;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -589,12 +812,13 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<int>(
+                  // ignore: deprecated_member_use — controlled selection in StatefulBuilder
                   value: selectedCountryId,
                   decoration: const InputDecoration(
                     labelText: 'Country',
                     border: OutlineInputBorder(),
                   ),
-                  items: _countries
+                  items: sortedCountries
                       .map((c) => DropdownMenuItem(value: c.countryId, child: Text(c.name)))
                       .toList(),
                   onChanged: (v) => setState(() => selectedCountryId = v),
@@ -655,6 +879,7 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
       try {
         await _api.insertCity(countryId: selectedCountryId!, name: name);
         if (mounted) {
+          await _loadLookups();
           await _loadCities();
           await _showSuccessPopup('City added successfully.');
         }
@@ -753,6 +978,7 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
       try {
         await _api.updateCity(city.cityId, countryId: city.countryId, name: name);
         if (mounted) {
+          await _loadLookups();
           await _loadCities();
           await _showSuccessPopup('City updated successfully.');
         }
@@ -785,6 +1011,7 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
       try {
         await _api.deleteCity(city.cityId);
         if (mounted) {
+          await _loadLookups();
           await _loadCities();
           await _showSuccessPopup('City deleted successfully.');
         }

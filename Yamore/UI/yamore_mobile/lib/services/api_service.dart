@@ -194,19 +194,48 @@ class ApiService {
     _ensureSuccess(response);
   }
 
-  Future<List<CityModel>> getCities() async {
-    final uri = Uri.parse('$baseUrl/City').replace(
-      queryParameters: {
-        'Page': '0',
-        'PageSize': '1000',
-      },
-    );
+  /// Paged list; [nameGte] is a name prefix (API `NameGTE` / starts-with).
+  Future<PagedCities> getCitiesPaged({
+    int page = 0,
+    int pageSize = 10,
+    String? nameGte,
+  }) async {
+    final q = <String, String>{
+      'Page': page.toString(),
+      'PageSize': pageSize.toString(),
+    };
+    final t = nameGte?.trim();
+    if (t != null && t.isNotEmpty) {
+      q['NameGTE'] = t;
+    }
+    final uri = Uri.parse('$baseUrl/City').replace(queryParameters: q);
     final response = await http.get(uri, headers: _headers);
     _ensureSuccess(response);
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    final list = json['resultList'] as List<dynamic>? ?? json['ResultList'] as List<dynamic>? ?? [];
-    return list.map((e) => CityModel.fromJson(e as Map<String, dynamic>)).toList();
+    return PagedCities.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
+
+  /// All cities (paged loop). Use for dropdowns and validation, not the admin table.
+  Future<List<CityModel>> getAllCities() async {
+    const size = 200;
+    var page = 0;
+    final all = <CityModel>[];
+    int? total;
+    while (true) {
+      final p = await getCitiesPaged(page: page, pageSize: size, nameGte: null);
+      all.addAll(p.resultList);
+      total = p.count ?? total;
+      if (p.resultList.isEmpty) break;
+      if (total != null && all.length >= total) break;
+      if (p.resultList.length < size) break;
+      page++;
+    }
+    return all;
+  }
+
+  /// Backward-compatible: all cities (same as [getAllCities]).
+  Future<List<CityModel>> getCities() => getAllCities();
 
   Future<void> insertCity({required int countryId, required String name}) async {
     final uri = Uri.parse('$baseUrl/City');
@@ -234,19 +263,48 @@ class ApiService {
     _ensureSuccess(response);
   }
 
-  Future<List<CountryModel>> getCountries() async {
-    final uri = Uri.parse('$baseUrl/Country').replace(
-      queryParameters: {
-        'Page': '0',
-        'PageSize': '1000',
-      },
-    );
+  /// Paged list; [nameGte] is a name prefix (API `NameGTE` / starts-with).
+  Future<PagedCountries> getCountriesPaged({
+    int page = 0,
+    int pageSize = 10,
+    String? nameGte,
+  }) async {
+    final q = <String, String>{
+      'Page': page.toString(),
+      'PageSize': pageSize.toString(),
+    };
+    final t = nameGte?.trim();
+    if (t != null && t.isNotEmpty) {
+      q['NameGTE'] = t;
+    }
+    final uri = Uri.parse('$baseUrl/Country').replace(queryParameters: q);
     final response = await http.get(uri, headers: _headers);
     _ensureSuccess(response);
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    final list = json['resultList'] as List<dynamic>? ?? json['ResultList'] as List<dynamic>? ?? [];
-    return list.map((e) => CountryModel.fromJson(e as Map<String, dynamic>)).toList();
+    return PagedCountries.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
+
+  /// All countries (paged loop). Use for dropdowns and country name lookup, not the admin table.
+  Future<List<CountryModel>> getAllCountries() async {
+    const size = 200;
+    var page = 0;
+    final all = <CountryModel>[];
+    int? total;
+    while (true) {
+      final p = await getCountriesPaged(page: page, pageSize: size, nameGte: null);
+      all.addAll(p.resultList);
+      total = p.count ?? total;
+      if (p.resultList.isEmpty) break;
+      if (total != null && all.length >= total) break;
+      if (p.resultList.length < size) break;
+      page++;
+    }
+    return all;
+  }
+
+  /// Backward-compatible: all countries (same as [getAllCountries]).
+  Future<List<CountryModel>> getCountries() => getAllCountries();
 
   Future<void> insertCountry({required String name}) async {
     final uri = Uri.parse('$baseUrl/Country');

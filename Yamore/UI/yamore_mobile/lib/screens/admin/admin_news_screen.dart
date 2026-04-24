@@ -3,6 +3,7 @@ import '../../models/news_item.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/admin_pagination_bar.dart';
 
 class AdminNewsScreen extends StatefulWidget {
   final AuthService authService;
@@ -387,97 +388,6 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
     _load();
   }
 
-  int get _totalPagesComputed {
-    if (_totalCount <= 0) return 1;
-    return (_totalCount + _pageSize - 1) ~/ _pageSize;
-  }
-
-  Widget _buildPageBar() {
-    if (_totalCount <= 0) return const SizedBox.shrink();
-    final total = _totalCount;
-    final start = total == 0 ? 0 : _currentPage * _pageSize + 1;
-    final end = (_currentPage * _pageSize + _items.length).clamp(0, total);
-    final totalPages = _totalPagesComputed;
-    return Column(
-      children: [
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.info_outline, size: 16),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Showing $start–$end of $total',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  if (total > 0) ...[
-                    const SizedBox(width: 8),
-                    Text(
-                      'Page ${_currentPage + 1} of $totalPages',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.black54,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              Row(
-                children: [
-                  Text(
-                    'Rows per page: $_pageSize',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  const SizedBox(width: 12),
-                  IconButton.filledTonal(
-                    style: IconButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    icon: const Icon(Icons.chevron_left),
-                    onPressed: !_loading && _currentPage > 0
-                        ? () {
-                            setState(() => _currentPage--);
-                            _load();
-                          }
-                        : null,
-                  ),
-                  const SizedBox(width: 4),
-                  IconButton.filledTonal(
-                    style: IconButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    icon: const Icon(Icons.chevron_right),
-                    onPressed: !_loading &&
-                            (_currentPage + 1) < totalPages
-                        ? () {
-                            setState(() => _currentPage++);
-                            _load();
-                          }
-                        : null,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildTopHeader(BuildContext context) {
     return Row(
@@ -635,7 +545,22 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
                         ),
                       ),
           ),
-          if (!_loading) _buildPageBar(),
+          if (!_loading)
+            AdminPaginationBar(
+              total: _totalCount,
+              currentPage: _currentPage,
+              pageSize: _pageSize,
+              itemsOnPage: _items.length,
+              loading: _loading,
+              onPrevious: () {
+                setState(() => _currentPage--);
+                _load();
+              },
+              onNext: () {
+                setState(() => _currentPage++);
+                _load();
+              },
+            ),
         ],
       ),
     );

@@ -23,3 +23,22 @@ class CityModel {
   }
 }
 
+class PagedCities {
+  final int? count;
+  final List<CityModel> resultList;
+
+  PagedCities({this.count, required this.resultList});
+
+  factory PagedCities.fromJson(Map<String, dynamic> json) {
+    final list = (json['resultList'] as List<dynamic>?) ??
+        (json['ResultList'] as List<dynamic>?) ??
+        <dynamic>[];
+    return PagedCities(
+      count: json['count'] as int? ?? json['Count'] as int?,
+      resultList: list
+          .map((e) => CityModel.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
