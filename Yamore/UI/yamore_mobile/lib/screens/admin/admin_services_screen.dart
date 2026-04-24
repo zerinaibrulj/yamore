@@ -440,6 +440,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
       context: context,
       builder: (context) => _ServiceDialog(
         categories: _allCategories,
+        showValidationDialog: _showValidationDialog,
         onSave: (name, description, price, categoryId) async {
           await _api.insertService(
             name: name,
@@ -461,6 +462,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
       context: context,
       builder: (context) => _ServiceDialog(
         categories: _allCategories,
+        showValidationDialog: _showValidationDialog,
         existing: svc,
         onSave: (name, description, price, categoryId) async {
           await _api.updateService(
@@ -1228,11 +1230,13 @@ class _ServiceDialog extends StatefulWidget {
   final List<ServiceCategory> categories;
   final ServiceModel? existing;
   final Future<void> Function(String name, String? description, double? price, int? categoryId) onSave;
+  final Future<void> Function(String message) showValidationDialog;
 
   const _ServiceDialog({
     required this.categories,
     this.existing,
     required this.onSave,
+    required this.showValidationDialog,
   });
 
   @override
@@ -1267,17 +1271,15 @@ class _ServiceDialogState extends State<_ServiceDialog> {
 
   Future<void> _save() async {
     if (_nameCtrl.text.trim().isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Service name is required.')),
-        );
-      }
+      await widget.showValidationDialog(
+        'Please enter a valid service name before saving.',
+      );
       return;
     }
     final rawPrice = _priceCtrl.text.trim();
     if (rawPrice.isNotEmpty && double.tryParse(rawPrice) == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Price must be a valid number (e.g. 120 or 120.50).')),
+      await widget.showValidationDialog(
+        'Please enter a valid price before saving, or leave the field empty. Use a number (e.g. 120 or 120.50).',
       );
       return;
     }
