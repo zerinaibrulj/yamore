@@ -669,14 +669,12 @@ class ApiService {
   Future<NewsItemModel> createNews({
     required String title,
     required String text,
-    String? imageUrl,
     DateTime? createdAt,
   }) async {
     final uri = Uri.parse('$baseUrl/news');
     final body = <String, dynamic>{
       'Title': title,
       'Text': text,
-      if (imageUrl != null && imageUrl.isNotEmpty) 'ImageUrl': imageUrl,
       if (createdAt != null) 'CreatedAt': createdAt.toUtc().toIso8601String(),
     };
     final response = await http.post(

@@ -8,8 +8,6 @@ namespace Yamore.Model.Requests.News
 
         public string Text { get; set; } = null!;
 
-        public string? ImageUrl { get; set; }
-
         public DateTime? CreatedAt { get; set; }
     }
 }

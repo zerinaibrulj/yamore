@@ -620,9 +620,6 @@ public sealed class NewsItemInsertRequestValidator : AbstractValidator<NewsItemI
         RuleFor(x => x.Text)
             .NotEmpty().WithMessage(ValidationMessages.Required("Text"))
             .MaximumLength(8000).WithMessage(ValidationMessages.MaxLength("Text", 8000));
-        RuleFor(x => x.ImageUrl)
-            .MaximumLength(500).WithMessage(ValidationMessages.MaxLength("ImageUrl", 500))
-            .When(x => !string.IsNullOrEmpty(x.ImageUrl));
     }
 }
 
@@ -636,9 +633,6 @@ public sealed class NewsItemUpdateRequestValidator : AbstractValidator<NewsItemU
         RuleFor(x => x.Text)
             .NotEmpty().WithMessage(ValidationMessages.Required("Text"))
             .MaximumLength(8000).WithMessage(ValidationMessages.MaxLength("Text", 8000));
-        RuleFor(x => x.ImageUrl)
-            .MaximumLength(500).WithMessage(ValidationMessages.MaxLength("ImageUrl", 500))
-            .When(x => !string.IsNullOrEmpty(x.ImageUrl));
     }
 }
 

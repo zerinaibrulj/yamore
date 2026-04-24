@@ -97,7 +97,6 @@ public partial class _220245Context : DbContext
             entity.HasKey(e => e.NewsId);
             entity.Property(e => e.Title).HasMaxLength(200);
             entity.Property(e => e.Text).HasMaxLength(8000);
-            entity.Property(e => e.ImageUrl).HasMaxLength(500);
             entity.Property(e => e.CreatedAt).HasColumnType("datetime2");
         });
 

@@ -76,10 +76,6 @@ namespace Yamore.Services.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("ImageUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<string>("Text")
                         .IsRequired()
                         .HasMaxLength(8000)

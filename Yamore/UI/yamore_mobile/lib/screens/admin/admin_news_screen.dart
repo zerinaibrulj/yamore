@@ -31,6 +31,58 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
     _load();
   }
 
+  Future<void> _showActionResultDialog({
+    required String title,
+    required String message,
+    IconData icon = Icons.check_circle_outline,
+    Color? iconColor,
+  }) async {
+    if (!mounted) return;
+    final color = iconColor ?? Colors.green;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 48, color: color),
+              const SizedBox(height: 14),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.grey.shade800,
+                  fontSize: 15,
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _load() async {
     if (!mounted) return;
     setState(() {
@@ -65,79 +117,153 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
   Future<void> _showAddDialog() async {
     final titleC = TextEditingController();
     final textC = TextEditingController();
-    final imageC = TextEditingController();
     if (!mounted) {
       titleC.dispose();
       textC.dispose();
-      imageC.dispose();
       return;
     }
+    final borderRadius = BorderRadius.circular(12);
+    final fieldDecoration = InputDecoration(
+      filled: true,
+      fillColor: const Color(0xFFF5F7FA),
+      border: OutlineInputBorder(
+        borderRadius: borderRadius,
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: borderRadius,
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: borderRadius,
+        borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 2),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    );
+
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('New post'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleC,
-                decoration: const InputDecoration(
-                  labelText: 'Title *',
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final canPublish = titleC.text.trim().isNotEmpty &&
+              textC.text.trim().isNotEmpty;
+          return Dialog(
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16)),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.newspaper_outlined,
+                              color: AppTheme.primaryBlue,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'New post',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Fill in the title and the main text for the announcement.',
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: 13,
+                          height: 1.35,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      TextField(
+                        controller: titleC,
+                        onChanged: (_) => setDialogState(() {}),
+                        decoration: fieldDecoration.copyWith(
+                          labelText: 'Title *',
+                          hintText: 'Short headline',
+                        ),
+                        maxLength: 200,
+                        textInputAction: TextInputAction.next,
+                        autofocus: true,
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: textC,
+                        onChanged: (_) => setDialogState(() {}),
+                        decoration: fieldDecoration.copyWith(
+                          labelText: 'Text *',
+                          alignLabelWithHint: true,
+                          hintText: 'Full announcement for users…',
+                        ),
+                        minLines: 5,
+                        maxLines: 10,
+                        keyboardType: TextInputType.multiline,
+                        textInputAction: TextInputAction.newline,
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(false),
+                            child: const Text('Cancel'),
+                          ),
+                          const SizedBox(width: 8),
+                          FilledButton(
+                            onPressed: canPublish
+                                ? () => Navigator.of(ctx).pop(true)
+                                : null,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppTheme.primaryBlue,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 12,
+                              ),
+                            ),
+                            child: const Text('Publish'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-                maxLength: 200,
               ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: textC,
-                decoration: const InputDecoration(
-                  labelText: 'Text *',
-                  alignLabelWithHint: true,
-                ),
-                maxLines: 6,
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: imageC,
-                decoration: const InputDecoration(
-                  labelText: 'Image URL (optional)',
-                ),
-                keyboardType: TextInputType.url,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Publish'),
-          ),
-        ],
+            ),
+          );
+        },
       ),
     );
     try {
       if (ok != true || !mounted) return;
-      if (titleC.text.trim().isEmpty || textC.text.trim().isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Title and text are required.')),
-          );
-        }
-        return;
-      }
       try {
         await _api.createNews(
           title: titleC.text.trim(),
           text: textC.text.trim(),
-          imageUrl: imageC.text.trim().isEmpty ? null : imageC.text.trim(),
         );
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('News published.')),
+          await _showActionResultDialog(
+            title: 'Published',
+            message: 'The announcement was added successfully.',
           );
           await _load();
         }
@@ -157,7 +283,6 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
     } finally {
       titleC.dispose();
       textC.dispose();
-      imageC.dispose();
     }
   }
 
@@ -185,8 +310,9 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
     try {
       await _api.deleteNews(item.newsId);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Deleted.')),
+        await _showActionResultDialog(
+          title: 'Deleted',
+          message: 'The announcement was removed successfully.',
         );
         await _load();
       }
@@ -238,7 +364,7 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
         const Padding(
           padding: EdgeInsets.fromLTRB(24, 8, 24, 0),
           child: Text(
-            'Publish obavijesti: title, text, optional image URL, and a timestamp from the list order (newest first on mobile).',
+            'Create and manage news for the app. Each item shows the title, text, and time. On phones, the list is ordered with the newest first.',
             style: TextStyle(
               color: Color(0xFF424242),
               fontSize: 14,

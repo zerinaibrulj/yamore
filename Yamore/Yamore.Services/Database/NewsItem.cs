@@ -10,8 +10,5 @@ public partial class NewsItem
 
     public string Text { get; set; } = null!;
 
-    /// <summary>Public URL to an image (e.g. https://... or same-origin path).</summary>
-    public string? ImageUrl { get; set; }
-
     public DateTime CreatedAt { get; set; }
 }

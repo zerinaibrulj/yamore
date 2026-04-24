@@ -147,33 +147,7 @@ class _MobileNewsScreenState extends State<MobileNewsScreen> {
                                                 ),
                                               ),
                                             ],
-                                            if (n.imageUrl != null &&
-                                                n.imageUrl!
-                                                    .trim()
-                                                    .isNotEmpty) ...[
-                                              const SizedBox(height: 12),
-                                              ClipRRect(
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                                child: Image.network(
-                                                  n.imageUrl!.trim(),
-                                                  fit: BoxFit.cover,
-                                                  errorBuilder: (context, error, stackTrace) {
-                                                    return Container(
-                                                      color: Colors.grey
-                                                          .shade200,
-                                                      height: 120,
-                                                      alignment:
-                                                          Alignment.center,
-                                                      child: const Icon(
-                                                        Icons.broken_image,
-                                                      ),
-                                                    );
-                                                  },
-                                                ),
-                                              ),
-                                            ],
-                                            const SizedBox(height: 16),
+                                            const SizedBox(height: 12),
                                             Text(
                                               n.text,
                                               style: const TextStyle(
@@ -220,26 +194,6 @@ class _NewsCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (item.imageUrl != null && item.imageUrl!.trim().isNotEmpty)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    item.imageUrl!.trim(),
-                    height: 140,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: Colors.grey.shade200,
-                        height: 100,
-                        alignment: Alignment.center,
-                        child: const Icon(Icons.broken_image_outlined, size: 32),
-                      );
-                    },
-                  ),
-                ),
-              if (item.imageUrl != null && item.imageUrl!.trim().isNotEmpty)
-                const SizedBox(height: 10),
               Text(
                 item.title,
                 maxLines: 2,

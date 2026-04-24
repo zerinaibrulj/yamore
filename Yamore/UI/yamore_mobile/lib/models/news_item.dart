@@ -2,14 +2,12 @@ class NewsItemModel {
   final int newsId;
   final String title;
   final String text;
-  final String? imageUrl;
   final DateTime? createdAt;
 
   NewsItemModel({
     required this.newsId,
     required this.title,
     required this.text,
-    this.imageUrl,
     this.createdAt,
   });
 
@@ -26,7 +24,8 @@ class NewsItemModel {
     final createdRaw = _key(json, 'createdAt', 'CreatedAt');
     DateTime? createdAt;
     if (createdRaw is String && createdRaw.trim().isNotEmpty) {
-      createdAt = DateTime.tryParse(createdRaw);
+      // Match notifications: .NET often omits "Z" for UTC; treat offset-less ISO as UTC.
+      createdAt = _parseApiDateTime(createdRaw);
     } else if (createdRaw is DateTime) {
       createdAt = createdRaw;
     }
@@ -35,7 +34,6 @@ class NewsItemModel {
       newsId: _key(json, 'newsId', 'NewsId') as int,
       title: (_key(json, 'title', 'Title') as String?) ?? '',
       text: (_key(json, 'text', 'Text') as String?) ?? '',
-      imageUrl: _key(json, 'imageUrl', 'ImageUrl') as String?,
       createdAt: createdAt,
     );
   }
@@ -71,4 +69,19 @@ class PagedNewsItems {
 DateTime? newsDisplayTime(DateTime? t) {
   if (t == null) return null;
   return t.isUtc ? t.toLocal() : t;
+}
+
+/// If the server sends an ISO-8601 instant without a timezone, treat it as UTC
+/// (same as [NotificationModel] parsing) so local display matches the real time.
+DateTime? _parseApiDateTime(String raw) {
+  final t = raw.trim();
+  if (t.isEmpty) return null;
+  if (t.endsWith('Z')) return DateTime.tryParse(t);
+  if (RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(t)) {
+    return DateTime.tryParse(t);
+  }
+  if (t.contains('T') && t.length > 10) {
+    return DateTime.tryParse('${t}Z') ?? DateTime.tryParse(t);
+  }
+  return DateTime.tryParse(t);
 }
