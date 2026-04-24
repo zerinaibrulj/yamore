@@ -6,6 +6,7 @@ import '../../models/user.dart';
 import '../../models/notification.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
+import '../../utils/form_validators.dart';
 import '../../widgets/user_notifications_inbox.dart';
 
 class MobileProfileTab extends StatefulWidget {
@@ -48,6 +49,16 @@ class _MobileProfileTabState extends State<MobileProfileTab>
   bool _showOldPassword = false;
   bool _showNewPassword = false;
   bool _showConfirmPassword = false;
+  /// When false, password fields are hidden; profile save never requires a password.
+  bool _wantsChangePassword = false;
+
+  String? _errFirstName;
+  String? _errLastName;
+  String? _errEmail;
+  String? _errPhone;
+  String? _errOldPassword;
+  String? _errNewPassword;
+  String? _errConfirmPassword;
 
   bool _notificationsLoading = false;
   List<NotificationModel> _notifications = const [];
@@ -190,13 +201,18 @@ class _MobileProfileTabState extends State<MobileProfileTab>
         '${local.minute.toString().padLeft(2, '0')}';
   }
 
-  bool _isStrongPassword(String value) {
-    if (value.length < 8 || value.length > 128) return false;
-    final hasLower = RegExp(r'[a-z]').hasMatch(value);
-    final hasUpper = RegExp(r'[A-Z]').hasMatch(value);
-    final hasDigit = RegExp(r'[0-9]').hasMatch(value);
-    final hasSpecial = RegExp(r'[^a-zA-Z0-9]').hasMatch(value);
-    return hasLower && hasUpper && hasDigit && hasSpecial;
+  void _messageBelowFields(String text, {required bool isError}) {
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(text),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: isError ? Theme.of(context).colorScheme.error : null,
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 
   @override
@@ -231,58 +247,86 @@ class _MobileProfileTabState extends State<MobileProfileTab>
   Future<void> _saveProfile() async {
     final firstName = _firstNameCtrl.text.trim();
     final lastName = _lastNameCtrl.text.trim();
-    if (firstName.isEmpty || lastName.isEmpty) {
-      _showError('Validation error', 'First name and last name are required.');
+    final email = _emailCtrl.text.trim();
+    final phone = _phoneCtrl.text.trim();
+
+    setState(() {
+      _errFirstName = FormValidators.firstNameError(firstName);
+      _errLastName = FormValidators.lastNameError(lastName);
+      _errEmail = FormValidators.emailError(email);
+      _errPhone = FormValidators.phoneError(phone);
+    });
+    if (_errFirstName != null ||
+        _errLastName != null ||
+        _errEmail != null ||
+        _errPhone != null) {
       return;
     }
+
     setState(() => _profileSaving = true);
     try {
       final updated = await _api.updateProfile(
         userId: _user.userId,
         firstName: firstName,
         lastName: lastName,
-        email: _emailCtrl.text.trim(),
-        phone: _phoneCtrl.text.trim(),
+        email: email,
+        phone: phone,
       );
       widget.authService.updateCurrentUser(updated);
       _applyUserToControllers(updated);
       if (!mounted) return;
       setState(() => _profileSaving = false);
       widget.onProfileUpdated?.call();
-      _showSuccess('Profile updated', 'Your profile has been updated.');
+      _messageBelowFields(
+        'Profile saved. Your name, email, and phone on file were updated.',
+        isError: false,
+      );
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _profileSaving = false);
-      _showError('Update failed', e.displayMessage);
+      _messageBelowFields(
+        e.displayMessage,
+        isError: true,
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _profileSaving = false);
-      _showError('Error', '$e');
+      _messageBelowFields('Could not save profile: $e', isError: true);
     }
   }
 
   Future<void> _changePassword() async {
+    if (!_wantsChangePassword) return;
+
     final oldPw = _oldPasswordCtrl.text;
     final newPw = _newPasswordCtrl.text;
     final confirmPw = _confirmPasswordCtrl.text;
 
+    String? eOld;
+    String? eNew;
+    String? eConfirm;
     if (oldPw.isEmpty) {
-      _showError('Validation error', 'Please enter your current password.');
-      return;
+      eOld = 'Enter your current password to confirm it is you.';
     }
     if (newPw.isEmpty) {
-      _showError('Validation error', 'Please enter a new password.');
-      return;
+      eNew = 'Enter a new password, or turn off "I want to change my password" above to skip.';
+    } else {
+      eNew = FormValidators.newPasswordError(newPw);
     }
-    if (!_isStrongPassword(newPw)) {
-      _showError(
-        'Validation error',
-        'New password must be at least 8 characters long and include uppercase, lowercase, digit, and special character.',
-      );
-      return;
+    if (newPw.isNotEmpty) {
+      if (confirmPw.isEmpty) {
+        eConfirm = 'Re-enter the new password in the confirmation field.';
+      } else if (confirmPw != newPw) {
+        eConfirm = 'Re-enter the same new password in both fields.';
+      }
     }
-    if (newPw != confirmPw) {
-      _showError('Validation error', 'Passwords do not match.');
+
+    setState(() {
+      _errOldPassword = eOld;
+      _errNewPassword = eNew;
+      _errConfirmPassword = eConfirm;
+    });
+    if (eOld != null || eNew != null || eConfirm != null) {
       return;
     }
 
@@ -298,49 +342,24 @@ class _MobileProfileTabState extends State<MobileProfileTab>
       _newPasswordCtrl.clear();
       _confirmPasswordCtrl.clear();
       if (!mounted) return;
-      setState(() => _passwordSaving = false);
-      _showSuccess('Password changed', 'Your password has been changed.');
+      setState(() {
+        _passwordSaving = false;
+        _wantsChangePassword = false;
+        _errOldPassword = _errNewPassword = _errConfirmPassword = null;
+      });
+      _messageBelowFields(
+        'Your password was changed. Use the new password next time you sign in.',
+        isError: false,
+      );
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _passwordSaving = false);
-      _showError('Password change failed', e.displayMessage);
+      _messageBelowFields(e.displayMessage, isError: true);
     } catch (e) {
       if (!mounted) return;
       setState(() => _passwordSaving = false);
-      _showError('Error', '$e');
+      _messageBelowFields('Password change failed: $e', isError: true);
     }
-  }
-
-  void _showError(String title, String message) {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showSuccess(String title, String message) {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -409,26 +428,31 @@ class _MobileProfileTabState extends State<MobileProfileTab>
           ),
           const SizedBox(height: 8),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: TextField(
                   controller: _firstNameCtrl,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'First name',
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
                     isDense: true,
+                    errorText: _errFirstName,
                   ),
+                  onChanged: (_) => setState(() => _errFirstName = null),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: TextField(
                   controller: _lastNameCtrl,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Last name',
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
                     isDense: true,
+                    errorText: _errLastName,
                   ),
+                  onChanged: (_) => setState(() => _errLastName = null),
                 ),
               ),
             ],
@@ -436,24 +460,28 @@ class _MobileProfileTabState extends State<MobileProfileTab>
           const SizedBox(height: 8),
           TextField(
             controller: _emailCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Email',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: 'Email (optional)',
+              border: const OutlineInputBorder(),
               isDense: true,
-              prefixIcon: Icon(Icons.email_outlined, size: 20),
+              prefixIcon: const Icon(Icons.email_outlined, size: 20),
+              errorText: _errEmail,
             ),
             keyboardType: TextInputType.emailAddress,
+            onChanged: (_) => setState(() => _errEmail = null),
           ),
           const SizedBox(height: 8),
           TextField(
             controller: _phoneCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Phone',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: 'Phone (optional)',
+              border: const OutlineInputBorder(),
               isDense: true,
-              prefixIcon: Icon(Icons.phone_outlined, size: 20),
+              prefixIcon: const Icon(Icons.phone_outlined, size: 20),
+              errorText: _errPhone,
             ),
             keyboardType: TextInputType.phone,
+            onChanged: (_) => setState(() => _errPhone = null),
           ),
           const SizedBox(height: 10),
           Align(
@@ -489,95 +517,138 @@ class _MobileProfileTabState extends State<MobileProfileTab>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: const [
+                  const Row(
+                    children: [
                       Icon(Icons.lock_outline, size: 20),
                       SizedBox(width: 8),
                       Text(
-                        'Change password',
+                        'Password',
                         style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _oldPasswordCtrl,
-                    obscureText: !_showOldPassword,
-                    decoration: InputDecoration(
-                      labelText: 'Current password',
-                      border: const OutlineInputBorder(),
-                      isDense: true,
-                      prefixIcon: const Icon(Icons.key_outlined, size: 20),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _showOldPassword ? Icons.visibility_off : Icons.visibility,
-                          size: 20,
-                        ),
-                        onPressed: () =>
-                            setState(() => _showOldPassword = !_showOldPassword),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _newPasswordCtrl,
-                    obscureText: !_showNewPassword,
-                    decoration: InputDecoration(
-                      labelText: 'New password',
-                      border: const OutlineInputBorder(),
-                      isDense: true,
-                      prefixIcon: const Icon(Icons.lock_reset_outlined, size: 20),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _showNewPassword ? Icons.visibility_off : Icons.visibility,
-                          size: 20,
-                        ),
-                        onPressed: () =>
-                            setState(() => _showNewPassword = !_showNewPassword),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _confirmPasswordCtrl,
-                    obscureText: !_showConfirmPassword,
-                    decoration: InputDecoration(
-                      labelText: 'Confirm new password',
-                      border: const OutlineInputBorder(),
-                      isDense: true,
-                      prefixIcon: const Icon(Icons.lock_outline, size: 20),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _showConfirmPassword
-                              ? Icons.visibility_off
-                              : Icons.visibility,
-                          size: 20,
-                        ),
-                        onPressed: () => setState(
-                            () => _showConfirmPassword = !_showConfirmPassword),
-                      ),
-                    ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Saving your profile (above) never changes your password. To change it, use the options below.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade700, height: 1.3),
                   ),
                   const SizedBox(height: 10),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: FilledButton.icon(
-                      onPressed: _passwordSaving ? null : _changePassword,
-                      icon: _passwordSaving
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.lock_reset, size: 18),
-                      label: Text(
-                        _passwordSaving ? 'Changing...' : 'Change password',
+                  CheckboxListTile(
+                    value: _wantsChangePassword,
+                    onChanged: _passwordSaving
+                        ? null
+                        : (v) {
+                            setState(() {
+                              _wantsChangePassword = v ?? false;
+                              if (!_wantsChangePassword) {
+                                _oldPasswordCtrl.clear();
+                                _newPasswordCtrl.clear();
+                                _confirmPasswordCtrl.clear();
+                                _errOldPassword =
+                                    _errNewPassword = _errConfirmPassword = null;
+                              }
+                            });
+                          },
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    title: const Text('I want to change my password'),
+                  ),
+                  if (_wantsChangePassword) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'You must enter your current password. The new password must be 8–128 characters and include upper, lower, a digit, and a special character (e.g. !@#).',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade800, height: 1.3),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _oldPasswordCtrl,
+                      obscureText: !_showOldPassword,
+                      decoration: InputDecoration(
+                        labelText: 'Current password',
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                        errorText: _errOldPassword,
+                        prefixIcon: const Icon(Icons.key_outlined, size: 20),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _showOldPassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            size: 20,
+                          ),
+                          onPressed: () =>
+                              setState(() => _showOldPassword = !_showOldPassword),
+                        ),
+                      ),
+                      onChanged: (_) => setState(() => _errOldPassword = null),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _newPasswordCtrl,
+                      obscureText: !_showNewPassword,
+                      decoration: InputDecoration(
+                        labelText: 'New password',
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                        errorText: _errNewPassword,
+                        prefixIcon: const Icon(Icons.lock_reset_outlined, size: 20),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _showNewPassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            size: 20,
+                          ),
+                          onPressed: () =>
+                              setState(() => _showNewPassword = !_showNewPassword),
+                        ),
+                      ),
+                      onChanged: (_) => setState(() => _errNewPassword = null),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _confirmPasswordCtrl,
+                      obscureText: !_showConfirmPassword,
+                      decoration: InputDecoration(
+                        labelText: 'Confirm new password',
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                        errorText: _errConfirmPassword,
+                        prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _showConfirmPassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            size: 20,
+                          ),
+                          onPressed: () => setState(
+                              () => _showConfirmPassword = !_showConfirmPassword),
+                        ),
+                      ),
+                      onChanged: (_) => setState(() => _errConfirmPassword = null),
+                    ),
+                    const SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: FilledButton.icon(
+                        onPressed: _passwordSaving ? null : _changePassword,
+                        icon: _passwordSaving
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.lock_reset, size: 18),
+                        label: Text(
+                          _passwordSaving ? 'Changing...' : 'Update password',
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),

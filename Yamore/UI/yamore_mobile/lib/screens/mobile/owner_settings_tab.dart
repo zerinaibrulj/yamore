@@ -45,6 +45,7 @@ class _OwnerSettingsTabState extends State<OwnerSettingsTab>
   final _newPasswordCtrl = TextEditingController();
   final _confirmPasswordCtrl = TextEditingController();
   bool _passwordSaving = false;
+  bool _wantsChangePassword = false;
   bool _showOldPassword = false;
   bool _showNewPassword = false;
   bool _showConfirmPassword = false;
@@ -269,6 +270,7 @@ class _OwnerSettingsTabState extends State<OwnerSettingsTab>
   }
 
   Future<void> _changePassword() async {
+    if (!_wantsChangePassword) return;
     final oldPw = _oldPasswordCtrl.text;
     final newPw = _newPasswordCtrl.text;
     final confirmPw = _confirmPasswordCtrl.text;
@@ -305,7 +307,10 @@ class _OwnerSettingsTabState extends State<OwnerSettingsTab>
       _newPasswordCtrl.clear();
       _confirmPasswordCtrl.clear();
       if (!mounted) return;
-      setState(() => _passwordSaving = false);
+      setState(() {
+        _passwordSaving = false;
+        _wantsChangePassword = false;
+      });
       _showSuccess('Password changed', 'Your password has been changed.');
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -533,95 +538,125 @@ class _OwnerSettingsTabState extends State<OwnerSettingsTab>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: const [
+                  const Row(
+                    children: [
                       Icon(Icons.lock_outline, size: 20),
                       SizedBox(width: 8),
                       Text(
-                        'Change password',
+                        'Password',
                         style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _oldPasswordCtrl,
-                    obscureText: !_showOldPassword,
-                    decoration: InputDecoration(
-                      labelText: 'Current password',
-                      border: const OutlineInputBorder(),
-                      isDense: true,
-                      prefixIcon: const Icon(Icons.key_outlined, size: 20),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _showOldPassword ? Icons.visibility_off : Icons.visibility,
-                          size: 20,
-                        ),
-                        onPressed: () =>
-                            setState(() => _showOldPassword = !_showOldPassword),
-                      ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Saving your profile (above) does not change your password. To change it, use the options below.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade700,
+                      height: 1.3,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  TextField(
-                    controller: _newPasswordCtrl,
-                    obscureText: !_showNewPassword,
-                    decoration: InputDecoration(
-                      labelText: 'New password',
-                      border: const OutlineInputBorder(),
-                      isDense: true,
-                      prefixIcon: const Icon(Icons.lock_reset_outlined, size: 20),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _showNewPassword ? Icons.visibility_off : Icons.visibility,
-                          size: 20,
+                  CheckboxListTile(
+                    value: _wantsChangePassword,
+                    onChanged: _passwordSaving
+                        ? null
+                        : (v) {
+                            setState(() {
+                              _wantsChangePassword = v ?? false;
+                              if (!_wantsChangePassword) {
+                                _oldPasswordCtrl.clear();
+                                _newPasswordCtrl.clear();
+                                _confirmPasswordCtrl.clear();
+                              }
+                            });
+                          },
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    title: const Text('I want to change my password'),
+                  ),
+                  if (_wantsChangePassword) ...[
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _oldPasswordCtrl,
+                      obscureText: !_showOldPassword,
+                      decoration: InputDecoration(
+                        labelText: 'Current password',
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                        prefixIcon: const Icon(Icons.key_outlined, size: 20),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _showOldPassword ? Icons.visibility_off : Icons.visibility,
+                            size: 20,
+                          ),
+                          onPressed: () =>
+                              setState(() => _showOldPassword = !_showOldPassword),
                         ),
-                        onPressed: () =>
-                            setState(() => _showNewPassword = !_showNewPassword),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _confirmPasswordCtrl,
-                    obscureText: !_showConfirmPassword,
-                    decoration: InputDecoration(
-                      labelText: 'Confirm new password',
-                      border: const OutlineInputBorder(),
-                      isDense: true,
-                      prefixIcon: const Icon(Icons.lock_outline, size: 20),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _showConfirmPassword
-                              ? Icons.visibility_off
-                              : Icons.visibility,
-                          size: 20,
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _newPasswordCtrl,
+                      obscureText: !_showNewPassword,
+                      decoration: InputDecoration(
+                        labelText: 'New password',
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                        prefixIcon: const Icon(Icons.lock_reset_outlined, size: 20),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _showNewPassword ? Icons.visibility_off : Icons.visibility,
+                            size: 20,
+                          ),
+                          onPressed: () =>
+                              setState(() => _showNewPassword = !_showNewPassword),
                         ),
-                        onPressed: () => setState(
-                            () => _showConfirmPassword = !_showConfirmPassword),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: FilledButton.icon(
-                      onPressed: _passwordSaving ? null : _changePassword,
-                      icon: _passwordSaving
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.lock_reset, size: 18),
-                      label: Text(
-                        _passwordSaving ? 'Changing...' : 'Change password',
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _confirmPasswordCtrl,
+                      obscureText: !_showConfirmPassword,
+                      decoration: InputDecoration(
+                        labelText: 'Confirm new password',
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                        prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _showConfirmPassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            size: 20,
+                          ),
+                          onPressed: () => setState(
+                              () => _showConfirmPassword = !_showConfirmPassword),
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: FilledButton.icon(
+                        onPressed: _passwordSaving ? null : _changePassword,
+                        icon: _passwordSaving
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.lock_reset, size: 18),
+                        label: Text(
+                          _passwordSaving ? 'Changing...' : 'Update password',
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

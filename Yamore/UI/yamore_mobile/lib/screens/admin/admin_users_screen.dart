@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../models/user.dart';
-import '../../models/paged_users.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../utils/form_validators.dart';
 
 class AdminUsersScreen extends StatefulWidget {
   final AuthService authService;
@@ -469,6 +469,25 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     );
   }
 
+  void _showOperationSnackBar(String title, String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Text(message),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _toggleStatus(AppUser user) async {
     final active = user.status ?? true;
     try {
@@ -476,21 +495,17 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         await _api.suspendUser(user.userId);
         await _loadUsers();
         if (!mounted) return;
-        await _showSuccessDialog(
-          context,
-          title: 'User suspended',
-          message:
-              '${user.displayName} has been suspended successfully.',
+        _showOperationSnackBar(
+          'User suspended',
+          '${user.displayName} has been suspended successfully.',
         );
       } else {
         await _api.activateUser(user.userId);
         await _loadUsers();
         if (!mounted) return;
-        await _showSuccessDialog(
-          context,
-          title: 'User restored',
-          message:
-              '${user.displayName} has been restored successfully.',
+        _showOperationSnackBar(
+          'User restored',
+          '${user.displayName} has been restored successfully.',
         );
       }
     } catch (e) {
@@ -524,10 +539,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     if (created == true) {
       await _loadUsers();
       if (mounted) {
-        await _showSuccessDialog(
-          context,
-          title: 'User created',
-          message: 'The new user has been added successfully.',
+        _showOperationSnackBar(
+          'User created',
+          'The new user was added. They can sign in with the username and password you set.',
         );
       }
     }
@@ -557,10 +571,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     if (updated == true) {
       await _loadUsers();
       if (mounted) {
-        await _showSuccessDialog(
-          context,
-          title: 'User updated',
-          message: 'The user has been updated successfully.',
+        _showOperationSnackBar(
+          'User updated',
+          'The user account changes were saved.',
         );
       }
     }
@@ -629,10 +642,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
           message: messageController.text.trim(),
         );
         if (mounted) {
-          await _showSuccessDialog(
-            context,
-            title: 'Warning sent',
-            message: 'The warning has been sent to ${user.displayName}.',
+          _showOperationSnackBar(
+            'Warning sent',
+            'The warning has been sent to ${user.displayName}.',
           );
         }
       } catch (e) {
@@ -673,10 +685,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         await _api.deleteUser(user.userId);
         await _loadUsers();
         if (mounted) {
-          await _showSuccessDialog(
-            context,
-            title: 'User deleted',
-            message: 'The user has been deleted successfully.',
+          _showOperationSnackBar(
+            'User deleted',
+            'The user was removed and can no longer sign in.',
           );
         }
       } catch (e) {
@@ -699,70 +710,6 @@ String _formatPhone(String? raw) {
   final second = digits.substring(3, 6);
   final third = digits.substring(6);
   return '$first-$second-$third';
-}
-
-Future<void> _showSuccessDialog(
-  BuildContext context, {
-  required String title,
-  required String message,
-}) async {
-  return showDialog<void>(
-    context: context,
-    barrierDismissible: true,
-    builder: (context) {
-      return Dialog(
-        insetPadding: const EdgeInsets.symmetric(horizontal: 360, vertical: 240),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Color(0xFF4CAF50),
-                    ),
-                    padding: const EdgeInsets.all(8),
-                    child: const Icon(
-                      Icons.check,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                message,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 20),
-              Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton(
-                  onPressed: () => Navigator.of(context).maybePop(),
-                  child: const Text('OK'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    },
-  );
 }
 
 class _UserDialog extends StatefulWidget {
@@ -791,27 +738,21 @@ class _UserDialogState extends State<_UserDialog> {
   late final TextEditingController _usernameController =
       TextEditingController(text: widget.existingUser?.username ?? '');
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
 
   bool _status = true;
   bool _saving = false;
   String _selectedRole = 'User';
+  /// Edit user only: when true, new password + confirm are shown and validated.
+  bool _changeUserPassword = false;
 
-  Future<void> _showInvalidDataDialog(String message) async {
-    if (!mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Invalid data'),
-        content: Text(message),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
+  String? _eFirst;
+  String? _eLast;
+  String? _eEmail;
+  String? _ePhone;
+  String? _eUsername;
+  String? _ePassword;
+  String? _eConfirm;
 
   @override
   void initState() {
@@ -831,6 +772,76 @@ class _UserDialogState extends State<_UserDialog> {
   }
 
   @override
+  void dispose() {
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _usernameController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  bool _validateAndSetErrors() {
+    final isEdit = widget.existingUser != null;
+    final firstName = _firstNameController.text.trim();
+    final lastName = _lastNameController.text.trim();
+    final username = _usernameController.text.trim();
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    final pw = _passwordController.text;
+    final cfm = _confirmPasswordController.text;
+
+    String? pErr;
+    String? cErr;
+
+    if (isEdit && !_changeUserPassword) {
+      pErr = null;
+      cErr = null;
+    } else if (!isEdit) {
+      pErr = FormValidators.createPasswordError(pw);
+      if (pw != cfm) {
+        cErr = 'Re-enter the same password to confirm. Both fields must match exactly.';
+      }
+    } else {
+      if (pw.isEmpty && cfm.isEmpty) {
+        pErr = 'Enter a new password in both fields, or turn off "Change password" to keep the current one.';
+        cErr = null;
+      } else if (pw.isNotEmpty && cfm.isEmpty) {
+        cErr = 'Re-enter the new password in the confirmation field.';
+        pErr = FormValidators.newPasswordError(pw);
+      } else if (pw.isEmpty && cfm.isNotEmpty) {
+        pErr = 'Enter the new password above, or turn off "Change password" to keep the current one.';
+        cErr = null;
+      } else {
+        pErr = FormValidators.newPasswordError(pw);
+        if (pw != cfm) {
+          cErr = 'Re-enter the same new password in both fields.';
+        }
+      }
+    }
+
+    setState(() {
+      _eFirst = FormValidators.firstNameError(firstName);
+      _eLast = FormValidators.lastNameError(lastName);
+      _eEmail = FormValidators.emailError(email);
+      _ePhone = FormValidators.phoneError(phone);
+      _eUsername = FormValidators.usernameError(username);
+      _ePassword = pErr;
+      _eConfirm = cErr;
+    });
+
+    return _eFirst == null &&
+        _eLast == null &&
+        _eEmail == null &&
+        _ePhone == null &&
+        _eUsername == null &&
+        _ePassword == null &&
+        _eConfirm == null;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isEdit = widget.existingUser != null;
     return AlertDialog(
@@ -842,19 +853,17 @@ class _UserDialogState extends State<_UserDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: TextField(
                       controller: _firstNameController,
                       decoration: InputDecoration(
                         labelText: 'First name',
-                        prefixIcon: Icon(Icons.person_outline),
-                        suffixIcon: _buildValidationIcon(
-                          _isFirstNameValid,
-                          _firstNameController.text,
-                        ),
+                        prefixIcon: const Icon(Icons.person_outline),
+                        errorText: _eFirst,
                       ),
-                      onChanged: (_) => setState(() {}),
+                      onChanged: (_) => setState(() => _eFirst = null),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -863,13 +872,10 @@ class _UserDialogState extends State<_UserDialog> {
                       controller: _lastNameController,
                       decoration: InputDecoration(
                         labelText: 'Last name',
-                        prefixIcon: Icon(Icons.person),
-                        suffixIcon: _buildValidationIcon(
-                          _isLastNameValid,
-                          _lastNameController.text,
-                        ),
+                        prefixIcon: const Icon(Icons.person),
+                        errorText: _eLast,
                       ),
-                      onChanged: (_) => setState(() {}),
+                      onChanged: (_) => setState(() => _eLast = null),
                     ),
                   ),
                 ],
@@ -907,32 +913,27 @@ class _UserDialogState extends State<_UserDialog> {
               TextField(
                 controller: _emailController,
                 decoration: InputDecoration(
-                  labelText: 'Email',
+                  labelText: 'Email (optional)',
                   prefixIcon: const Icon(Icons.email_outlined),
-                  suffixIcon: _buildValidationIcon(
-                    _isEmailValid,
-                    _emailController.text,
-                  ),
+                  errorText: _eEmail,
                 ),
                 keyboardType: TextInputType.emailAddress,
-                onChanged: (_) => setState(() {}),
+                onChanged: (_) => setState(() => _eEmail = null),
               ),
               const SizedBox(height: 12),
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: TextField(
                       controller: _phoneController,
                       decoration: InputDecoration(
-                        labelText: 'Phone',
+                        labelText: 'Phone (optional)',
                         prefixIcon: const Icon(Icons.phone_outlined),
-                        suffixIcon: _buildValidationIcon(
-                          _isPhoneValid,
-                          _phoneController.text,
-                        ),
+                        errorText: _ePhone,
                       ),
                       keyboardType: TextInputType.phone,
-                      onChanged: (_) => setState(() {}),
+                      onChanged: (_) => setState(() => _ePhone = null),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -943,34 +944,69 @@ class _UserDialogState extends State<_UserDialog> {
                       decoration: InputDecoration(
                         labelText: 'Username',
                         prefixIcon: const Icon(Icons.account_circle_outlined),
-                        suffixIcon: _buildValidationIcon(
-                          _isUsernameValid,
-                          _usernameController.text,
-                        ),
+                        errorText: _eUsername,
                       ),
-                      onChanged: (_) => setState(() {}),
+                      onChanged: (_) => setState(() => _eUsername = null),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: isEdit ? 'New password (optional)' : 'Password',
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: _buildValidationIcon(
-                    _isPasswordValid,
-                    _passwordController.text,
-                  ),
+              if (isEdit) ...[
+                const SizedBox(height: 4),
+                CheckboxListTile(
+                  value: _changeUserPassword,
+                  onChanged: _saving
+                      ? null
+                      : (v) {
+                          setState(() {
+                            _changeUserPassword = v ?? false;
+                            if (!_changeUserPassword) {
+                              _passwordController.clear();
+                              _confirmPasswordController.clear();
+                              _ePassword = null;
+                              _eConfirm = null;
+                            }
+                          });
+                        },
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  title: const Text("Change this user's password"),
                 ),
-                onChanged: (_) => setState(() {}),
-              ),
-              const SizedBox(height: 12),
+              ],
+              if (!isEdit || _changeUserPassword) ...[
+                const SizedBox(height: 4),
+                TextField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: isEdit ? 'New password' : 'Password',
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    errorText: _ePassword,
+                  ),
+                  onChanged: (_) => setState(() {
+                    _ePassword = null;
+                    _eConfirm = null;
+                  }),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _confirmPasswordController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: isEdit ? 'Confirm new password' : 'Confirm password',
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    errorText: _eConfirm,
+                  ),
+                  onChanged: (_) => setState(() {
+                    _ePassword = null;
+                    _eConfirm = null;
+                  }),
+                ),
+                const SizedBox(height: 8),
+              ],
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Active'),
+                title: const Text('Active account'),
                 value: _status,
                 onChanged: (val) {
                   setState(() {
@@ -991,77 +1027,16 @@ class _UserDialogState extends State<_UserDialog> {
           onPressed: _saving
               ? null
               : () async {
+                  if (!_validateAndSetErrors()) {
+                    return;
+                  }
+
                   final firstName = _firstNameController.text.trim();
                   final lastName = _lastNameController.text.trim();
                   final username = _usernameController.text.trim();
-                  final password = _passwordController.text;
-
-                  if (firstName.isEmpty || lastName.isEmpty || username.isEmpty) {
-                    await _showInvalidDataDialog(
-                      'Please enter valid data before creating a user. '
-                      'First name, last name and username are required.',
-                    );
-                    return;
-                  }
-                  if (firstName.length < 2 || firstName.length > 50) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('First name must be between 2 and 50 characters.'),
-                      ),
-                    );
-                    return;
-                  }
-                  if (lastName.length < 2 || lastName.length > 50) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Last name must be between 2 and 50 characters.'),
-                      ),
-                    );
-                    return;
-                  }
-                  if (!_isUsernameValid) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          "Username must be 3-32 characters and contain only letters, numbers, '.', '_' or '-'.",
-                        ),
-                      ),
-                    );
-                    return;
-                  }
-                  if (_emailController.text.trim().isNotEmpty && !_isEmailValid) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please enter a valid email address.'),
-                      ),
-                    );
-                    return;
-                  }
-                  if (_phoneController.text.trim().isNotEmpty && !_isPhoneValid) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please enter a valid phone number.'),
-                      ),
-                    );
-                    return;
-                  }
-                  if (!isEdit && password.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Password is required when creating a user.')),
-                    );
-                    return;
-                  }
-                  if (password.isNotEmpty && !_isPasswordValid) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Password must be at least 8 characters long and include uppercase, lowercase, digit, and special character.',
-                        ),
-                      ),
-                    );
-                    return;
-                  }
+                  final password = isEdit && !_changeUserPassword
+                      ? ''
+                      : _passwordController.text;
 
                   setState(() {
                     _saving = true;
@@ -1084,13 +1059,28 @@ class _UserDialogState extends State<_UserDialog> {
                     if (context.mounted) {
                       Navigator.of(context).pop(true);
                     }
+                  } on ApiException catch (e) {
+                    setState(() {
+                      _saving = false;
+                    });
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(e.displayMessage),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
                   } catch (e) {
                     setState(() {
                       _saving = false;
                     });
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Failed to save user: $e')),
+                        SnackBar(
+                          content: Text('Failed to save user: $e'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
                       );
                     }
                   }
@@ -1104,57 +1094,6 @@ class _UserDialogState extends State<_UserDialog> {
               : Text(isEdit ? 'Save changes' : 'Create user'),
         ),
       ],
-    );
-  }
-  
-  bool get _isEmailValid {
-    final value = _emailController.text.trim();
-    if (value.isEmpty) return false;
-    final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-    return emailRegex.hasMatch(value) && value.length <= 100;
-  }
-
-  bool get _isFirstNameValid {
-    final value = _firstNameController.text.trim();
-    return value.length >= 2 && value.length <= 50;
-  }
-
-  bool get _isLastNameValid {
-    final value = _lastNameController.text.trim();
-    return value.length >= 2 && value.length <= 50;
-  }
-
-  bool get _isPasswordValid {
-    final value = _passwordController.text;
-    if (value.isEmpty) return false;
-    if (value.length < 8 || value.length > 128) return false;
-    final hasLower = RegExp(r'[a-z]').hasMatch(value);
-    final hasUpper = RegExp(r'[A-Z]').hasMatch(value);
-    final hasDigit = RegExp(r'[0-9]').hasMatch(value);
-    final hasSpecial = RegExp(r'[^a-zA-Z0-9]').hasMatch(value);
-    return hasLower && hasUpper && hasDigit && hasSpecial;
-  }
-
-  bool get _isUsernameValid {
-    final value = _usernameController.text.trim();
-    if (value.isEmpty) return false;
-    final usernameRegex = RegExp(r'^[a-zA-Z0-9._-]{3,32}$');
-    return usernameRegex.hasMatch(value);
-  }
-
-  bool get _isPhoneValid {
-    final value = _phoneController.text.trim();
-    if (value.isEmpty) return false;
-    final phoneRegex = RegExp(r'^\+?[0-9\s\-()]{7,20}$');
-    return phoneRegex.hasMatch(value);
-  }
-
-  Widget? _buildValidationIcon(bool isValid, String value) {
-    if (value.trim().isEmpty) return null;
-    return Icon(
-      isValid ? Icons.check_circle : Icons.cancel,
-      color: isValid ? Colors.green : Colors.red.shade400,
-      size: 18,
     );
   }
 }
