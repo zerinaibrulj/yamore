@@ -20,6 +20,7 @@ using Yamore.Services.YachtStateMachine;
 using Yamore.API.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Data.SqlClient;
+using System.Reflection;
 
 LocalEnvFileLoader.Load();
 ConfigurationEnvAliases.Apply();
@@ -186,6 +187,24 @@ builder.Services.AddAuthentication("BasicAuthentication")
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+{
+    var startup = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Yamore.API.Startup");
+    var version = typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+        ?? typeof(Program).Assembly.GetName().Version?.ToString()
+        ?? "unknown";
+    var cfg = app.Configuration;
+    startup.LogInformation(
+        "Yamore.API process started. Version={Version}, Environment={Env}, Machine={Machine}, ContentRoot={Root}, DockerEnv={InDocker}, RabbitMQ host={Rmq}, queue={Queue}, Framework={Fx}",
+        version,
+        app.Environment.EnvironmentName,
+        Environment.MachineName,
+        app.Environment.ContentRootPath,
+        File.Exists("/.dockerenv"),
+        cfg["RabbitMQ:HostName"] ?? "(unset)",
+        cfg["RabbitMQ:QueueName"] ?? "(unset)",
+        System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription);
+}
 
 if (!app.Environment.IsDevelopment() && allowedOrigins.Length == 0)
 {

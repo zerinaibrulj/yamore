@@ -1,7 +1,13 @@
 services:
   sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+    # Pin a concrete CU + OS (avoid :2022-latest / *-latest — reproducible builds and reviews).
+    image: mcr.microsoft.com/mssql/server:2022-CU22-ubuntu-22.04
     container_name: yamore-sqlserver
+    logging: &default-logging
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: "YourStrong!Passw0rd"
@@ -16,8 +22,10 @@ services:
       retries: 10
 
   rabbitmq:
-    image: rabbitmq:3-management
+    # Patch-pinned (avoid bare :3-management, which can float within the major line).
+    image: rabbitmq:3.13.7-management
     container_name: yamore-rabbitmq
+    logging: *default-logging
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -34,6 +42,7 @@ services:
       context: .
       dockerfile: Yamore.API/Dockerfile
     container_name: yamore-api
+    logging: *default-logging
     # Stripe (and other HTTPS calls) need working DNS inside the container. On some Windows/Docker setups
     # the default resolver fails with "Name or service not known" for api.stripe.com — public DNS avoids that.
     dns:
@@ -75,6 +84,7 @@ services:
       context: .
       dockerfile: Yamore.Worker/Dockerfile
     container_name: yamore-worker
+    logging: *default-logging
     dns:
       - 8.8.8.8
       - 8.8.4.4
