@@ -1,7 +1,8 @@
+using System.Security.Claims;
+using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
-using System.Security.Claims;
 using Yamore.Model;
 using Yamore.Model.Requests.User;
 using Yamore.Model.SearchObjects;
@@ -14,11 +15,13 @@ namespace Yamore.API.Controllers
     public class UsersController : BaseCRUDController<Model.User, UsersSearchObject, UserInsertRequest, UserUpdateRequest, UserDeleteRequest>
     {
         private readonly IUsersService _usersService;
+        private readonly IValidator<UserLoginRequest> _loginValidator;
 
-        public UsersController(IUsersService service)
+        public UsersController(IUsersService service, IValidator<UserLoginRequest> loginValidator)
             : base(service)
         {
             _usersService = service;
+            _loginValidator = loginValidator;
         }
 
         [HttpPut("{id}")]
@@ -89,7 +92,7 @@ namespace Yamore.API.Controllers
         /// <summary>Login. Supports credentials in the query string (Flutter), form fields, or JSON body.</summary>
         [HttpPost("login")]
         [AllowAnonymous]
-        public ActionResult<Model.LoginResponseDto> Login(
+        public async Task<ActionResult<Model.LoginResponseDto>> Login(
             [FromQuery] string? username,
             [FromQuery] string? password,
             [FromForm] string? formUsername,
@@ -100,6 +103,19 @@ namespace Yamore.API.Controllers
             var p = password ?? formPassword ?? body?.Password;
             if (string.IsNullOrEmpty(u) || p is null)
                 return BadRequest(new { error = "username and password are required" });
+
+            var merged = new UserLoginRequest { Username = u, Password = p };
+            var validation = await _loginValidator.ValidateAsync(merged, HttpContext.RequestAborted);
+            if (!validation.IsValid)
+            {
+                var ms = new ModelStateDictionary();
+                foreach (var e in validation.Errors)
+                {
+                    var key = string.IsNullOrWhiteSpace(e.PropertyName) ? string.Empty : e.PropertyName;
+                    ms.AddModelError(key, e.ErrorMessage);
+                }
+                return ValidationProblem(ms);
+            }
 
             var result = _usersService.Login(u, p);
             if (result == null)

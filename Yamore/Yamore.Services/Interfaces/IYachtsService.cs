@@ -11,7 +11,7 @@ namespace Yamore.Services.Interfaces
         public Yacht Hide(int id);
         public Yacht Edit(int id);
         public List<string> AllowedActions(int id);
-        /// <summary>Recommended yachts for the user (content-based + collaborative) or popular yachts. Returns overview DTOs.</summary>
+        /// <summary>Recommended yachts using reservation history, 4+ star review preferences, services, ratings, and popularity. Returns overview DTOs.</summary>
         PagedResponse<YachtOverviewDto> GetRecommendations(int? userId, int page = 0, int pageSize = 10);
 
         /// <summary>Admin overview of yachts with owner and location (city) names.</summary>

@@ -71,6 +71,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ExceptionFilter>();
 
 builder.Services.AddScoped<IYachtsService, YachtsService>();
 builder.Services.AddScoped<IUsersService, UsersService>();

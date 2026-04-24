@@ -55,7 +55,15 @@ namespace Yamore.Services.Services
 
         public Model.YachtImage Upload(int yachtId, YachtImageInsertRequest request)
         {
-            var imageData = Convert.FromBase64String(request.ImageDataBase64);
+            byte[] imageData;
+            try
+            {
+                imageData = Convert.FromBase64String(request.ImageDataBase64);
+            }
+            catch (FormatException)
+            {
+                throw new UserException("Image data is not valid Base64. Please re-upload the image.");
+            }
 
             var isFirst = !_context.YachtImages.Any(i => i.YachtId == yachtId);
             var nextSort = isFirst

@@ -235,7 +235,10 @@ namespace Yamore.Services.Services
             }
         }
 
-        /// <summary>Recommendation system: content-based (category, location, services) + collaborative (ratings, popularity). Returns overview DTOs.</summary>
+        /// <summary>
+        /// Recommendation: content-based signals from past reservations and from yachts the user rated 4+ (category, location, country),
+        /// plus add-on service history, then average community rating and booking popularity. Returns overview DTOs.
+        /// </summary>
         public PagedResponse<YachtOverviewDto> GetRecommendations(int? userId, int page = 0, int pageSize = 10)
         {
             page = PagingConstraints.NormalizePage(page);
@@ -262,26 +265,63 @@ namespace Yamore.Services.Services
                     .Where(r => r.UserId == userId && r.Rating >= 4)
                     .Select(r => r.YachtId).Distinct().ToList();
 
+                List<int> categoryIdsFromHighRatings;
+                List<int> locationIdsFromHighRatings;
+                List<int> countryIdsFromHighRatings;
+                if (highlyRatedYachtIds.Count == 0)
+                {
+                    categoryIdsFromHighRatings = new List<int>();
+                    locationIdsFromHighRatings = new List<int>();
+                    countryIdsFromHighRatings = new List<int>();
+                }
+                else
+                {
+                    var likedYachts = Context.Yachts
+                        .AsNoTracking()
+                        .Where(y => highlyRatedYachtIds.Contains(y.YachtId));
+                    categoryIdsFromHighRatings = likedYachts.Select(y => y.CategoryId).Distinct().ToList();
+                    locationIdsFromHighRatings = likedYachts.Select(y => y.LocationId).Distinct().ToList();
+                    countryIdsFromHighRatings = likedYachts
+                        .Where(y => y.Location != null)
+                        .Select(y => y.Location!.CountryId)
+                        .Distinct()
+                        .ToList();
+                }
+
                 var preferredCategoryIds = Context.Yachts
+                    .AsNoTracking()
                     .Where(y => userReservationYachtIds.Contains(y.YachtId))
-                    .Select(y => y.CategoryId).Distinct().ToList();
-
+                    .Select(y => y.CategoryId)
+                    .Distinct()
+                    .ToList();
                 var preferredLocationIds = Context.Yachts
+                    .AsNoTracking()
                     .Where(y => userReservationYachtIds.Contains(y.YachtId))
-                    .Select(y => y.LocationId).Distinct().ToList();
-
+                    .Select(y => y.LocationId)
+                    .Distinct()
+                    .ToList();
                 var preferredCountryIds = Context.Yachts
+                    .AsNoTracking()
                     .Where(y => userReservationYachtIds.Contains(y.YachtId) && y.Location != null)
-                    .Select(y => y.Location!.CountryId).Distinct().ToList();
+                    .Select(y => y.Location!.CountryId)
+                    .Distinct()
+                    .ToList();
+
+                var combinedCategoryIds = preferredCategoryIds.Union(categoryIdsFromHighRatings).Distinct().ToList();
+                var combinedLocationIds = preferredLocationIds.Union(locationIdsFromHighRatings).Distinct().ToList();
+                var combinedCountryIds = preferredCountryIds.Union(countryIdsFromHighRatings).Distinct().ToList();
 
                 var preferredServiceIds = Context.ReservationServices
+                    .AsNoTracking()
                     .Where(rs => rs.Reservation != null && rs.Reservation.UserId == userId)
-                    .Select(rs => rs.ServiceId).Distinct().ToList();
+                    .Select(rs => rs.ServiceId)
+                    .Distinct()
+                    .ToList();
 
                 var candidates = activeYachts
                     .Where(y => !userReservationYachtIds.Contains(y.YachtId));
 
-                if (preferredCategoryIds.Count == 0 && preferredLocationIds.Count == 0 && preferredCountryIds.Count == 0)
+                if (combinedCategoryIds.Count == 0 && combinedLocationIds.Count == 0 && combinedCountryIds.Count == 0 && preferredServiceIds.Count == 0)
                 {
                     ordered = candidates
                         .OrderByDescending(y => y.Reservations.Count(r => r.Status != "Cancelled"))
@@ -290,9 +330,9 @@ namespace Yamore.Services.Services
                 else
                 {
                     ordered = candidates
-                        .OrderByDescending(y => preferredCategoryIds.Contains(y.CategoryId))
-                        .ThenByDescending(y => preferredLocationIds.Contains(y.LocationId))
-                        .ThenByDescending(y => y.Location != null && preferredCountryIds.Contains(y.Location.CountryId))
+                        .OrderByDescending(y => combinedCategoryIds.Contains(y.CategoryId))
+                        .ThenByDescending(y => combinedLocationIds.Contains(y.LocationId))
+                        .ThenByDescending(y => y.Location != null && combinedCountryIds.Contains(y.Location.CountryId))
                         .ThenByDescending(y => y.YachtServices.Any(ys => preferredServiceIds.Contains(ys.ServiceId)))
                         .ThenByDescending(y => y.Reviews.Any(r => r.Rating.HasValue) ? y.Reviews.Average(r => r.Rating ?? 0) : 0)
                         .ThenByDescending(y => y.Reservations.Count(r => r.Status != "Cancelled"));

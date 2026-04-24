@@ -20,10 +20,14 @@ class _MobileNewsScreenState extends State<MobileNewsScreen> {
     password: widget.authService.password,
   );
 
+  static const int _pageSize = 10;
+
+  int _currentPage = 0;
+  int _totalCount = 0;
+
   bool _loading = true;
   String? _error;
   List<NewsItemModel> _items = const [];
-  static const int _pageSize = 50;
 
   @override
   void initState() {
@@ -48,10 +52,26 @@ class _MobileNewsScreenState extends State<MobileNewsScreen> {
       _error = null;
     });
     try {
-      final paged = await _api.getNews(page: 0, pageSize: _pageSize);
+      final paged = await _api.getNews(
+        page: _currentPage,
+        pageSize: _pageSize,
+      );
+      if (!mounted) return;
+      var total = paged.count ?? 0;
+      if (paged.resultList.isEmpty && total > 0) {
+        final maxPage = ((total - 1) / _pageSize).floor();
+        if (_currentPage > maxPage) {
+          setState(() {
+            _currentPage = maxPage;
+          });
+          await _load();
+          return;
+        }
+      }
       if (!mounted) return;
       setState(() {
         _items = paged.resultList;
+        _totalCount = total;
         _loading = false;
         _error = null;
       });
@@ -72,6 +92,28 @@ class _MobileNewsScreenState extends State<MobileNewsScreen> {
     }
   }
 
+  int get _totalPages {
+    if (_totalCount <= 0) return 1;
+    return ((_totalCount - 1) / _pageSize).floor() + 1;
+  }
+
+  bool get _hasNextPage {
+    if (_totalCount <= 0) return false;
+    return (_currentPage + 1) * _pageSize < _totalCount;
+  }
+
+  void _goToPage(int page) {
+    if (page < 0) return;
+    if (_totalCount > 0) {
+      final last = _totalPages - 1;
+      if (page > last) return;
+    } else {
+      if (page != 0) return;
+    }
+    setState(() => _currentPage = page);
+    _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -83,10 +125,11 @@ class _MobileNewsScreenState extends State<MobileNewsScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _load,
+            tooltip: 'Refresh',
           ),
         ],
       ),
-      body: _loading
+      body: _loading && _items.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(
@@ -99,74 +142,126 @@ class _MobileNewsScreenState extends State<MobileNewsScreen> {
                     ),
                   ),
                 )
-              : _items.isEmpty
-                  ? const Center(child: Text('No news yet.'))
-                  : RefreshIndicator(
-                      onRefresh: _load,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _items.length,
-                        itemBuilder: (context, i) {
-                          final n = _items[i];
-                          return _NewsCard(
-                            item: n,
-                            dateLabel: _formatDate(n.createdAt),
-                            onTap: () {
-                              showModalBottomSheet<void>(
-                                context: context,
-                                isScrollControlled: true,
-                                showDragHandle: true,
-                                builder: (ctx) {
-                                  return DraggableScrollableSheet(
-                                    initialChildSize: 0.65,
-                                    minChildSize: 0.4,
-                                    maxChildSize: 0.95,
-                                    expand: false,
-                                    builder: (context, scroll) {
-                                      return SingleChildScrollView(
-                                        controller: scroll,
-                                        padding: const EdgeInsets.all(20),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              n.title,
-                                              style: const TextStyle(
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                            if (n.createdAt != null) ...[
-                                              const SizedBox(height: 6),
-                                              Text(
-                                                _formatDate(n.createdAt),
-                                                style: TextStyle(
-                                                  color: Colors.grey.shade600,
-                                                  fontSize: 13,
+              : Column(
+                  children: [
+                    if (_loading) const LinearProgressIndicator(minHeight: 2),
+                    Expanded(
+                      child: _items.isEmpty
+                          ? const Center(child: Text('No news yet.'))
+                          : RefreshIndicator(
+                              onRefresh: _load,
+                              child: ListView.builder(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.all(16),
+                                itemCount: _items.length,
+                                itemBuilder: (context, i) {
+                                  final n = _items[i];
+                                  return _NewsCard(
+                                    item: n,
+                                    dateLabel: _formatDate(n.createdAt),
+                                    onTap: () {
+                                      showModalBottomSheet<void>(
+                                        context: context,
+                                        isScrollControlled: true,
+                                        showDragHandle: true,
+                                        builder: (ctx) {
+                                          return DraggableScrollableSheet(
+                                            initialChildSize: 0.65,
+                                            minChildSize: 0.4,
+                                            maxChildSize: 0.95,
+                                            expand: false,
+                                            builder: (context, scroll) {
+                                              return SingleChildScrollView(
+                                                controller: scroll,
+                                                padding:
+                                                    const EdgeInsets.all(20),
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      n.title,
+                                                      style: const TextStyle(
+                                                        fontSize: 20,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                      ),
+                                                    ),
+                                                    if (n.createdAt !=
+                                                        null) ...[
+                                                      const SizedBox(
+                                                          height: 6),
+                                                      Text(
+                                                        _formatDate(
+                                                            n.createdAt),
+                                                        style: TextStyle(
+                                                          color: Colors
+                                                              .grey.shade600,
+                                                          fontSize: 13,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                    const SizedBox(
+                                                        height: 12),
+                                                    Text(
+                                                      n.text,
+                                                      style: const TextStyle(
+                                                        fontSize: 15,
+                                                        height: 1.45,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
-                                              ),
-                                            ],
-                                            const SizedBox(height: 12),
-                                            Text(
-                                              n.text,
-                                              style: const TextStyle(
-                                                fontSize: 15,
-                                                height: 1.45,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                              );
+                                            },
+                                          );
+                                        },
                                       );
                                     },
                                   );
                                 },
-                              );
-                            },
-                          );
-                        },
-                      ),
+                              ),
+                            ),
                     ),
+                    if (_totalCount > 0)
+                      Material(
+                        color: Colors.grey.shade100,
+                        child: SafeArea(
+                          top: false,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 8, horizontal: 4),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                IconButton(
+                                  onPressed: !_loading && _currentPage > 0
+                                      ? () => _goToPage(_currentPage - 1)
+                                      : null,
+                                  icon: const Icon(Icons.chevron_left),
+                                  tooltip: 'Previous',
+                                ),
+                                Text(
+                                  'Page ${_currentPage + 1} of $_totalPages · $_totalCount',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade800,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: !_loading && _hasNextPage
+                                      ? () => _goToPage(_currentPage + 1)
+                                      : null,
+                                  icon: const Icon(Icons.chevron_right),
+                                  tooltip: 'Next',
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
     );
   }
 }

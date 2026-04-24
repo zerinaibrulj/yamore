@@ -652,13 +652,30 @@ class ApiService {
   Future<PagedNewsItems> getNews({
     int page = 0,
     int pageSize = 20,
+    String? titleContains,
+    String? textContains,
+    DateTime? createdFrom,
+    DateTime? createdTo,
   }) async {
-    final uri = Uri.parse('$baseUrl/news').replace(
-      queryParameters: {
-        'Page': page.toString(),
-        'PageSize': pageSize.toString(),
-      },
-    );
+    final q = <String, String>{
+      'Page': page.toString(),
+      'PageSize': pageSize.toString(),
+    };
+    final t = titleContains?.trim();
+    final x = textContains?.trim();
+    if (t != null && t.isNotEmpty) {
+      q['TitleContains'] = t;
+    }
+    if (x != null && x.isNotEmpty) {
+      q['TextContains'] = x;
+    }
+    if (createdFrom != null) {
+      q['CreatedFrom'] = createdFrom.toUtc().toIso8601String();
+    }
+    if (createdTo != null) {
+      q['CreatedTo'] = createdTo.toUtc().toIso8601String();
+    }
+    final uri = Uri.parse('$baseUrl/news').replace(queryParameters: q);
     final response = await http.get(uri, headers: _headers);
     _ensureSuccess(response);
     return PagedNewsItems.fromJson(

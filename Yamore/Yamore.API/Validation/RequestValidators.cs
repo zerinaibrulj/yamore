@@ -1,5 +1,8 @@
+using System;
 using FluentValidation;
+using Yamore.Model;
 using Yamore.Model.Requests.News;
+using Yamore.Model.Requests.YachtImage;
 using Yamore.Model.Requests.City;
 using Yamore.Model.Requests.Country;
 using Yamore.Model.Requests.Notification;
@@ -15,6 +18,7 @@ using Yamore.Model.Requests.UserRole;
 using Yamore.Model.Requests.WeatherForecast;
 using Yamore.Model.Requests.YachtCategory;
 using Yamore.Model.Requests.Yachts;
+using Yamore.Model.Requests.YachtService;
 
 namespace Yamore.API.Validation;
 
@@ -654,6 +658,24 @@ public sealed class ReservationServiceUpdateRequestValidator : AbstractValidator
     }
 }
 
+public sealed class YachtServiceInsertRequestValidator : AbstractValidator<YachtServiceInsertRequest>
+{
+    public YachtServiceInsertRequestValidator()
+    {
+        RuleFor(x => x.YachtId).GreaterThan(0).WithMessage("Please select a valid yacht.");
+        RuleFor(x => x.ServiceId).GreaterThan(0).WithMessage("Please select a valid service.");
+    }
+}
+
+public sealed class YachtServiceUpdateRequestValidator : AbstractValidator<YachtServiceUpdateRequest>
+{
+    public YachtServiceUpdateRequestValidator()
+    {
+        RuleFor(x => x.YachtId).GreaterThan(0).WithMessage("Please select a valid yacht.");
+        RuleFor(x => x.ServiceId).GreaterThan(0).WithMessage("Please select a valid service.");
+    }
+}
+
 public sealed class WeatherForecastInsertRequestValidator : AbstractValidator<WeatherForecastInsertRequest>
 {
     public WeatherForecastInsertRequestValidator()
@@ -714,6 +736,104 @@ public sealed class PrepareCardBookingRequestValidator : AbstractValidator<Prepa
             .NotEmpty().WithMessage(ValidationMessages.Required("End date"))
             .GreaterThan(x => x.StartDate).WithMessage("End date must be after the start date.");
         RuleFor(x => x.ServiceIds).NotNull().WithMessage("Service list is required (use an empty list if none).");
+    }
+}
+
+public sealed class CreatePaymentIntentRequestValidator : AbstractValidator<CreatePaymentIntentRequest>
+{
+    public CreatePaymentIntentRequestValidator()
+    {
+        RuleFor(x => x.ReservationId)
+            .GreaterThan(0).WithMessage("Please provide a valid reservation id.");
+
+        RuleFor(x => x.PaymentMethod)
+            .Must(m =>
+            {
+                if (string.IsNullOrWhiteSpace(m)) return true;
+                var n = m.Trim().ToLowerInvariant();
+                return n is "stripe" or "card";
+            })
+            .WithMessage("For online payment, PaymentMethod should be 'stripe' or 'card' (or omit for the default).");
+    }
+}
+
+public sealed class ConfirmPaymentRequestValidator : AbstractValidator<ConfirmPaymentRequest>
+{
+    public ConfirmPaymentRequestValidator()
+    {
+        When(x => string.IsNullOrWhiteSpace(x.PaymentIntentId), () =>
+        {
+            RuleFor(x => x.ReservationId)
+                .GreaterThan(0)
+                .WithMessage("Reservation id is required to record a cash or bank transfer payment.");
+        });
+        When(x => !string.IsNullOrWhiteSpace(x.PaymentIntentId), () =>
+        {
+            RuleFor(x => x.PaymentIntentId)
+                .MaximumLength(200)
+                .WithMessage(ValidationMessages.MaxLength("PaymentIntentId", 200));
+        });
+        RuleFor(x => x.PaymentMethod)
+            .MaximumLength(20)
+            .WithMessage(ValidationMessages.MaxLength("PaymentMethod", 20))
+            .When(x => !string.IsNullOrWhiteSpace(x.PaymentMethod));
+    }
+}
+
+public sealed class UserLoginRequestValidator : AbstractValidator<UserLoginRequest>
+{
+    public UserLoginRequestValidator()
+    {
+        RuleFor(x => x.Username)
+            .NotEmpty().WithMessage(ValidationMessages.Required("Username"))
+            .Length(3, 32)
+            .WithMessage("Username must be 3-32 characters.")
+            .Matches(ValidationPatterns.Username)
+            .WithMessage("Username may contain only letters, numbers, '.', '_' or '-'.");
+        RuleFor(x => x.Password)
+            .NotEmpty().WithMessage(ValidationMessages.Required("Password"));
+    }
+}
+
+public sealed class YachtImageInsertRequestValidator : AbstractValidator<YachtImageInsertRequest>
+{
+    private const int MaxUploadBytes = 52_428_800;
+    // Base64 is ~4/3 of raw byte length; cap the string to avoid unbounded server work.
+    private const int MaxBase64Chars = MaxUploadBytes * 4 / 3 + 10_000;
+
+    public YachtImageInsertRequestValidator()
+    {
+        RuleFor(x => x.ImageDataBase64)
+            .NotEmpty().WithMessage("Image data (Base64) is required.")
+            .MaximumLength(MaxBase64Chars)
+            .WithMessage("Image is too large for upload.")
+            .Must(BeValidBase64).WithMessage("Image data must be a valid Base64 string.");
+
+        RuleFor(x => x.ContentType)
+            .NotEmpty().WithMessage(ValidationMessages.Required("Content type"))
+            .MaximumLength(100)
+            .WithMessage(ValidationMessages.MaxLength("Content type", 100))
+            .Must(ct => ct.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            .WithMessage("Content type must be an image type (e.g. image/jpeg, image/png).");
+
+        RuleFor(x => x.FileName)
+            .MaximumLength(260)
+            .WithMessage(ValidationMessages.MaxLength("File name", 260))
+            .When(x => !string.IsNullOrWhiteSpace(x.FileName));
+    }
+
+    private static bool BeValidBase64(string? s)
+    {
+        if (string.IsNullOrEmpty(s)) return false;
+        try
+        {
+            _ = Convert.FromBase64String(s);
+            return true;
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
     }
 }
 

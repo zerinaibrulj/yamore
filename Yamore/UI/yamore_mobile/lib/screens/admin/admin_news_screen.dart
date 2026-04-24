@@ -20,6 +20,14 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
     password: widget.authService.password,
   );
 
+  final _titleFilter = TextEditingController();
+  final _textFilter = TextEditingController();
+
+  static const int _pageSize = 12;
+
+  int _currentPage = 0;
+  int _totalCount = 0;
+
   bool _loading = true;
   String? _error;
   List<NewsItemModel> _items = const [];
@@ -29,6 +37,13 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _titleFilter.dispose();
+    _textFilter.dispose();
+    super.dispose();
   }
 
   Future<void> _showActionResultDialog({
@@ -90,10 +105,32 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
       _error = null;
     });
     try {
-      final paged = await _api.getNews(page: 0, pageSize: 100);
+      final paged = await _api.getNews(
+        page: _currentPage,
+        pageSize: _pageSize,
+        titleContains: _titleFilter.text.trim().isEmpty
+            ? null
+            : _titleFilter.text.trim(),
+        textContains: _textFilter.text.trim().isEmpty
+            ? null
+            : _textFilter.text.trim(),
+      );
+      if (!mounted) return;
+      var total = paged.count ?? 0;
+      if (paged.resultList.isEmpty && total > 0) {
+        final maxPage = ((total - 1) / _pageSize).floor();
+        if (_currentPage > maxPage) {
+          setState(() {
+            _currentPage = maxPage;
+          });
+          await _load();
+          return;
+        }
+      }
       if (!mounted) return;
       setState(() {
         _items = paged.resultList;
+        _totalCount = total;
         _loading = false;
         _error = null;
       });
@@ -261,11 +298,12 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
           text: textC.text.trim(),
         );
         if (mounted) {
+          setState(() => _currentPage = 0);
           await _showActionResultDialog(
             title: 'Published',
             message: 'The announcement was added successfully.',
           );
-          await _load();
+          if (mounted) await _load();
         }
       } on ApiException catch (e) {
         if (mounted) {
@@ -333,107 +371,377 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
     }
   }
 
+  void _searchFromFirstPage() {
+    setState(() {
+      _currentPage = 0;
+    });
+    _load();
+  }
+
+  void _clearSearchAndReload() {
+    _titleFilter.clear();
+    _textFilter.clear();
+    setState(() {
+      _currentPage = 0;
+    });
+    _load();
+  }
+
+  int get _totalPagesComputed {
+    if (_totalCount <= 0) return 1;
+    return (_totalCount + _pageSize - 1) ~/ _pageSize;
+  }
+
+  Widget _buildPageBar() {
+    if (_totalCount <= 0) return const SizedBox.shrink();
+    final total = _totalCount;
+    final start = total == 0 ? 0 : _currentPage * _pageSize + 1;
+    final end = (_currentPage * _pageSize + _items.length).clamp(0, total);
+    final totalPages = _totalPagesComputed;
+    return Column(
+      children: [
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Showing $start–$end of $total',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  if (total > 0) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      'Page ${_currentPage + 1} of $totalPages',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              Row(
+                children: [
+                  Text(
+                    'Rows per page: $_pageSize',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  const SizedBox(width: 12),
+                  IconButton.filledTonal(
+                    style: IconButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    icon: const Icon(Icons.chevron_left),
+                    onPressed: !_loading && _currentPage > 0
+                        ? () {
+                            setState(() => _currentPage--);
+                            _load();
+                          }
+                        : null,
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton.filledTonal(
+                    style: IconButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    icon: const Icon(Icons.chevron_right),
+                    onPressed: !_loading &&
+                            (_currentPage + 1) < totalPages
+                        ? () {
+                            setState(() => _currentPage++);
+                            _load();
+                          }
+                        : null,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTopHeader(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            const Icon(
+              Icons.campaign_outlined,
+              color: AppTheme.primaryBlue,
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'News',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: AppTheme.primaryBlue,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ],
+        ),
+        FilledButton.icon(
+          onPressed: _showAddDialog,
+          icon: const Icon(Icons.add, size: 20),
+          label: const Text('Add news'),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppTheme.primaryBlue,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_error != null) {
-      return Center(
+    if (_error != null && !_loading) {
+      return Padding(
+        padding: const EdgeInsets.all(24),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              _error!,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.red.shade800),
+            _buildTopHeader(context),
+            const SizedBox(height: 8),
+            const Text(
+              'Create and manage platform announcements. Newest posts first (12 per page, same as other admin lists).',
+              style: TextStyle(
+                color: Color(0xFF424242),
+                fontSize: 14,
+                height: 1.35,
+              ),
             ),
-            const SizedBox(height: 12),
-            FilledButton(
-              onPressed: _load,
-              child: const Text('Retry'),
+            const SizedBox(height: 16),
+            _buildSearchCard(enabled: true),
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _error!,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.red.shade800),
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      onPressed: _load,
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(24, 8, 24, 0),
-          child: Text(
-            'Create and manage news for the app. Each item shows the title, text, and time. On phones, the list is ordered with the newest first.',
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildTopHeader(context),
+          const SizedBox(height: 8),
+          const Text(
+            'Create and manage platform announcements. Filter by title or text, then use Search. Newest posts first.',
             style: TextStyle(
               color: Color(0xFF424242),
               fontSize: 14,
               height: 1.35,
             ),
           ),
-        ),
-        Expanded(
-          child: _items.isEmpty
-              ? const Center(child: Text('No news items. Add the first one.'))
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.all(24),
-                    itemCount: _items.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: 12),
-                    itemBuilder: (context, i) {
-                      final n = _items[i];
-                      final t = newsDisplayTime(n.createdAt);
-                      return Card(
-                        child: ListTile(
-                          isThreeLine: n.text.length > 80,
-                          title: Text(
-                            n.title,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          subtitle: Text(
-                            '${t != null ? _fmt(t) : '—'}\n${n.text}',
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(height: 1.2),
-                          ),
-                          trailing: _deletingId == n.newsId
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : IconButton(
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    color: Colors.red,
-                                  ),
-                                  onPressed: () => _confirmDelete(n),
-                                ),
+          const SizedBox(height: 12),
+          _buildSearchCard(enabled: !_loading),
+          if (_loading) const LinearProgressIndicator(minHeight: 2),
+          Expanded(
+            child: _loading && _items.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : _items.isEmpty
+                    ? Center(
+                        child: Text(
+                          _titleFilter.text.trim().isNotEmpty ||
+                                  _textFilter.text.trim().isNotEmpty
+                              ? 'No items match this search. Try different keywords or clear filters.'
+                              : 'No news items yet. Use Add news above to publish the first announcement.',
                         ),
-                      );
-                    },
+                      )
+                    : RefreshIndicator(
+                        onRefresh: _load,
+                        child: ListView.separated(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
+                          itemCount: _items.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(height: 12),
+                          itemBuilder: (context, i) {
+                            final n = _items[i];
+                            final t = newsDisplayTime(n.createdAt);
+                            return Card(
+                              child: ListTile(
+                                isThreeLine: n.text.length > 80,
+                                title: Text(
+                                  n.title,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  '${t != null ? _fmt(t) : '—'}\n${n.text}',
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(height: 1.2),
+                                ),
+                                trailing: _deletingId == n.newsId
+                                    ? const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : IconButton(
+                                        icon: const Icon(
+                                          Icons.delete_outline,
+                                          color: Colors.red,
+                                        ),
+                                        onPressed: () => _confirmDelete(n),
+                                      ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+          ),
+          if (!_loading) _buildPageBar(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchCard({required bool enabled}) {
+    final fieldBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+    );
+    return Card(
+      elevation: 0,
+      color: const Color(0xFFF5F7FA),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade300),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.filter_alt_outlined, size: 20, color: Color(0xFF1976D2)),
+                SizedBox(width: 8),
+                Text(
+                  'Search news',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
                   ),
                 ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: FilledButton.icon(
-              onPressed: _showAddDialog,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.primaryBlue,
-              ),
-              icon: const Icon(Icons.add),
-              label: const Text('Add news'),
+              ],
             ),
-          ),
+            const SizedBox(height: 12),
+            LayoutBuilder(
+              builder: (context, c) {
+                final wide = c.maxWidth >= 560;
+                final titleField = TextField(
+                  controller: _titleFilter,
+                  enabled: enabled,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    labelText: 'Title contains',
+                    hintText: 'e.g. announcement',
+                    border: fieldBorder,
+                    filled: true,
+                    fillColor: Colors.white,
+                    prefixIcon: const Icon(Icons.title, size: 20),
+                  ),
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => _searchFromFirstPage(),
+                );
+                final textField = TextField(
+                  controller: _textFilter,
+                  enabled: enabled,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    labelText: 'Text contains',
+                    hintText: 'Search in body…',
+                    border: fieldBorder,
+                    filled: true,
+                    fillColor: Colors.white,
+                    prefixIcon: const Icon(Icons.notes, size: 20),
+                  ),
+                  textInputAction: TextInputAction.search,
+                  onSubmitted: (_) => _searchFromFirstPage(),
+                );
+                if (wide) {
+                  return Row(
+                    children: [
+                      Expanded(child: titleField),
+                      const SizedBox(width: 12),
+                      Expanded(child: textField),
+                    ],
+                  );
+                }
+                return Column(
+                  children: [
+                    titleField,
+                    const SizedBox(height: 10),
+                    textField,
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.icon(
+                  onPressed: enabled ? _searchFromFirstPage : null,
+                  icon: const Icon(Icons.search, size: 20),
+                  label: const Text('Search'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: enabled ? _clearSearchAndReload : null,
+                  icon: const Icon(Icons.clear, size: 20),
+                  label: const Text('Clear filters'),
+                ),
+              ],
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 

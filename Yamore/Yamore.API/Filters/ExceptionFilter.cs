@@ -1,44 +1,102 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Net;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-using System.Net;
 using Yamore.Model;
 
 namespace Yamore.API.Filters
 {
     public class ExceptionFilter : ExceptionFilterAttribute
     {
-        ILogger<ExceptionFilter> Logger { get; set; }
-        public ExceptionFilter(ILogger<ExceptionFilter> logger)
+        private readonly ILogger<ExceptionFilter> _logger;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+
+        public ExceptionFilter(ILogger<ExceptionFilter> logger, IHttpContextAccessor httpContextAccessor)
         {
-            Logger = logger;
+            _logger = logger;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public override void OnException(ExceptionContext context)
         {
-            Logger.LogError(context.Exception, context.Exception.Message);
+            var http = _httpContextAccessor.HttpContext ?? context.HttpContext;
+            var request = http.Request;
+            var path = request.Path.HasValue ? request.Path.Value : string.Empty;
+            var method = request.Method;
+            var traceId = http.TraceIdentifier;
+            var userId = http.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userName = http.User?.FindFirstValue(ClaimTypes.Name);
+            var query = request.QueryString.HasValue ? request.QueryString.Value : string.Empty;
 
-            if (context.Exception is UserException)
+            var ex = context.Exception;
+
+            if (ex is UserException)
             {
-                context.ModelState.AddModelError("userError", context.Exception.Message);
+                _logger.LogWarning(
+                    ex,
+                    "UserException {Method} {Path}{Query} TraceId={TraceId} UserId={UserId} UserName={UserName} | {Message}",
+                    method,
+                    path,
+                    query,
+                    traceId,
+                    userId ?? "(anonymous)",
+                    userName ?? "(n/a)",
+                    ex.Message);
+                context.ModelState.AddModelError("userError", ex.Message);
                 context.HttpContext.Response.StatusCode = (int)HttpStatusCode.BadRequest;
             }
-            else if (context.Exception is UnauthorizedAccessException)
+            else if (ex is UnauthorizedAccessException)
             {
-                context.ModelState.AddModelError("error", context.Exception.Message);
+                _logger.LogWarning(
+                    ex,
+                    "Unauthorized {Method} {Path}{Query} TraceId={TraceId} | {Message}",
+                    method,
+                    path,
+                    query,
+                    traceId,
+                    ex.Message);
+                context.ModelState.AddModelError("error", ex.Message);
                 context.HttpContext.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             }
-            else if (context.Exception is KeyNotFoundException)
+            else if (ex is KeyNotFoundException)
             {
+                _logger.LogInformation(
+                    ex,
+                    "Not found {Method} {Path}{Query} TraceId={TraceId} | {Message}",
+                    method,
+                    path,
+                    query,
+                    traceId,
+                    ex.Message);
                 context.ModelState.AddModelError("error", "The requested resource was not found.");
                 context.HttpContext.Response.StatusCode = (int)HttpStatusCode.NotFound;
             }
-            else if (context.Exception is InvalidOperationException)
+            else if (ex is InvalidOperationException)
             {
-                context.ModelState.AddModelError("error", context.Exception.Message);
+                _logger.LogWarning(
+                    ex,
+                    "InvalidOperation {Method} {Path}{Query} TraceId={TraceId} | {Message}",
+                    method,
+                    path,
+                    query,
+                    traceId,
+                    ex.Message);
+                context.ModelState.AddModelError("error", ex.Message);
                 context.HttpContext.Response.StatusCode = (int)HttpStatusCode.BadRequest;
             }
             else
             {
+                _logger.LogError(
+                    ex,
+                    "Unhandled {Method} {Path}{Query} TraceId={TraceId} UserId={UserId} UserName={UserName} | {Message}",
+                    method,
+                    path,
+                    query,
+                    traceId,
+                    userId ?? "(anonymous)",
+                    userName ?? "(n/a)",
+                    ex.Message);
                 context.ModelState.AddModelError("ERROR", "Server side error, please check logs");
                 context.HttpContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
             }

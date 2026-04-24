@@ -38,6 +38,30 @@ namespace Yamore.Services.Services
             return new PagedResponse<Model.NewsItem> { Count = count, ResultList = result };
         }
 
+        public override IQueryable<NewsEntity> AddFilter(NewsItemSearchObject search, IQueryable<NewsEntity> query)
+        {
+            var q = base.AddFilter(search, query);
+            if (!string.IsNullOrWhiteSpace(search?.TitleContains))
+            {
+                var t = search!.TitleContains!.Trim();
+                q = q.Where(x => x.Title.Contains(t));
+            }
+            if (!string.IsNullOrWhiteSpace(search?.TextContains))
+            {
+                var t = search!.TextContains!.Trim();
+                q = q.Where(x => x.Text.Contains(t));
+            }
+            if (search?.CreatedFrom != null)
+            {
+                q = q.Where(x => x.CreatedAt >= search!.CreatedFrom!.Value);
+            }
+            if (search?.CreatedTo != null)
+            {
+                q = q.Where(x => x.CreatedAt <= search!.CreatedTo!.Value);
+            }
+            return q;
+        }
+
         public override void BeforeInsret(NewsItemInsertRequest request, NewsEntity entity)
         {
             if (entity.CreatedAt == default)
