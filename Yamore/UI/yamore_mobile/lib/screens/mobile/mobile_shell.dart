@@ -14,6 +14,7 @@ import 'owner_yachts_tab.dart';
 import 'owner_services_tab.dart';
 import 'mobile_yacht_detail_screen.dart';
 import 'owner_settings_tab.dart';
+import 'mobile_news_screen.dart';
 
 class MobileShell extends StatefulWidget {
   final AppUser user;
@@ -163,6 +164,19 @@ class _MobileShellState extends State<MobileShell> {
         backgroundColor: AppTheme.primaryBlue,
         foregroundColor: Colors.white,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.campaign_outlined, size: 22),
+            tooltip: 'News & notices',
+            onPressed: () {
+              Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(
+                  builder: (_) => MobileNewsScreen(
+                    authService: widget.authService,
+                  ),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout, size: 20),
             tooltip: 'Sign out',

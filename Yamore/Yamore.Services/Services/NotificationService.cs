@@ -1,10 +1,9 @@
-﻿using MapsterMapper;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using Yamore.Model;
 using Yamore.Model.Requests.Notification;
@@ -16,9 +15,27 @@ namespace Yamore.Services.Services
 {
     public class NotificationService : BaseCRUDService<Model.Notification, NotificationSearchObject, Database.Notification, NotificationInsertRequest, NotificationUpdateRequest, NotificationDeleteRequest>, INotificationService
     {
-        public NotificationService(_220245Context context, IMapper mapper) 
+        public NotificationService(_220245Context context, IMapper mapper)
             : base(context, mapper)
         {
+        }
+
+        public override PagedResponse<Model.Notification> GetPaged(NotificationSearchObject search)
+        {
+            search ??= new NotificationSearchObject();
+            search.Page = PagingConstraints.NormalizePage(search.Page);
+            search.PageSize = PagingConstraints.NormalizePageSize(search.PageSize);
+
+            var query = Context.Set<Database.Notification>().AsQueryable();
+            query = AddFilter(search, query);
+            query = query.OrderByDescending(x => x.CreatedAt ?? DateTime.MinValue);
+            int count = query.Count();
+            var list = query
+                .Skip(search.Page!.Value * search.PageSize!.Value)
+                .Take(search.PageSize.Value)
+                .ToList();
+            var result = Mapper.Map<List<Model.Notification>>(list);
+            return new PagedResponse<Model.Notification> { Count = count, ResultList = result };
         }
 
         public override IQueryable<Database.Notification> AddFilter(NotificationSearchObject search, IQueryable<Database.Notification> query)
@@ -38,16 +55,25 @@ namespace Yamore.Services.Services
             return filteredQurey;
         }
 
-        public async Task<int> SendWarningToUserAndOwnersAsync(int userId, string message, CancellationToken cancellationToken = default)
+        public async Task<int> SendWarningToUserAndOwnersAsync(
+            int userId,
+            string message,
+            string? title = null,
+            CancellationToken cancellationToken = default)
         {
             var text = message.Trim();
-            if (text.Length > 255)
-                text = text[..255];
+            if (text.Length > 1000)
+                text = text[..1000];
+
+            var t = (title ?? "Account notice").Trim();
+            if (t.Length > 200)
+                t = t[..200];
 
             var now = DateTime.UtcNow;
 
             await using var tx = await Context.Database.BeginTransactionAsync(cancellationToken);
             var ownerIds = await Context.Reservations
+                .AsNoTracking()
                 .Where(r => r.UserId == userId)
                 .Where(r => ReservationStatuses.BlocksAvailability(r.Status))
                 .Select(r => r.Yacht.OwnerId)
@@ -61,6 +87,7 @@ namespace Yamore.Services.Services
                 Context.Notifications.Add(new Database.Notification
                 {
                     UserId = recipientId,
+                    Title = t,
                     Message = text,
                     CreatedAt = now,
                     IsRead = false
@@ -72,20 +99,37 @@ namespace Yamore.Services.Services
             return recipientIds.Count;
         }
 
-        public void InsertUserNotification(int userId, string message)
+        public void InsertUserNotification(int userId, string title, string text)
         {
-            var text = (message ?? string.Empty).Trim();
-            if (text.Length > 255)
-                text = text[..255];
+            var t = (title ?? string.Empty).Trim();
+            if (t.Length > 200)
+                t = t[..200];
+            if (string.IsNullOrEmpty(t))
+                t = "Yamore";
+
+            var body = (text ?? string.Empty).Trim();
+            if (body.Length > 1000)
+                body = body[..1000];
 
             Context.Notifications.Add(new Database.Notification
             {
                 UserId = userId,
-                Message = text,
+                Title = t,
+                Message = body,
                 CreatedAt = DateTime.UtcNow,
                 IsRead = false
             });
             Context.SaveChanges();
+        }
+
+        public Model.Notification? MarkAsReadForUser(int notificationId, int userId)
+        {
+            var entity = Context.Notifications.FirstOrDefault(n => n.NotificationId == notificationId && n.UserId == userId);
+            if (entity == null)
+                return null;
+            entity.IsRead = true;
+            Context.SaveChanges();
+            return Mapper.Map<Model.Notification>(entity);
         }
     }
 }

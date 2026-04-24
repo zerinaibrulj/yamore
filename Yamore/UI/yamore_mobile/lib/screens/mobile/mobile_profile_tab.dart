@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../models/user.dart';
 import '../../models/notification.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
+import '../../widgets/user_notifications_inbox.dart';
 
 class MobileProfileTab extends StatefulWidget {
   final AuthService authService;
@@ -24,7 +27,8 @@ class MobileProfileTab extends StatefulWidget {
   State<MobileProfileTab> createState() => _MobileProfileTabState();
 }
 
-class _MobileProfileTabState extends State<MobileProfileTab> {
+class _MobileProfileTabState extends State<MobileProfileTab>
+    with WidgetsBindingObserver {
   late final ApiService _api = ApiService(
     baseUrl: widget.authService.baseUrl,
     username: widget.authService.username,
@@ -48,18 +52,33 @@ class _MobileProfileTabState extends State<MobileProfileTab> {
   bool _notificationsLoading = false;
   List<NotificationModel> _notifications = const [];
   String? _notificationsError;
+  Timer? _notificationPoll;
+  bool _notifRequestInFlight = false;
+  int? _markingNotificationId;
 
   AppUser get _user => widget.user;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _firstNameCtrl = TextEditingController(text: _user.firstName);
     _lastNameCtrl = TextEditingController(text: _user.lastName);
     _emailCtrl = TextEditingController(text: _user.email ?? '');
     _phoneCtrl = TextEditingController(text: _user.phone ?? '');
 
     _loadNotifications();
+    _notificationPoll = Timer.periodic(
+      const Duration(seconds: 45),
+      (_) => _loadNotifications(silent: true),
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadNotifications(silent: true);
+    }
   }
 
   void _applyUserToControllers(AppUser u) {
@@ -83,37 +102,82 @@ class _MobileProfileTabState extends State<MobileProfileTab> {
     }
   }
 
-  Future<void> _loadNotifications() async {
+  Future<void> _loadNotifications({bool silent = false}) async {
     if (!mounted) return;
-    if (_notificationsLoading) return;
-    setState(() {
-      _notificationsLoading = true;
-      _notificationsError = null;
-    });
+    if (_notifRequestInFlight) return;
+    _notifRequestInFlight = true;
+    if (!silent) {
+      setState(() {
+        _notificationsLoading = true;
+        _notificationsError = null;
+      });
+    }
     try {
       final paged = await _api.getNotifications(
         userId: _user.userId,
         page: 0,
-        pageSize: 10,
-        isRead: false,
+        pageSize: 30,
       );
       if (!mounted) return;
       setState(() {
         _notifications = paged.resultList;
-        _notificationsLoading = false;
+        _notificationsError = null;
       });
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
-        _notificationsLoading = false;
-        _notificationsError = e.displayMessage;
+        if (!silent) {
+          _notificationsError = e.displayMessage;
+        }
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _notificationsLoading = false;
-        _notificationsError = '$e';
+        if (!silent) {
+          _notificationsError = '$e';
+        }
       });
+    } finally {
+      _notifRequestInFlight = false;
+      if (mounted) {
+        setState(() {
+          if (!silent) _notificationsLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _markNotificationRead(NotificationModel n) async {
+    if (n.isRead == true) return;
+    if (!mounted) return;
+    setState(() => _markingNotificationId = n.notificationId);
+    try {
+      await _api.markNotificationRead(n.notificationId);
+      if (!mounted) return;
+      setState(() {
+        _notifications = _notifications
+            .map(
+              (x) => x.notificationId == n.notificationId
+                  ? x.copyWith(isRead: true)
+                  : x,
+            )
+            .toList();
+        _markingNotificationId = null;
+      });
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() => _markingNotificationId = null);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not mark as read: ${e.displayMessage}')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _markingNotificationId = null);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not mark as read: $e')),
+        );
+      }
     }
   }
 
@@ -137,6 +201,8 @@ class _MobileProfileTabState extends State<MobileProfileTab> {
 
   @override
   void dispose() {
+    _notificationPoll?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     _firstNameCtrl.dispose();
     _lastNameCtrl.dispose();
     _emailCtrl.dispose();
@@ -529,48 +595,14 @@ class _MobileProfileTabState extends State<MobileProfileTab> {
             elevation: 1,
             child: Padding(
               padding: const EdgeInsets.all(14),
-              child: _notificationsLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _notificationsError != null
-                      ? Text(
-                          'Failed to load notifications: $_notificationsError',
-                          style: TextStyle(color: Colors.red.shade700, fontSize: 12),
-                        )
-                      : _notifications.isEmpty
-                          ? const Text('No new notifications.')
-                          : Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '${_notifications.length} new notification${_notifications.length == 1 ? '' : 's'}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.grey.shade800,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                ..._notifications.map(
-                                  (n) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 10),
-                                    child: ListTile(
-                                      contentPadding: EdgeInsets.zero,
-                                      leading: const Icon(Icons.notifications_active_outlined,
-                                          color: AppTheme.primaryBlue),
-                                      title: Text(
-                                        n.message,
-                                        maxLines: 3,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(fontWeight: FontWeight.w600),
-                                      ),
-                                      subtitle: n.createdAt != null
-                                          ? Text(_formatDateTime(n.createdAt!))
-                                          : null,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+              child: UserNotificationsInbox(
+                  loading: _notificationsLoading,
+                  error: _notificationsError,
+                  notifications: _notifications,
+                  formatDateTime: _formatDateTime,
+                  markingNotificationId: _markingNotificationId,
+                  onMarkRead: _markNotificationRead,
+                ),
             ),
           ),
 

@@ -21,6 +21,7 @@ import '../models/reservation.dart';
 import '../models/route.dart';
 import '../models/weather_forecast.dart';
 import '../models/notification.dart';
+import '../models/news_item.dart';
 
 export 'api_exception.dart';
 
@@ -622,19 +623,77 @@ class ApiService {
     _ensureSuccess(response);
   }
 
-  Future<void> sendNotification({required int userId, required String message}) async {
+  Future<void> sendNotification({
+    required int userId,
+    required String message,
+    String? title,
+  }) async {
     final uri = Uri.parse('$baseUrl/Notification');
     final response = await http.post(
       uri,
       headers: _headers,
       body: jsonEncode({
         'UserId': userId,
+        'Title': title ?? 'Yamore',
         'Message': message,
         'CreatedAt': DateTime.now().toUtc().toIso8601String(),
         'IsRead': false,
       }),
     );
     _ensureSuccess(response, allow201: true);
+  }
+
+  Future<void> markNotificationRead(int notificationId) async {
+    final uri = Uri.parse('$baseUrl/Notification/$notificationId/mark-read');
+    final response = await http.put(uri, headers: _headers);
+    _ensureSuccess(response);
+  }
+
+  Future<PagedNewsItems> getNews({
+    int page = 0,
+    int pageSize = 20,
+  }) async {
+    final uri = Uri.parse('$baseUrl/news').replace(
+      queryParameters: {
+        'Page': page.toString(),
+        'PageSize': pageSize.toString(),
+      },
+    );
+    final response = await http.get(uri, headers: _headers);
+    _ensureSuccess(response);
+    return PagedNewsItems.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<NewsItemModel> createNews({
+    required String title,
+    required String text,
+    String? imageUrl,
+    DateTime? createdAt,
+  }) async {
+    final uri = Uri.parse('$baseUrl/news');
+    final body = <String, dynamic>{
+      'Title': title,
+      'Text': text,
+      if (imageUrl != null && imageUrl.isNotEmpty) 'ImageUrl': imageUrl,
+      if (createdAt != null) 'CreatedAt': createdAt.toUtc().toIso8601String(),
+    };
+    final response = await http.post(
+      uri,
+      headers: _headers,
+      body: jsonEncode(body),
+    );
+    _ensureSuccess(response, allow201: true);
+    return NewsItemModel.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<void> deleteNews(int newsId) async {
+    final uri = Uri.parse('$baseUrl/news/$newsId');
+    final response = await http.delete(uri, headers: _headers);
+    _ensureSuccess(response);
   }
 
   Future<void> sendWarningToUserAndOwners({

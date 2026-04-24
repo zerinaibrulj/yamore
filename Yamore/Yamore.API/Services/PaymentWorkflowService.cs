@@ -20,6 +20,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
     private readonly IConfiguration _configuration;
     private readonly IMessagePublisher _messagePublisher;
     private readonly IReservationService _reservationService;
+    private readonly INotificationService _notifications;
     private readonly ILogger<PaymentWorkflowService> _logger;
 
     public PaymentWorkflowService(
@@ -28,6 +29,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
         IConfiguration configuration,
         IMessagePublisher messagePublisher,
         IReservationService reservationService,
+        INotificationService notifications,
         ILogger<PaymentWorkflowService> logger)
     {
         _context = context;
@@ -35,6 +37,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
         _configuration = configuration;
         _messagePublisher = messagePublisher;
         _reservationService = reservationService;
+        _notifications = notifications;
         _logger = logger;
     }
 
@@ -300,6 +303,23 @@ public class PaymentWorkflowService : IPaymentWorkflowService
         };
         _messagePublisher.Publish(MessageEnvelope.PaymentCompleted, JsonSerializer.Serialize(payMsg));
 
+        var y = await _context.Yachts.AsNoTracking().FirstOrDefaultAsync(x => x.YachtId == yachtId, cancellationToken);
+        if (y != null)
+        {
+            var displayYacht = string.IsNullOrWhiteSpace(msgCtx.YachtName) ? "the yacht" : msgCtx.YachtName.Trim();
+            var guestName = string.IsNullOrWhiteSpace(msgCtx.UserDisplayName) ? "A guest" : msgCtx.UserDisplayName.Trim();
+            var p =
+                $"{reservation.StartDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)} – {reservation.EndDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
+            _notifications.InsertUserNotification(
+                reservation.UserId,
+                "Payment received",
+                $"Your card payment of {total:0.00} EUR was successful. {displayYacht} ({p}) is now confirmed.");
+            _notifications.InsertUserNotification(
+                y.OwnerId,
+                "New paid booking",
+                $"{guestName} completed payment. Booking for {displayYacht} ({p}) is confirmed.");
+        }
+
         return new PaymentIntentDto { Status = payStatus, PaymentIntentId = paymentIntentId };
     }
 
@@ -356,6 +376,23 @@ public class PaymentWorkflowService : IPaymentWorkflowService
         };
         _messagePublisher.Publish(MessageEnvelope.PaymentCompleted, JsonSerializer.Serialize(payMsg));
 
+        var y2 = await _context.Yachts.AsNoTracking().FirstOrDefaultAsync(x => x.YachtId == reservation.YachtId, cancellationToken);
+        if (y2 != null)
+        {
+            var displayYacht = string.IsNullOrWhiteSpace(msgCtx.YachtName) ? "the yacht" : msgCtx.YachtName.Trim();
+            var period =
+                $"{reservation.StartDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)} – {reservation.EndDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
+            var amt = payCard.Amount;
+            _notifications.InsertUserNotification(
+                reservation.UserId,
+                "Payment received",
+                $"Your card payment of {amt:0.00} EUR was recorded. {displayYacht} ({period}) is now confirmed.");
+            _notifications.InsertUserNotification(
+                y2.OwnerId,
+                "Payment received",
+                $"A card payment of {amt:0.00} EUR was received for {displayYacht} ({period}). The booking is confirmed.");
+        }
+
         return new PaymentIntentDto { Status = status };
     }
 
@@ -384,5 +421,22 @@ public class PaymentWorkflowService : IPaymentWorkflowService
             ReservationEndDate = res?.EndDate,
         };
         _messagePublisher.Publish(MessageEnvelope.PaymentCompleted, JsonSerializer.Serialize(msg));
+
+        if (res == null || msgCtx == null)
+            return;
+        var yacht = _context.Yachts.Find(res.YachtId);
+        if (yacht == null)
+            return;
+        var pr =
+            $"{res.StartDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)} – {res.EndDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
+        var yn = string.IsNullOrWhiteSpace(msgCtx.YachtName) ? "your booking" : msgCtx.YachtName.Trim();
+        _notifications.InsertUserNotification(
+            res.UserId,
+            "Payment recorded",
+            $"A {paymentMethod} payment of {payment.Amount:0.00} EUR was recorded for {yn} ({pr}).");
+        _notifications.InsertUserNotification(
+            yacht.OwnerId,
+            "Payment recorded",
+            $"Payment of {payment.Amount:0.00} EUR ({paymentMethod}) for {yn} ({pr}) was added to the reservation.");
     }
 }

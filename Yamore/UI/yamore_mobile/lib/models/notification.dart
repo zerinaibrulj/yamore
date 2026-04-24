@@ -1,6 +1,8 @@
 class NotificationModel {
   final int notificationId;
   final int userId;
+  /// System notification heading (e.g. reservation, payment). May be empty for legacy rows.
+  final String title;
   final String message;
   final DateTime? createdAt;
   final bool? isRead;
@@ -8,10 +10,31 @@ class NotificationModel {
   NotificationModel({
     required this.notificationId,
     required this.userId,
+    this.title = '',
     required this.message,
     this.createdAt,
     this.isRead,
   });
+
+  String get displayTitle {
+    if (title.trim().isNotEmpty) return title.trim();
+    if (message.trim().isNotEmpty) {
+      final oneLine = message.trim().split(RegExp(r'[\r\n]')).first;
+      return oneLine.length > 60 ? '${oneLine.substring(0, 60)}…' : oneLine;
+    }
+    return 'Notification';
+  }
+
+  NotificationModel copyWith({bool? isRead}) {
+    return NotificationModel(
+      notificationId: notificationId,
+      userId: userId,
+      title: title,
+      message: message,
+      createdAt: createdAt,
+      isRead: isRead ?? this.isRead,
+    );
+  }
 
   static dynamic _key(
     Map<String, dynamic> json,
@@ -41,9 +64,13 @@ class NotificationModel {
       if (v == 'false') isRead = false;
     }
 
+    final titleRaw = _key(json, 'title', 'Title');
+    final title = titleRaw is String ? titleRaw : '';
+
     return NotificationModel(
       notificationId: _key(json, 'notificationId', 'NotificationId') as int,
       userId: _key(json, 'userId', 'UserId') as int,
+      title: title,
       message: (_key(json, 'message', 'Message') as String?) ?? '',
       createdAt: createdAt,
       isRead: isRead,

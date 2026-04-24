@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Yamore.Model;
 using Yamore.Model.Requests.Notification;
@@ -36,8 +37,20 @@ namespace Yamore.API.Controllers
             var count = await _notificationService.SendWarningToUserAndOwnersAsync(
                 request.UserId,
                 request.Message,
+                title: null,
                 cancellationToken);
             return Ok(new { message = "Warning sent.", recipients = count });
+        }
+
+        /// <summary>Marks a notification as read for the current user (must own the row).</summary>
+        [HttpPut("{id}/mark-read")]
+        public ActionResult<Model.Notification> MarkAsRead(int id)
+        {
+            if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                return Unauthorized();
+            var n = _notificationService.MarkAsReadForUser(id, userId);
+            if (n == null) return NotFound();
+            return Ok(n);
         }
     }
 }

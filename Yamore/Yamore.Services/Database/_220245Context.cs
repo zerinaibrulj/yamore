@@ -21,6 +21,8 @@ public partial class _220245Context : DbContext
 
     public virtual DbSet<Notification> Notifications { get; set; }
 
+    public virtual DbSet<NewsItem> NewsItems { get; set; }
+
     public virtual DbSet<Payment> Payments { get; set; }
 
     public virtual DbSet<Reservation> Reservations { get; set; }
@@ -80,12 +82,23 @@ public partial class _220245Context : DbContext
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
             entity.Property(e => e.IsRead).HasDefaultValue(false);
-            entity.Property(e => e.Message).HasMaxLength(255);
+            entity.Property(e => e.Title).HasMaxLength(200);
+            entity.Property(e => e.Message).HasMaxLength(1000);
 
             entity.HasOne(d => d.User).WithMany(p => p.Notifications)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__Notificat__UserI__6754599E");
+        });
+
+        modelBuilder.Entity<NewsItem>(entity =>
+        {
+            entity.ToTable("NewsItems");
+            entity.HasKey(e => e.NewsId);
+            entity.Property(e => e.Title).HasMaxLength(200);
+            entity.Property(e => e.Text).HasMaxLength(8000);
+            entity.Property(e => e.ImageUrl).HasMaxLength(500);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime2");
         });
 
         modelBuilder.Entity<Payment>(entity =>

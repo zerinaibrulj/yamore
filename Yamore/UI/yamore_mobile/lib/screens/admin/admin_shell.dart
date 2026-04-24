@@ -11,6 +11,7 @@ import 'admin_services_screen.dart';
 import 'admin_routes_weather_screen.dart';
 import 'admin_cities_countries_screen.dart';
 import 'admin_settings_screen.dart';
+import 'admin_news_screen.dart';
 
 class AdminShell extends StatefulWidget {
   final AuthService authService;
@@ -29,6 +30,11 @@ class _AdminShellState extends State<AdminShell> {
       icon: Icons.home_outlined,
       selectedIcon: Icons.home,
       label: 'Home',
+    ),
+    _NavItem(
+      icon: Icons.campaign_outlined,
+      selectedIcon: Icons.campaign,
+      label: 'News',
     ),
     _NavItem(
       icon: Icons.people_outline,
@@ -134,24 +140,27 @@ class _AdminShellState extends State<AdminShell> {
         sectionTitle = 'Home';
         break;
       case 1:
-        sectionTitle = 'Users';
+        sectionTitle = 'News';
         break;
       case 2:
-        sectionTitle = 'Yachts';
+        sectionTitle = 'Users';
         break;
       case 3:
-        sectionTitle = 'Reviews';
+        sectionTitle = 'Yachts';
         break;
       case 4:
-        sectionTitle = 'Services';
+        sectionTitle = 'Reviews';
         break;
       case 5:
-        sectionTitle = 'Routes & Weather';
+        sectionTitle = 'Services';
         break;
       case 6:
-        sectionTitle = 'Cities & Countries';
+        sectionTitle = 'Routes & Weather';
         break;
       case 7:
+        sectionTitle = 'Cities & Countries';
+        break;
+      case 8:
         sectionTitle = 'Settings';
         break;
       default:
@@ -212,18 +221,20 @@ class _AdminShellState extends State<AdminShell> {
       case 0:
         return AdminHomeScreen(authService: widget.authService);
       case 1:
-        return AdminUsersScreen(authService: widget.authService);
+        return AdminNewsScreen(authService: widget.authService);
       case 2:
-        return YachtReviewScreen(authService: widget.authService);
+        return AdminUsersScreen(authService: widget.authService);
       case 3:
-        return AdminReviewsScreen(authService: widget.authService);
+        return YachtReviewScreen(authService: widget.authService);
       case 4:
-        return AdminServicesScreen(authService: widget.authService);
+        return AdminReviewsScreen(authService: widget.authService);
       case 5:
-        return AdminRoutesWeatherScreen(authService: widget.authService);
+        return AdminServicesScreen(authService: widget.authService);
       case 6:
-        return AdminCitiesCountriesScreen(authService: widget.authService);
+        return AdminRoutesWeatherScreen(authService: widget.authService);
       case 7:
+        return AdminCitiesCountriesScreen(authService: widget.authService);
+      case 8:
         return AdminSettingsScreen(authService: widget.authService);
       default:
         return AdminHomeScreen(authService: widget.authService);

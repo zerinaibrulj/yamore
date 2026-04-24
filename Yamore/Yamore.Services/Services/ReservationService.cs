@@ -113,7 +113,9 @@ namespace Yamore.Services.Services
             if (HasOverlap(yachtId, start, end))
                 throw new UserException("This yacht is already reserved for the selected dates. Please choose different dates or times.");
 
-            return base.Insert(request);
+            var created = base.Insert(request);
+            TryNotifyNewPendingReservation(created, yacht);
+            return created;
         }
 
         public override Model.Reservation Update(int id, ReservationUpdateRequest request)
@@ -291,7 +293,12 @@ namespace Yamore.Services.Services
             ApplyStatusAudit(entity, actorUserId, DateTime.UtcNow, "Confirmed");
             entity.Status = ReservationStatuses.Confirmed;
             Context.SaveChanges();
-            return Mapper.Map<Model.Reservation>(entity);
+            var confirmed = Mapper.Map<Model.Reservation>(entity);
+            _notifications.InsertUserNotification(
+                entity.UserId,
+                "Booking confirmed",
+                BuildConfirmGuestMessage(entity));
+            return confirmed;
         }
 
         public Model.Reservation ConfirmFromSuccessfulCardPayment(int reservationId, int? paidByUserId)
@@ -343,11 +350,13 @@ namespace Yamore.Services.Services
             if (isGuest && !actorIsAdmin)
                 _notifications.InsertUserNotification(
                     entity.Yacht.OwnerId,
-                    TruncateNotification(BuildOwnerCancelMessage(entity)));
+                    "Booking cancelled",
+                    BuildOwnerCancelMessage(entity));
             else if ((isOwner || actorIsAdmin) && entity.UserId != actorUserId)
                 _notifications.InsertUserNotification(
                     entity.UserId,
-                    TruncateNotification(BuildGuestNotifiedOnOwnerOrAdminCancelMessage(entity)));
+                    "Booking cancelled",
+                    BuildGuestNotifiedOnOwnerOrAdminCancelMessage(entity));
 
             return new CancelReservationOutcome
             {
@@ -374,7 +383,8 @@ namespace Yamore.Services.Services
             var note = trimmed.Length > 200 ? trimmed[..200] + "…" : trimmed;
             _notifications.InsertUserNotification(
                 entity.UserId,
-                TruncateNotification(BuildRejectionNotificationMessage(entity, note)));
+                "Booking declined",
+                BuildRejectionNotificationMessage(entity, note));
 
             return Mapper.Map<Model.Reservation>(entity);
         }
@@ -401,6 +411,14 @@ namespace Yamore.Services.Services
             ApplyStatusAudit(entity, actorUserId, now, "Completed");
             entity.Status = ReservationStatuses.Completed;
             Context.SaveChanges();
+            _notifications.InsertUserNotification(
+                entity.UserId,
+                "Trip completed",
+                BuildTripCompletedMessage(entity, forGuest: true));
+            _notifications.InsertUserNotification(
+                entity.Yacht.OwnerId,
+                "Trip completed",
+                BuildTripCompletedMessage(entity, forGuest: false));
             return Mapper.Map<Model.Reservation>(entity);
         }
 
@@ -451,13 +469,58 @@ namespace Yamore.Services.Services
             }
 
             Context.SaveChanges();
+            foreach (var e in candidates)
+            {
+                _notifications.InsertUserNotification(
+                    e.UserId,
+                    "Trip completed",
+                    BuildTripCompletedMessage(e, forGuest: true));
+                _notifications.InsertUserNotification(
+                    e.Yacht.OwnerId,
+                    "Trip completed",
+                    BuildTripCompletedMessage(e, forGuest: false));
+            }
             return candidates.Count;
         }
 
-        private static string TruncateNotification(string text, int maxLen = 255) =>
-            string.IsNullOrEmpty(text) || text.Length <= maxLen
-                ? text
-                : text.Substring(0, maxLen);
+        private void TryNotifyNewPendingReservation(Model.Reservation r, Database.Yacht yacht)
+        {
+            var ctx = GetReservationMessageContext(r.UserId, r.YachtId);
+            var guest = string.IsNullOrWhiteSpace(ctx.UserDisplayName) ? "A guest" : ctx.UserDisplayName!.Trim();
+            var vessel = string.IsNullOrWhiteSpace(ctx.YachtName) ? "a yacht" : ctx.YachtName!.Trim();
+            var period = FormatPeriodForModel(r);
+            _notifications.InsertUserNotification(
+                yacht.OwnerId,
+                "New booking request",
+                $"{guest} requested {vessel} for {period}. Open Reservations to confirm or cancel.");
+            _notifications.InsertUserNotification(
+                r.UserId,
+                "Request submitted",
+                $"Your request for {vessel} ({period}) was sent to the owner. You will be notified when it is confirmed.");
+        }
+
+        private static string FormatPeriodForModel(Model.Reservation r) =>
+            $"{r.StartDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)} – {r.EndDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
+
+        private static string FormatPeriod(Database.Reservation r) =>
+            $"{r.StartDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)} – {r.EndDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
+
+        private string BuildConfirmGuestMessage(Database.Reservation r)
+        {
+            var ctx = GetReservationMessageContext(r.UserId, r.YachtId);
+            var vessel = string.IsNullOrWhiteSpace(ctx.YachtName) ? "the yacht" : ctx.YachtName!.Trim();
+            return $"Your booking for {vessel} ({FormatPeriod(r)}) is confirmed.";
+        }
+
+        private string BuildTripCompletedMessage(Database.Reservation r, bool forGuest)
+        {
+            var ctx = GetReservationMessageContext(r.UserId, r.YachtId);
+            var vessel = string.IsNullOrWhiteSpace(ctx.YachtName) ? "the yacht" : ctx.YachtName!.Trim();
+            if (forGuest)
+                return $"You completed your rental of {vessel} ({FormatPeriod(r)}). Thank you for using Yamore.";
+            var guest = string.IsNullOrWhiteSpace(ctx.UserDisplayName) ? "A guest" : ctx.UserDisplayName!.Trim();
+            return $"Rental to {guest} for {vessel} ({FormatPeriod(r)}) is marked as completed.";
+        }
 
         private string BuildOwnerCancelMessage(Database.Reservation r)
         {

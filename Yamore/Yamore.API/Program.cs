@@ -87,6 +87,7 @@ builder.Services.AddHostedService<AutoCompleteReservationsHostedService>();
 builder.Services.AddScoped<IReservationServiceService, ReservationServiceService>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<INewsItemService, NewsItemService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IYachtAvailabilityService, YachtAvailabilityService>();
 builder.Services.AddScoped<IServiceCategoryService, ServiceCategoryService>();

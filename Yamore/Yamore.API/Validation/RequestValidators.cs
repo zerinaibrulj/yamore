@@ -1,4 +1,5 @@
 using FluentValidation;
+using Yamore.Model.Requests.News;
 using Yamore.Model.Requests.City;
 using Yamore.Model.Requests.Country;
 using Yamore.Model.Requests.Notification;
@@ -586,9 +587,12 @@ public sealed class NotificationInsertRequestValidator : AbstractValidator<Notif
     public NotificationInsertRequestValidator()
     {
         RuleFor(x => x.UserId).GreaterThan(0).WithMessage("Please select a valid user.");
+        RuleFor(x => x.Title)
+            .NotEmpty().WithMessage(ValidationMessages.Required("Title"))
+            .MaximumLength(200).WithMessage(ValidationMessages.MaxLength("Title", 200));
         RuleFor(x => x.Message)
             .NotEmpty().WithMessage(ValidationMessages.Required("Message"))
-            .MaximumLength(255).WithMessage(ValidationMessages.MaxLength("Message", 255));
+            .MaximumLength(1000).WithMessage(ValidationMessages.MaxLength("Message", 1000));
     }
 }
 
@@ -597,9 +601,44 @@ public sealed class NotificationUpdateRequestValidator : AbstractValidator<Notif
     public NotificationUpdateRequestValidator()
     {
         RuleFor(x => x.UserId).GreaterThan(0).WithMessage("Please select a valid user.");
+        RuleFor(x => x.Title)
+            .NotEmpty().WithMessage(ValidationMessages.Required("Title"))
+            .MaximumLength(200).WithMessage(ValidationMessages.MaxLength("Title", 200));
         RuleFor(x => x.Message)
             .NotEmpty().WithMessage(ValidationMessages.Required("Message"))
-            .MaximumLength(255).WithMessage(ValidationMessages.MaxLength("Message", 255));
+            .MaximumLength(1000).WithMessage(ValidationMessages.MaxLength("Message", 1000));
+    }
+}
+
+public sealed class NewsItemInsertRequestValidator : AbstractValidator<NewsItemInsertRequest>
+{
+    public NewsItemInsertRequestValidator()
+    {
+        RuleFor(x => x.Title)
+            .NotEmpty().WithMessage(ValidationMessages.Required("Title"))
+            .MaximumLength(200).WithMessage(ValidationMessages.MaxLength("Title", 200));
+        RuleFor(x => x.Text)
+            .NotEmpty().WithMessage(ValidationMessages.Required("Text"))
+            .MaximumLength(8000).WithMessage(ValidationMessages.MaxLength("Text", 8000));
+        RuleFor(x => x.ImageUrl)
+            .MaximumLength(500).WithMessage(ValidationMessages.MaxLength("ImageUrl", 500))
+            .When(x => !string.IsNullOrEmpty(x.ImageUrl));
+    }
+}
+
+public sealed class NewsItemUpdateRequestValidator : AbstractValidator<NewsItemUpdateRequest>
+{
+    public NewsItemUpdateRequestValidator()
+    {
+        RuleFor(x => x.Title)
+            .NotEmpty().WithMessage(ValidationMessages.Required("Title"))
+            .MaximumLength(200).WithMessage(ValidationMessages.MaxLength("Title", 200));
+        RuleFor(x => x.Text)
+            .NotEmpty().WithMessage(ValidationMessages.Required("Text"))
+            .MaximumLength(8000).WithMessage(ValidationMessages.MaxLength("Text", 8000));
+        RuleFor(x => x.ImageUrl)
+            .MaximumLength(500).WithMessage(ValidationMessages.MaxLength("ImageUrl", 500))
+            .When(x => !string.IsNullOrEmpty(x.ImageUrl));
     }
 }
 
