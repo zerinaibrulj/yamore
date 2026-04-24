@@ -38,8 +38,6 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
   final Map<int, YachtDetail> _yachtCache = {};
   final Map<int, AppUser> _guestCache = {};
 
-  static const _statuses = ['All', 'Pending', 'Confirmed', 'Completed', 'Cancelled'];
-
   @override
   void initState() {
     super.initState();
@@ -313,78 +311,154 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
         .length;
   }
 
+  Future<void> _selectDashboardFilter(String statusFilter) async {
+    if (_loading) return;
+    if (_filterStatus == statusFilter) {
+      _scrollReservationsListToTop();
+      return;
+    }
+    setState(() {
+      _filterStatus = statusFilter;
+      _loading = true;
+      _error = null;
+    });
+    await _applyStatusFilter();
+    if (mounted) {
+      _scrollReservationsListToTop();
+    }
+  }
+
   Widget _buildSummaryCards() {
-    Widget statCard({
+    const pad = 12.0;
+    const gap = 8.0;
+
+    Widget buildCell({
+      required String filter,
       required String label,
       required int value,
       required Color color,
       required IconData icon,
     }) {
-      return Container(
-        constraints: const BoxConstraints(minWidth: 145),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+      final selected = _filterStatus == filter;
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _selectDashboardFilter(filter),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.25)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: 6),
-            Text(
-              '$label: $value',
-              style: TextStyle(
-                color: color,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            decoration: BoxDecoration(
+              color: color.withOpacity(selected ? 0.2 : 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: color.withOpacity(selected ? 0.7 : 0.25),
+                width: selected ? 2 : 1,
               ),
             ),
-          ],
+            child: Row(
+              children: [
+                Icon(icon, size: 16, color: color),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    '$label: $value',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       );
     }
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
-      child: Wrap(
-        alignment: WrapAlignment.end,
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          statCard(
-            label: 'Total',
-            value: _allReservations.length,
-            color: AppTheme.primaryBlue,
-            icon: Icons.receipt_long,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final inner = (constraints.maxWidth - pad * 2).clamp(0.0, double.infinity);
+        final cellW = inner > gap ? (inner - gap) / 2 : inner;
+        if (cellW <= 0) {
+          return const SizedBox.shrink();
+        }
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(pad, 8, pad, 4),
+          child: Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: buildCell(
+                      filter: 'All',
+                      label: 'Total',
+                      value: _allReservations.length,
+                      color: AppTheme.primaryBlue,
+                      icon: Icons.receipt_long,
+                    ),
+                  ),
+                  SizedBox(width: gap),
+                  Expanded(
+                    child: buildCell(
+                      filter: 'Pending',
+                      label: 'Pending',
+                      value: _countStatus('pending'),
+                      color: Colors.orange.shade700,
+                      icon: Icons.hourglass_bottom,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: gap),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: buildCell(
+                      filter: 'Confirmed',
+                      label: 'Confirmed',
+                      value: _countStatus('confirmed'),
+                      color: Colors.green.shade700,
+                      icon: Icons.check_circle,
+                    ),
+                  ),
+                  SizedBox(width: gap),
+                  Expanded(
+                    child: buildCell(
+                      filter: 'Completed',
+                      label: 'Completed',
+                      value: _countStatus('completed'),
+                      color: Colors.blueGrey.shade700,
+                      icon: Icons.flag,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: gap),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: cellW,
+                    child: buildCell(
+                      filter: 'Cancelled',
+                      label: 'Cancelled',
+                      value: _countStatus('cancelled'),
+                      color: Colors.red.shade700,
+                      icon: Icons.cancel,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          statCard(
-            label: 'Pending',
-            value: _countStatus('pending'),
-            color: Colors.orange.shade700,
-            icon: Icons.hourglass_bottom,
-          ),
-          statCard(
-            label: 'Confirmed',
-            value: _countStatus('confirmed'),
-            color: Colors.green.shade700,
-            icon: Icons.check_circle,
-          ),
-          statCard(
-            label: 'Completed',
-            value: _countStatus('completed'),
-            color: Colors.blueGrey.shade700,
-            icon: Icons.flag,
-          ),
-          statCard(
-            label: 'Cancelled',
-            value: _countStatus('cancelled'),
-            color: Colors.red.shade700,
-            icon: Icons.cancel,
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -412,40 +486,7 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
               ],
             ),
           ),
-          SizedBox(
-            height: 40,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              children: _statuses.map((s) {
-                final selected = s == _filterStatus;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: FilterChip(
-                    label: Text(s),
-                    selected: selected,
-                    onSelected: (_) async {
-                      if (_loading) return;
-                      setState(() {
-                        _filterStatus = s;
-                        _loading = true;
-                        _error = null;
-                      });
-                      await _applyStatusFilter();
-                      if (mounted) _scrollReservationsListToTop();
-                    },
-                    selectedColor: AppTheme.primaryBlue.withOpacity(0.15),
-                    labelStyle: TextStyle(
-                      color: selected ? AppTheme.primaryBlue : Colors.grey.shade700,
-                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                      fontSize: 13,
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          if (!_loading && _error == null) _buildSummaryCards(),
+          if (_error == null) _buildSummaryCards(),
           const SizedBox(height: 4),
           Expanded(child: _buildBody()),
         ],

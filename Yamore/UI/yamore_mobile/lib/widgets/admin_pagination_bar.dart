@@ -31,11 +31,12 @@ class AdminPaginationBar extends StatelessWidget {
     final start = currentPage * pageSize + 1;
     final end = (currentPage * pageSize + itemsOnPage).clamp(0, total);
     final totalPages = (total + pageSize - 1) ~/ pageSize;
+    // Stacked layout avoids a single wide Row (overflow on narrow phones, e.g. News & notices).
     return Column(
       children: [
         const SizedBox(height: 12),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
@@ -47,52 +48,58 @@ class AdminPaginationBar extends StatelessWidget {
               ),
             ],
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.info_outline, size: 16),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Showing $start–$end of $total',
-                    style: const TextStyle(fontSize: 12),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 2),
+                    child: Icon(Icons.info_outline, size: 16),
                   ),
-                  if (total > 0) ...[
-                    const SizedBox(width: 8),
-                    Text(
-                      'Page ${currentPage + 1} of $totalPages',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.black54,
-                      ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Showing $start–$end of $total  •  Page ${currentPage + 1} of $totalPages',
+                      style: const TextStyle(fontSize: 12),
                     ),
-                  ],
+                  ),
                 ],
               ),
+              const SizedBox(height: 10),
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     'Rows per page: $pageSize',
                     style: const TextStyle(fontSize: 12),
                   ),
-                  const SizedBox(width: 12),
-                  IconButton.filledTonal(
-                    style: IconButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    icon: const Icon(Icons.chevron_left),
-                    onPressed: !loading && currentPage > 0 ? onPrevious : null,
-                  ),
-                  const SizedBox(width: 4),
-                  IconButton.filledTonal(
-                    style: IconButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    icon: const Icon(Icons.chevron_right),
-                    onPressed: !loading && (currentPage + 1) < totalPages
-                        ? onNext
-                        : null,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton.filledTonal(
+                        style: IconButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          minimumSize: const Size(40, 40),
+                          padding: const EdgeInsets.all(6),
+                        ),
+                        icon: const Icon(Icons.chevron_left, size: 22),
+                        onPressed: !loading && currentPage > 0 ? onPrevious : null,
+                      ),
+                      const SizedBox(width: 2),
+                      IconButton.filledTonal(
+                        style: IconButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          minimumSize: const Size(40, 40),
+                          padding: const EdgeInsets.all(6),
+                        ),
+                        icon: const Icon(Icons.chevron_right, size: 22),
+                        onPressed: !loading && (currentPage + 1) < totalPages
+                            ? onNext
+                            : null,
+                      ),
+                    ],
                   ),
                 ],
               ),
