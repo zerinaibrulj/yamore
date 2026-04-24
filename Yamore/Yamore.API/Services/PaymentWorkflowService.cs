@@ -58,7 +58,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
             throw new UnauthorizedAccessException("The booking user must match the signed-in account.");
 
         if (!_stripe.IsConfigured)
-            throw new Exception("Stripe is not configured.");
+            throw new BusinessException("Stripe is not configured.");
 
         var serviceIds = request.ServiceIds ?? new List<int>();
         var total = _reservationService.ValidateAndQuoteCardBooking(
@@ -101,7 +101,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
     {
         var reservation = await _context.Reservations.FindAsync(new object[] { request.ReservationId }, cancellationToken);
         if (reservation == null)
-            throw new KeyNotFoundException("Reservation not found.");
+            throw new NotFoundException("Reservation not found.");
         if (string.Equals(reservation.Status, ReservationStatuses.Cancelled, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Reservation is cancelled.");
 
@@ -112,7 +112,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
             throw new InvalidOperationException("Create intent is only for card (Stripe) payments.");
 
         if (!_stripe.IsConfigured)
-            throw new Exception("Stripe is not configured.");
+            throw new BusinessException("Stripe is not configured.");
 
         if (!string.Equals(reservation.Status, ReservationStatuses.Pending, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Only pending reservations can be paid for online.");
@@ -162,7 +162,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
 
             var resOffline = await _context.Reservations.FindAsync(new object[] { request.ReservationId }, cancellationToken);
             if (resOffline == null)
-                throw new KeyNotFoundException("Reservation not found.");
+                throw new NotFoundException("Reservation not found.");
             if (string.Equals(resOffline.Status, ReservationStatuses.Cancelled, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("Reservation is cancelled.");
 
@@ -194,7 +194,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
         }
 
         if (!_stripe.IsConfigured)
-            throw new Exception("Stripe is not configured.");
+            throw new BusinessException("Stripe is not configured.");
 
         var intent = await _stripe.GetPaymentIntentAsync(request.PaymentIntentId, cancellationToken);
         if (intent.Status != "succeeded")
@@ -486,14 +486,14 @@ public class PaymentWorkflowService : IPaymentWorkflowService
             throw new InvalidOperationException("Payment intent is required.");
 
         if (!_stripe.IsConfigured)
-            throw new Exception("Stripe is not configured.");
+            throw new BusinessException("Stripe is not configured.");
 
         if (intent.Status != "succeeded")
             throw new InvalidOperationException("Payment has not been completed or could not be verified.");
 
         var reservation = await _context.Reservations.FindAsync(new object[] { request.ReservationId }, cancellationToken);
         if (reservation == null)
-            throw new KeyNotFoundException("Reservation not found.");
+            throw new NotFoundException("Reservation not found.");
         if (string.Equals(reservation.Status, ReservationStatuses.Cancelled, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Reservation is cancelled.");
 

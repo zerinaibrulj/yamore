@@ -38,7 +38,6 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
   List<YachtImageModel> _yachtImages = [];
   Map<int, String> _reviewAuthorNames = {};
   bool _loading = true;
-  bool _savingReview = false;
   String? _error;
 
   final PageController _imagePageController = PageController();
@@ -337,7 +336,6 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
     final isNewReview = _myReview == null;
     final reservationId =
         _myReview?.reservationId ?? _myReservationsForYacht.first.reservationId;
-    setState(() => _savingReview = true);
     try {
       Review updated;
       if (_myReview == null) {
@@ -364,7 +362,6 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
       }
       setState(() {
         _myReview = updated;
-        _savingReview = false;
       });
       if (mounted) {
         await showDialog<void>(
@@ -387,7 +384,6 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      setState(() => _savingReview = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to save review: $e')),
       );
@@ -931,7 +927,6 @@ class _CarouselArrow extends StatelessWidget {
   final VoidCallback onTap;
 
   const _CarouselArrow({
-    super.key,
     required this.icon,
     required this.onTap,
   });

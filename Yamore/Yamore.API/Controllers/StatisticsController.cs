@@ -19,14 +19,14 @@ namespace Yamore.API.Controllers
         }
 
         [HttpGet("admin")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = AppRoles.Admin)]
         public StatisticsDto GetAdminStatistics([FromQuery] int? year)
         {
             return _statisticsService.GetAdminStatistics(year);
         }
 
         [HttpGet("owner/revenue")]
-        [Authorize(Roles = "Admin,YachtOwner")]
+        [Authorize(Roles = AppRoles.AdminYachtOwner)]
         public ActionResult<OwnerRevenueDto> GetOwnerRevenue()
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);

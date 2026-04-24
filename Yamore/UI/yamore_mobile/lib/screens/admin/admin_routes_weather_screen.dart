@@ -167,12 +167,6 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
     );
   }
 
-  String _formatDateTime(DateTime dt) =>
-      '${dt.day.toString().padLeft(2, '0')}.'
-      '${dt.month.toString().padLeft(2, '0')}.'
-      '${dt.year} ${dt.hour.toString().padLeft(2, '0')}:'
-      '${dt.minute.toString().padLeft(2, '0')}h';
-
   String _formatDateOnly(DateTime dt) =>
       '${dt.day.toString().padLeft(2, '0')}.'
       '${dt.month.toString().padLeft(2, '0')}.'

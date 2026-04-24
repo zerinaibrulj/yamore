@@ -60,7 +60,7 @@ namespace Yamore.API.Controllers
                     });
                 }
 
-                var isAdmin = User.IsInRole("Admin");
+                var isAdmin = User.IsInRole(AppRoles.Admin);
                 var isSelfEdit = currentUserId == id;
 
                 if (!isAdmin && isSelfEdit)
@@ -133,7 +133,7 @@ namespace Yamore.API.Controllers
         }
 
         [HttpGet("owners")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = AppRoles.Admin)]
         public ActionResult<PagedResponse<Model.LoginResponseDto>> GetOwners(
             [FromQuery] int page = 0,
             [FromQuery] int pageSize = PagingConstraints.DefaultPageSize)
@@ -143,7 +143,7 @@ namespace Yamore.API.Controllers
 
         /// <summary>Suspends (Status=false) the specified user.</summary>
         [HttpPut("{id}/suspend")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = AppRoles.Admin)]
         public ActionResult<Model.User> Suspend(int id)
         {
             var user = _usersService.GetById(id);
@@ -165,7 +165,7 @@ namespace Yamore.API.Controllers
 
         /// <summary>Activates (Status=true) the specified user.</summary>
         [HttpPut("{id}/activate")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = AppRoles.Admin)]
         public ActionResult<Model.User> Activate(int id)
         {
             var user = _usersService.GetById(id);

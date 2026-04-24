@@ -127,7 +127,7 @@ namespace Yamore.Services.Services
 
             var yacht = Context.Set<Database.Yacht>().AsNoTracking().FirstOrDefault(y => y.YachtId == yachtId);
             if (yacht == null)
-                throw new KeyNotFoundException($"Yacht with id {yachtId} not found.");
+                throw new NotFoundException($"Yacht with id {yachtId} not found.");
             if (!string.Equals(yacht.StateMachine, "active", StringComparison.OrdinalIgnoreCase))
             {
                 throw new UserException(
@@ -146,7 +146,7 @@ namespace Yamore.Services.Services
         {
             var entity = Context.Set<Database.Reservation>().Find(id);
             if (entity == null)
-                throw new KeyNotFoundException($"Reservation with id {id} not found.");
+                throw new NotFoundException($"Reservation with id {id} not found.");
 
             var preserveStatus = entity.Status;
             var sAt = entity.StatusChangedAt;
@@ -452,7 +452,7 @@ namespace Yamore.Services.Services
                 .Include(r => r.Yacht)
                 .FirstOrDefault(r => r.ReservationId == id);
             if (entity == null)
-                throw new KeyNotFoundException($"Reservation with id {id} not found.");
+                throw new NotFoundException($"Reservation with id {id} not found.");
             return entity;
         }
 

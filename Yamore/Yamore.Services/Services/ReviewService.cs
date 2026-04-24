@@ -23,7 +23,7 @@ namespace Yamore.Services.Services
         {
             var reservation = Context.Set<Database.Reservation>().Find(request.ReservationId);
             if (reservation == null)
-                throw new KeyNotFoundException($"Reservation with id {request.ReservationId} not found.");
+                throw new NotFoundException($"Reservation with id {request.ReservationId} not found.");
             if (!string.Equals(reservation.Status, ReservationStatuses.Completed, StringComparison.OrdinalIgnoreCase))
                 throw new UserException("You can only leave a review after the trip is completed.");
 
@@ -66,7 +66,7 @@ namespace Yamore.Services.Services
         {
             var entity = Context.Reviews.Find(id);
             if (entity == null)
-                throw new KeyNotFoundException($"Review with id {id} not found.");
+                throw new NotFoundException($"Review with id {id} not found.");
             entity.IsReported = true;
             Context.SaveChanges();
             return Mapper.Map<Model.Review>(entity);
@@ -76,7 +76,7 @@ namespace Yamore.Services.Services
         {
             var entity = Context.Reviews.Find(id);
             if (entity == null)
-                throw new KeyNotFoundException($"Review with id {id} not found.");
+                throw new NotFoundException($"Review with id {id} not found.");
             entity.IsReported = false;
             Context.SaveChanges();
             return Mapper.Map<Model.Review>(entity);
@@ -86,7 +86,7 @@ namespace Yamore.Services.Services
         {
             var entity = Context.Reviews.Find(id);
             if (entity == null)
-                throw new KeyNotFoundException($"Review with id {id} not found.");
+                throw new NotFoundException($"Review with id {id} not found.");
             entity.OwnerResponse = ownerResponse;
             entity.OwnerResponseDate = DateTime.UtcNow;
             Context.SaveChanges();

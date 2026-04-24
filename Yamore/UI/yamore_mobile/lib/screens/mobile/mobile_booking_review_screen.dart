@@ -399,7 +399,7 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
           setState(() => _saving = false);
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Payment cancelled or failed: ${e.error?.localizedMessage ?? e.toString()}')),
+            SnackBar(content: Text('Payment cancelled or failed: ${e.error.localizedMessage ?? e.toString()}')),
           );
           return;
         } catch (e) {

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Yamore.Model;
 using Yamore.Services.Services;
 
 namespace Yamore.Services.Database;
@@ -40,12 +41,15 @@ public static class DemoDataSeeder
                 baseEmail);
         }
 
+        using var transaction = db.Database.BeginTransaction();
+        try
+        {
         var roles = new[]
         {
-            new Role { Name = "Admin", Description = "System administrator" },
-            new Role { Name = "User", Description = "End user / guest" },
-            new Role { Name = "EndUser", Description = "Alternate name for end user (registration)" },
-            new Role { Name = "YachtOwner", Description = "Yacht owner" },
+            new Role { Name = AppRoles.Admin, Description = "System administrator" },
+            new Role { Name = AppRoles.User, Description = "End user / guest" },
+            new Role { Name = AppRoles.EndUser, Description = "Alternate name for end user (registration)" },
+            new Role { Name = AppRoles.YachtOwner, Description = "Yacht owner" },
         };
         db.Roles.AddRange(roles);
         db.SaveChanges();
@@ -138,7 +142,7 @@ public static class DemoDataSeeder
                 LocationId = split.CityId,
                 CategoryId = category.CategoryId,
                 IsActive = true,
-                StateMachine = "active",
+                StateMachine = YachtStateNames.Active,
             },
             new Yacht
             {
@@ -154,15 +158,23 @@ public static class DemoDataSeeder
                 LocationId = dubrovnik.CityId,
                 CategoryId = category.CategoryId,
                 IsActive = true,
-                StateMachine = "active",
+                StateMachine = YachtStateNames.Active,
             }
         );
         db.SaveChanges();
+
+        transaction.Commit();
 
         logger.LogInformation(
             "Demo seed finished. Test logins (username / password): demo.admin / {Pwd} (Admin), demo.owner / {Pwd} (YachtOwner), demo.user / {Pwd} (User).",
             DemoPassword,
             DemoPassword,
             DemoPassword);
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
     }
 }

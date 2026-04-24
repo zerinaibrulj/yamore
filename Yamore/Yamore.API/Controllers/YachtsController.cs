@@ -22,21 +22,21 @@ namespace Yamore.API.Controllers
         }
 
         [HttpPut("{id}/activate")]
-        [Authorize(Roles = "Admin,YachtOwner")]
+        [Authorize(Roles = AppRoles.AdminYachtOwner)]
         public Yacht Activate(int id)
         {
             return _yachtsService.Activate(id);
         }
 
         [HttpPut("{id}/hide")]
-        [Authorize(Roles = "Admin,YachtOwner")]
+        [Authorize(Roles = AppRoles.AdminYachtOwner)]
         public Yacht Hide(int id)
         {
             return _yachtsService.Hide(id);
         }
 
         [HttpPut("{id}/edit")]
-        [Authorize(Roles = "Admin,YachtOwner")]
+        [Authorize(Roles = AppRoles.AdminYachtOwner)]
         public Yacht Edit(int id)
         {
             return _yachtsService.Edit(id);
@@ -53,7 +53,7 @@ namespace Yamore.API.Controllers
         {
             var currentUserId = User?.FindFirstValue(ClaimTypes.NameIdentifier);
             var currentId = int.TryParse(currentUserId, out var uid) ? (int?)uid : null;
-            var isAdmin = User?.IsInRole("Admin") == true;
+            var isAdmin = User?.IsInRole(AppRoles.Admin) == true;
             var id = isAdmin ? (userId ?? currentId) : currentId;
             return _yachtsService.GetRecommendations(id, page, pageSize);
         }
@@ -62,13 +62,13 @@ namespace Yamore.API.Controllers
         [Authorize] // Admins: full list. Other users: only active yachts (public catalog).
         public PagedResponse<YachtOverviewDto> GetOverviewForAdmin([FromQuery] YachtsSearchObject search)
         {
-            if (User.IsInRole("Admin"))
+            if (User.IsInRole(AppRoles.Admin))
                 return _yachtsService.GetOverviewForAdmin(search ?? new YachtsSearchObject());
             return _yachtsService.GetOverviewForPublicListing(search ?? new YachtsSearchObject());
         }
 
         [HttpGet("owner/my")]
-        [Authorize(Roles = "YachtOwner")]
+        [Authorize(Roles = AppRoles.YachtOwner)]
         public ActionResult<PagedResponse<YachtOverviewDto>> GetMyYachts([FromQuery] YachtsSearchObject search)
         {
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);

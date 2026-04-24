@@ -58,7 +58,7 @@ namespace Yamore.API.Controllers
             if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId))
                 return Unauthorized();
 
-            var isAdmin = User.IsInRole("Admin");
+            var isAdmin = User.IsInRole(AppRoles.Admin);
             var outcome = _reservationService.Cancel(id, actorId, isAdmin, body?.Reason);
             Response.Headers["X-Operation-Message"] = "Reservation cancelled.";
             Response.Headers["X-Reservation-Cancel-Has-Card-Payment"] = outcome.HadCardPayment ? "true" : "false";
@@ -66,7 +66,7 @@ namespace Yamore.API.Controllers
         }
 
         [HttpPut("{id}/reject")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = AppRoles.Admin)]
         public ActionResult<Model.Reservation> Reject(int id, [FromBody] RejectReservationRequest body)
         {
             if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var adminId))
@@ -84,21 +84,21 @@ namespace Yamore.API.Controllers
             if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId))
                 return Unauthorized();
 
-            var isAdmin = User.IsInRole("Admin");
+            var isAdmin = User.IsInRole(AppRoles.Admin);
             var result = _reservationService.Complete(id, actorId, isAdmin);
             Response.Headers["X-Operation-Message"] = "Reservation marked completed.";
             return Ok(result);
         }
 
         [HttpPut("{id}/confirm")]
-        [Authorize(Roles = "Admin,YachtOwner")]
+        [Authorize(Roles = AppRoles.AdminYachtOwner)]
         public ActionResult<Model.Reservation> Confirm(int id)
         {
             if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId))
                 return Unauthorized();
 
-            var isAdmin = User.IsInRole("Admin");
-            var isYachtOwner = User.IsInRole("YachtOwner");
+            var isAdmin = User.IsInRole(AppRoles.Admin);
+            var isYachtOwner = User.IsInRole(AppRoles.YachtOwner);
             var result = _reservationService.Confirm(id, actorId, isAdmin, isYachtOwner);
             Response.Headers["X-Operation-Message"] = "Reservation confirmed.";
             return Ok(result);

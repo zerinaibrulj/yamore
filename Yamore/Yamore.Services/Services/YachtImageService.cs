@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
 using Yamore.Model;
 using Yamore.Model.Requests.YachtImage;
 using Yamore.Services.Database;
@@ -106,20 +107,30 @@ namespace Yamore.Services.Services
             var wasThumbnail = entity.IsThumbnail;
             var yachtId = entity.YachtId;
 
-            _context.YachtImages.Remove(entity);
-            _context.SaveChanges();
-
-            if (wasThumbnail)
+            using var transaction = _context.Database.BeginTransaction();
+            try
             {
-                var next = _context.YachtImages
-                    .Where(i => i.YachtId == yachtId)
-                    .OrderBy(i => i.SortOrder)
-                    .FirstOrDefault();
-                if (next != null)
+                _context.YachtImages.Remove(entity);
+                _context.SaveChanges();
+
+                if (wasThumbnail)
                 {
-                    next.IsThumbnail = true;
-                    _context.SaveChanges();
+                    var next = _context.YachtImages
+                        .Where(i => i.YachtId == yachtId)
+                        .OrderBy(i => i.SortOrder)
+                        .FirstOrDefault();
+                    if (next != null)
+                    {
+                        next.IsThumbnail = true;
+                        _context.SaveChanges();
+                    }
                 }
+                transaction.Commit();
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
             }
         }
 

@@ -34,7 +34,7 @@ namespace Yamore.API.Controllers
         }
 
         [HttpPut("{id}/respond")]
-        [Authorize(Roles = "Admin,YachtOwner")]
+        [Authorize(Roles = AppRoles.AdminYachtOwner)]
         public ActionResult<Model.Review> RespondAsOwner(int id, [FromBody] ReviewRespondRequest request)
         {
             var result = _reviewService.RespondAsOwner(id, request?.OwnerResponse ?? "");

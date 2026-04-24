@@ -739,7 +739,7 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
     _cabins = TextEditingController(text: y?.cabins.toString() ?? '');
     _bathrooms = TextEditingController(text: y?.bathrooms?.toString() ?? '');
     _price = TextEditingController(
-        text: y != null ? _formatPriceForEdit(y!.pricePerDay) : '');
+        text: y != null ? _formatPriceForEdit(y.pricePerDay) : '');
     _locationId = TextEditingController(text: y?.locationId.toString() ?? '');
     _categoryId = TextEditingController(text: y?.categoryId.toString() ?? '');
     _description = TextEditingController(text: y?.description ?? '');

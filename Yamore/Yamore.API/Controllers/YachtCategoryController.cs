@@ -20,7 +20,7 @@ namespace Yamore.API.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = AppRoles.Admin)]
         public override ActionResult<YachtCategory> Delete(int id)
         {
             var err = _yachtCategoryService.GetDeleteBlockingErrorMessage(id);
@@ -28,7 +28,7 @@ namespace Yamore.API.Controllers
             return base.Delete(id);
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = AppRoles.Admin)]
         public override ActionResult<YachtCategory> Insert(YachtCategoryInsertRequest request)
         {
             return base.Insert(request);

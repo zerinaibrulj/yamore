@@ -943,7 +943,7 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
     _cabins = y?.cabins;
     _bathrooms = y?.bathrooms;
     _price = TextEditingController(
-        text: y != null ? _formatPriceForEdit(y!.pricePerDay) : '');
+        text: y != null ? _formatPriceForEdit(y.pricePerDay) : '');
     _description = TextEditingController(text: y?.description ?? '');
     _locationId = y?.locationId;
     _categoryId = y?.categoryId;

@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Yamore.Model;
 using Yamore.Model.SearchObjects;
 using Yamore.Services.Database;
 using Yamore.Services.Interfaces;
@@ -68,7 +69,7 @@ namespace Yamore.Services.Services
             var entity = set.Find(id);
 
             if (entity == null)
-                throw new KeyNotFoundException($"Entity with id {id} not found.");
+                throw new NotFoundException($"Entity with id {id} not found.");
 
 
             set.Remove(entity);

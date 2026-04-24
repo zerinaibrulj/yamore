@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../constants/app_role_names.dart';
 import '../../theme/app_theme.dart';
 import '../../models/user.dart';
 import '../../services/api_service.dart';
@@ -51,13 +52,13 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       String? roleName;
       switch (_roleFilter) {
         case 'Guests':
-          roleName = 'User';
+          roleName = ApiRoleNames.user;
           break;
         case 'Yacht owners':
-          roleName = 'YachtOwner';
+          roleName = ApiRoleNames.yachtOwner;
           break;
         case 'Admins':
-          roleName = 'Admin';
+          roleName = ApiRoleNames.admin;
           break;
         default:
           roleName = null;
@@ -742,7 +743,7 @@ class _UserDialogState extends State<_UserDialog> {
 
   bool _status = true;
   bool _saving = false;
-  String _selectedRole = 'User';
+  String _selectedRole = ApiRoleNames.user;
   /// Edit user only: when true, new password + confirm are shown and validated.
   bool _changeUserPassword = false;
 
@@ -760,14 +761,14 @@ class _UserDialogState extends State<_UserDialog> {
     _status = widget.existingUser?.status ?? true;
     if (widget.existingUser != null) {
       if (widget.existingUser!.isAdmin) {
-        _selectedRole = 'Admin';
+        _selectedRole = ApiRoleNames.admin;
       } else if (widget.existingUser!.isYachtOwner) {
-        _selectedRole = 'YachtOwner';
+        _selectedRole = ApiRoleNames.yachtOwner;
       } else {
-        _selectedRole = 'User';
+        _selectedRole = ApiRoleNames.user;
       }
     } else {
-      _selectedRole = 'User';
+      _selectedRole = ApiRoleNames.user;
     }
   }
 
@@ -889,22 +890,22 @@ class _UserDialogState extends State<_UserDialog> {
                 ),
                 items: const [
                   DropdownMenuItem(
-                    value: 'User',
+                    value: ApiRoleNames.user,
                     child: Text('Guest / End user'),
                   ),
                   DropdownMenuItem(
-                    value: 'YachtOwner',
+                    value: ApiRoleNames.yachtOwner,
                     child: Text('Yacht owner'),
                   ),
                   DropdownMenuItem(
-                    value: 'Admin',
+                    value: ApiRoleNames.admin,
                     child: Text('Admin'),
                   ),
                 ],
                 onChanged: widget.existingUser == null
                     ? (val) {
                         setState(() {
-                          _selectedRole = val ?? 'User';
+                          _selectedRole = val ?? ApiRoleNames.user;
                         });
                       }
                     : null,

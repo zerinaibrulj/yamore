@@ -31,11 +31,12 @@ namespace Yamore.API.Filters
 
             var ex = context.Exception;
 
-            if (ex is UserException)
+            if (ex is BusinessException)
             {
                 _logger.LogWarning(
                     ex,
-                    "UserException {Method} {Path}{Query} TraceId={TraceId} UserId={UserId} UserName={UserName} | {Message}",
+                    "BusinessException {Type} {Method} {Path}{Query} TraceId={TraceId} UserId={UserId} UserName={UserName} | {Message}",
+                    ex.GetType().Name,
                     method,
                     path,
                     query,
@@ -58,6 +59,19 @@ namespace Yamore.API.Filters
                     ex.Message);
                 context.ModelState.AddModelError("error", ex.Message);
                 context.HttpContext.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+            }
+            else if (ex is NotFoundException)
+            {
+                _logger.LogInformation(
+                    ex,
+                    "NotFoundException {Method} {Path}{Query} TraceId={TraceId} | {Message}",
+                    method,
+                    path,
+                    query,
+                    traceId,
+                    ex.Message);
+                context.ModelState.AddModelError("error", ex.Message);
+                context.HttpContext.Response.StatusCode = (int)HttpStatusCode.NotFound;
             }
             else if (ex is KeyNotFoundException)
             {

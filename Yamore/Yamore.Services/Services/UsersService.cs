@@ -3,11 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
-using System.Xml;
 using Yamore.Model;
 using Yamore.Model.Requests.User;
 using Yamore.Model.SearchObjects;
@@ -119,7 +117,7 @@ namespace Yamore.Services.Services
         {
             var entity = Context.Users.Find(id);
             if (entity == null)
-                throw new KeyNotFoundException($"User with id {id} not found.");
+                throw new NotFoundException($"User with id {id} not found.");
 
             Mapper.Map(request, entity);
             BeforeUpdate(request, entity);
@@ -234,7 +232,7 @@ namespace Yamore.Services.Services
                 var item = search.OrderBy.Split(' ');
                 if (item.Length > 2 || item.Length == 0)
                 {
-                    throw new ApplicationException("You can only sort by one field!");
+                    throw new UserException("You can only sort by one field!");
                 }
                 if (item.Length == 1)
                 {
@@ -255,7 +253,7 @@ namespace Yamore.Services.Services
         {
             if (request.Password != request.PasswordConfirmation)
             {
-                throw new Exception("Password and password confirmation must match!");
+                throw new UserException("Password and password confirmation must match!");
             }
 
             entity.PasswordSalt = GenerateSalt();
@@ -266,25 +264,35 @@ namespace Yamore.Services.Services
 
         public override Model.User Insert(UserInsertRequest request)
         {
-            var user = base.Insert(request);
-
-            if (!string.IsNullOrWhiteSpace(request.RoleName))
+            using var transaction = Context.Database.BeginTransaction();
+            try
             {
-                var roleName = request.RoleName!.Trim();
-                var role = Context.Roles.FirstOrDefault(r => r.Name == roleName);
-                if (role != null)
-                {
-                    Context.UserRoles.Add(new Database.UserRole
-                    {
-                        UserId = user.UserId,
-                        RoleId = role.RoleId,
-                        DateModification = DateTime.UtcNow
-                    });
-                    Context.SaveChanges();
-                }
-            }
+                var user = base.Insert(request);
 
-            return user;
+                if (!string.IsNullOrWhiteSpace(request.RoleName))
+                {
+                    var roleName = request.RoleName!.Trim();
+                    var role = Context.Roles.FirstOrDefault(r => r.Name == roleName);
+                    if (role != null)
+                    {
+                        Context.UserRoles.Add(new Database.UserRole
+                        {
+                            UserId = user.UserId,
+                            RoleId = role.RoleId,
+                            DateModification = DateTime.UtcNow
+                        });
+                        Context.SaveChanges();
+                    }
+                }
+
+                transaction.Commit();
+                return user;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
         }
 
 
@@ -309,7 +317,7 @@ namespace Yamore.Services.Services
             {
                 if (request.Password != request.PasswordConfirmation)
                 {
-                    throw new Exception("Password and password confirmation must match!");
+                    throw new UserException("Password and password confirmation must match!");
                 }
                 entity.PasswordSalt = GenerateSalt();
                 entity.PasswordHash = GenerateHash(entity.PasswordSalt, request.Password);
@@ -392,7 +400,7 @@ namespace Yamore.Services.Services
         public Model.User Register(UserInsertRequest request)
         {
             var user = Insert(request);
-            var userRole = Context.Roles.FirstOrDefault(r => r.Name == "User" || r.Name == "EndUser");
+            var userRole = Context.Roles.FirstOrDefault(r => r.Name == AppRoles.User || r.Name == AppRoles.EndUser);
             if (userRole != null)
             {
                 Context.UserRoles.Add(new Database.UserRole
@@ -415,7 +423,7 @@ namespace Yamore.Services.Services
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
                 .Where(u => u.UserRoles.Any(ur => ur.Role != null &&
-                    (ur.Role.Name == "YachtOwner" || ur.Role.Name == "Owner")))
+                    (ur.Role.Name == AppRoles.YachtOwner || ur.Role.Name == AppRoles.Owner)))
                 .OrderBy(u => u.FirstName)
                 .ThenBy(u => u.LastName);
 

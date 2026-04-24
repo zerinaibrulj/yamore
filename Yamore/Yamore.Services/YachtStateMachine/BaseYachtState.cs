@@ -65,16 +65,16 @@ namespace Yamore.Services.YachtStateMachine
         {
             switch (stateName)
             {
-                case "initial":
+                case YachtStateNames.Initial:
                     return ServiceProvider.GetService<InitialYachtState>();
-                case "draft":
+                case YachtStateNames.Draft:
                     return ServiceProvider.GetService<DraftYachtState>();
-                case "active":
+                case YachtStateNames.Active:
                     return ServiceProvider.GetService<ActiveYachtState>();
-                case "hidden":
+                case YachtStateNames.Hidden:
                     return ServiceProvider.GetService<HiddenYachtState>();
                 default:
-                    throw new Exception("State not recognized!");
+                    throw new InvalidOperationException($"Yacht state is not recognized: {stateName}.");
             }
         }
     }

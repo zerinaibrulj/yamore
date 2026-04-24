@@ -1,3 +1,5 @@
+import '../constants/app_role_names.dart';
+
 class AppUser {
   final int userId;
   final String firstName;
@@ -21,9 +23,14 @@ class AppUser {
 
   String get displayName => '$firstName $lastName'.trim();
 
-  bool get isAdmin => roles.any((r) => r.toLowerCase() == 'admin');
-  bool get isYachtOwner => roles.any((r) => r.toLowerCase() == 'yachtowner');
-  bool get isUser => roles.any((r) => r.toLowerCase() == 'user' || r.toLowerCase() == 'enduser');
+  bool get isAdmin => roles.any((r) => r.toLowerCase() == AppRoleNames.admin);
+  bool get isYachtOwner =>
+      roles.any((r) => r.toLowerCase() == AppRoleNames.yachtOwner);
+  bool get isUser => roles.any(
+        (r) =>
+            r.toLowerCase() == AppRoleNames.user ||
+            r.toLowerCase() == AppRoleNames.endUser,
+      );
 
   /// Try both camelCase and PascalCase (API may serialize either way).
   static dynamic _key(Map<String, dynamic> json, String camel, String pascal) {

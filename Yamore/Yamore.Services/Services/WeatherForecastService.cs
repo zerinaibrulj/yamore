@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Yamore.Model;
 using Yamore.Model.Requests.WeatherForecast;
 using Yamore.Model.SearchObjects;
 using Yamore.Services.Database;
@@ -22,7 +23,7 @@ namespace Yamore.Services.Services
         {
             var entity = Context.WeatherForecasts.Find(id);
             if (entity == null)
-                throw new KeyNotFoundException($"WeatherForecast with id {id} not found.");
+                throw new NotFoundException($"WeatherForecast with id {id} not found.");
 
             entity.RouteId = request.RouteId;
             entity.ForecastDate = request.ForecastDate;

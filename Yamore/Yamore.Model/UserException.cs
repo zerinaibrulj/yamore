@@ -1,14 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Yamore.Model
+﻿namespace Yamore.Model
 {
-    public class UserException : Exception
+    public class UserException : BusinessException
     {
-        public UserException(string message)
-            : base(message)
-        {
-        }
+        public UserException(string message) : base(message) { }
     }
 }

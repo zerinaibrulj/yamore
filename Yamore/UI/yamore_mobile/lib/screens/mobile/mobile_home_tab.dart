@@ -5,7 +5,6 @@ import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
 import '../../services/favorites_service.dart';
 import '../../models/yacht_overview.dart';
-import '../../models/city.dart';
 import '../../models/yacht_category.dart';
 import '../../widgets/custom_date_range_picker_dialog.dart';
 import 'mobile_yacht_detail_screen.dart';
@@ -36,7 +35,6 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
   List<YachtOverview> _allYachts = [];
   List<YachtOverview> _filteredYachts = [];
   List<YachtOverview> _recommended = [];
-  List<CityModel> _cities = [];
   List<YachtCategoryModel> _categories = [];
   bool _loading = true;
   String? _error;
@@ -45,7 +43,6 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
   final TextEditingController _searchNameCtrl = TextEditingController();
   DateTimeRange? _dateRange;
   int _guests = 2;
-  int? _selectedCityId;
   Set<int> _favoriteIds = {};
   String _selectedType = 'All'; // All, Sailing, Motor, Catamaran
   bool _sortAscending = true;
@@ -136,20 +133,17 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
           availableFrom: _dateRange?.start,
           availableTo: _dateRange?.end,
         ),
-        _api.getCities(),
         _api.getYachtCategories(),
         _api.getRecommendations(userId: widget.user.userId, pageSize: 10),
       ]);
       final overview = results[0] as PagedYachtOverview;
-      final cities = results[1] as List<CityModel>;
-      final cats = results[2] as List<YachtCategoryModel>;
-      final recPage = results[3] as PagedYachtOverview;
+      final cats = results[1] as List<YachtCategoryModel>;
+      final recPage = results[2] as PagedYachtOverview;
       final merged =
           await _mergeFavoriteYachtsFromDetail(overview.resultList, favs);
       if (mounted) {
         setState(() {
           _allYachts = merged;
-          _cities = cities;
           _categories = cats;
           _favoriteIds = {...favs};
           _recommended = recPage.resultList.isNotEmpty
@@ -292,6 +286,13 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
       } else {
         _favoriteIds.remove(yachtId);
       }
+    });
+  }
+
+  void _revertFavoriteIds(Set<int> before) {
+    if (!mounted) return;
+    setState(() {
+      _favoriteIds = before;
     });
   }
 }
@@ -775,8 +776,8 @@ extension on _MobileHomeTabState {
         );
       }
     } catch (e) {
+      _revertFavoriteIds(before);
       if (mounted) {
-        setState(() => _favoriteIds = before);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to update favorites: $e')),
         );

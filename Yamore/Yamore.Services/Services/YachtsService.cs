@@ -53,17 +53,17 @@ namespace Yamore.Services.Services
             var http = _httpContextAccessor?.HttpContext;
             if (http == null)
             {
-                return string.Equals(y.StateMachine, "active", StringComparison.OrdinalIgnoreCase) ? y : null;
+                return string.Equals(y.StateMachine, YachtStateNames.Active, StringComparison.OrdinalIgnoreCase) ? y : null;
             }
 
-            if (http.User?.IsInRole("Admin") == true) return y;
+            if (http.User?.IsInRole(AppRoles.Admin) == true) return y;
             if (int.TryParse(http.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId) &&
                 y.OwnerId == userId)
             {
                 return y;
             }
 
-            return string.Equals(y.StateMachine, "active", StringComparison.OrdinalIgnoreCase) ? y : null;
+            return string.Equals(y.StateMachine, YachtStateNames.Active, StringComparison.OrdinalIgnoreCase) ? y : null;
         }
 
         /// <summary>
@@ -74,11 +74,11 @@ namespace Yamore.Services.Services
             search ??= new YachtsSearchObject();
             search.Page = PagingConstraints.NormalizePage(search.Page);
             search.PageSize = PagingConstraints.NormalizePageSize(search.PageSize);
-            if (_httpContextAccessor?.HttpContext?.User?.IsInRole("Admin") == true)
+            if (_httpContextAccessor?.HttpContext?.User?.IsInRole(AppRoles.Admin) == true)
                 return base.GetPaged(search);
 
             var query = Context.Set<Database.Yacht>().AsQueryable()
-                .Where(y => y.StateMachine == "active");
+                .Where(y => y.StateMachine == YachtStateNames.Active);
             query = AddFilter(search, query);
             var count = query.Count();
             query = query.Skip(search.Page!.Value * search.PageSize!.Value).Take(search.PageSize.Value);
@@ -164,7 +164,7 @@ namespace Yamore.Services.Services
                 var item = search.OrderBy.Split(' ');
                 if (item.Length > 2 || item.Length == 0)
                 {
-                    throw new ApplicationException("You can only sort by one field!");
+                    throw new UserException("You can only sort by one field!");
                 }
                 if (item.Length == 1)
                 {
@@ -183,7 +183,7 @@ namespace Yamore.Services.Services
 
         public override Model.Yacht Insert(YachtsInsertRequest request)
         {
-            var state = BaseYachtState.CreateState("initial");
+            var state = BaseYachtState.CreateState(YachtStateNames.Initial);
             return state.Insert(request);
         }
 
@@ -191,7 +191,7 @@ namespace Yamore.Services.Services
         public override Model.Yacht Update(int id, YachtsUpdateRequest request)
         {
             var entity = LoadYachtUnrestricted(id)
-                ?? throw new KeyNotFoundException($"Yacht with id {id} not found.");
+                ?? throw new NotFoundException($"Yacht with id {id} not found.");
             var state = BaseYachtState.CreateState(entity.StateMachine);
             return state.Update(id, request);
         }
@@ -199,7 +199,7 @@ namespace Yamore.Services.Services
         public Model.Yacht Activate(int id)
         {
             var entity = LoadYachtUnrestricted(id)
-                ?? throw new KeyNotFoundException($"Yacht with id {id} not found.");
+                ?? throw new NotFoundException($"Yacht with id {id} not found.");
             var state = BaseYachtState.CreateState(entity.StateMachine);
             return state.Activate(id);
         }
@@ -207,7 +207,7 @@ namespace Yamore.Services.Services
         public Model.Yacht Hide(int id)
         {
             var entity = LoadYachtUnrestricted(id)
-                ?? throw new KeyNotFoundException($"Yacht with id {id} not found.");
+                ?? throw new NotFoundException($"Yacht with id {id} not found.");
             var state = BaseYachtState.CreateState(entity.StateMachine);
             return state.Hide(id);
         }
@@ -215,7 +215,7 @@ namespace Yamore.Services.Services
         public Model.Yacht Edit(int id)
         {
             var entity = LoadYachtUnrestricted(id)
-                ?? throw new KeyNotFoundException($"Yacht with id {id} not found.");
+                ?? throw new NotFoundException($"Yacht with id {id} not found.");
             var state = BaseYachtState.CreateState(entity.StateMachine);
             return state.Edit(id);
         }
@@ -224,12 +224,17 @@ namespace Yamore.Services.Services
         {
             if (id <= 0)
             {
-                var state = BaseYachtState.CreateState("initial");
+                var state = BaseYachtState.CreateState(YachtStateNames.Initial);
                 return state.AllowedActions(null);
             }
             else
             {
                 var entity = Context.Yachts.Find(id);
+                if (entity == null)
+                {
+                    var s = BaseYachtState.CreateState(YachtStateNames.Initial);
+                    return s.AllowedActions(null);
+                }
                 var state = BaseYachtState.CreateState(entity.StateMachine);
                 return state.AllowedActions(entity);
             }

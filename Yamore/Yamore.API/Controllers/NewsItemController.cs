@@ -19,15 +19,15 @@ namespace Yamore.API.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = AppRoles.Admin)]
         public override ActionResult<Model.NewsItem> Insert(NewsItemInsertRequest request) => base.Insert(request);
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = AppRoles.Admin)]
         public override ActionResult<Model.NewsItem> Update(int id, NewsItemUpdateRequest request) => base.Update(id, request);
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = AppRoles.Admin)]
         public override ActionResult<Model.NewsItem> Delete(int id) => base.Delete(id);
     }
 }

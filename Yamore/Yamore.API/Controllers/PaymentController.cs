@@ -57,8 +57,8 @@ namespace Yamore.API.Controllers
             if (!int.TryParse(userIdStr, out var claimUserId))
                 return Unauthorized();
 
-            var isAdmin = User.IsInRole("Admin");
-            var isYachtOwner = User.IsInRole("YachtOwner");
+            var isAdmin = User.IsInRole(AppRoles.Admin);
+            var isYachtOwner = User.IsInRole(AppRoles.YachtOwner);
             var result = await _paymentWorkflow.CreateIntentForExistingReservationAsync(
                 request, claimUserId, isAdmin, isYachtOwner, cancellationToken);
             return Ok(result);
@@ -71,8 +71,8 @@ namespace Yamore.API.Controllers
         {
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
             int? currentUserId = int.TryParse(userIdStr, out var uid) ? uid : null;
-            var isAdmin = User.IsInRole("Admin");
-            var isYachtOwner = User.IsInRole("YachtOwner");
+            var isAdmin = User.IsInRole(AppRoles.Admin);
+            var isYachtOwner = User.IsInRole(AppRoles.YachtOwner);
             var result = await _paymentWorkflow.ConfirmPaymentAsync(
                 request, currentUserId, isAdmin, isYachtOwner, cancellationToken);
             return Ok(result);
