@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Yamore.Model.Api;
 using Yamore.Services.Interfaces;
 
 namespace Yamore.API.Controllers
@@ -20,14 +21,28 @@ namespace Yamore.API.Controllers
 
         [HttpPost("sample-yachts")]
         [AllowAnonymous]
-        public ActionResult<object> SeedSampleYachts()
+        public ActionResult<SampleYachtSeedResponseDto> SeedSampleYachts()
         {
             var result = _sampleYachtSeedService.TrySeedSampleYachts();
             if (!result.Success)
-                return StatusCode(result.StatusCode, new { message = result.Message });
+            {
+                return StatusCode(
+                    result.StatusCode,
+                    new SampleYachtSeedResponseDto { Message = result.Message });
+            }
             if (result.Added != null)
-                return Ok(new { message = result.Message, added = result.Added });
-            return Ok(new { message = result.Message, count = result.Count });
+            {
+                return Ok(new SampleYachtSeedResponseDto
+                {
+                    Message = result.Message,
+                    Added = result.Added
+                });
+            }
+            return Ok(new SampleYachtSeedResponseDto
+            {
+                Message = result.Message,
+                Count = result.Count
+            });
         }
     }
 }

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Yamore.API.Services;
 using Yamore.Model;
+using Yamore.Model.Api;
 using Yamore.Model.Requests.Payment;
 using Yamore.Model.Requests.Reservation;
 
@@ -28,9 +29,12 @@ namespace Yamore.API.Controllers
         /// </summary>
         [HttpGet("stripe-config")]
         [AllowAnonymous]
-        public ActionResult<object> GetStripeConfig()
+        public ActionResult<StripePublishableKeyResponse> GetStripeConfig()
         {
-            return Ok(new { PublishableKey = _paymentWorkflow.GetStripePublishableKey() });
+            return Ok(new StripePublishableKeyResponse
+            {
+                PublishableKey = _paymentWorkflow.GetStripePublishableKey()
+            });
         }
 
         /// <summary>Creates a Stripe PaymentIntent for a <b>new</b> booking without writing a reservation row.</summary>

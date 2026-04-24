@@ -174,7 +174,10 @@ namespace Yamore.Services.Services
             return ComputeQuotedTotalForCardBooking(yachtId, start, end, serviceIds);
         }
 
-        public Model.Reservation InsertConfirmedReservationWithServices(ReservationInsertRequest request, IReadOnlyList<int> serviceIds)
+        public Model.Reservation InsertConfirmedReservationWithServices(
+            ReservationInsertRequest request,
+            IReadOnlyList<int> serviceIds,
+            CardPaymentPendingInfo? recordPendingCardPayment = null)
         {
             serviceIds ??= Array.Empty<int>();
             var quoted = ComputeQuotedTotalForCardBooking(request.YachtId, request.StartDate, request.EndDate, serviceIds);
@@ -210,6 +213,20 @@ namespace Yamore.Services.Services
                     });
                 }
                 Context.SaveChanges();
+
+                if (recordPendingCardPayment != null)
+                {
+                    var payAt = recordPendingCardPayment.PaymentDateUtc ?? DateTime.UtcNow;
+                    Context.Add(new Database.Payment
+                    {
+                        ReservationId = entity.ReservationId,
+                        Amount = recordPendingCardPayment.Amount,
+                        PaymentDate = payAt,
+                        PaymentMethod = recordPendingCardPayment.PaymentMethod,
+                        Status = recordPendingCardPayment.Status,
+                    });
+                    Context.SaveChanges();
+                }
                 tx.Commit();
                 return Mapper.Map<Model.Reservation>(entity);
             }
@@ -325,12 +342,10 @@ namespace Yamore.Services.Services
             return confirmed;
         }
 
-        public Model.Reservation ConfirmFromSuccessfulCardPayment(int reservationId, int? paidByUserId)
+        public void ApplyCardPaymentConfirmation(Database.Reservation entity, int? paidByUserId)
         {
-            var entity = LoadReservationWithYacht(reservationId);
-
             if (string.Equals(entity.Status, ReservationStatuses.Confirmed, StringComparison.OrdinalIgnoreCase))
-                return Mapper.Map<Model.Reservation>(entity);
+                return;
 
             if (ReservationStatuses.IsTerminal(entity.Status))
                 throw new InvalidOperationException("Reservation is not in a state that can be paid for.");
@@ -340,8 +355,6 @@ namespace Yamore.Services.Services
 
             ApplyStatusAudit(entity, paidByUserId, DateTime.UtcNow, "Card payment succeeded");
             entity.Status = ReservationStatuses.Confirmed;
-            Context.SaveChanges();
-            return Mapper.Map<Model.Reservation>(entity);
         }
 
         public CancelReservationOutcome Cancel(int id, int actorUserId, bool actorIsAdmin, string? reason)

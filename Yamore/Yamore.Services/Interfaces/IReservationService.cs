@@ -1,6 +1,7 @@
 using Yamore.Model;
 using Yamore.Model.Requests.Reservation;
 using Yamore.Model.SearchObjects;
+using DatabaseReservation = Yamore.Services.Database.Reservation;
 
 namespace Yamore.Services.Interfaces
 {
@@ -18,14 +19,17 @@ namespace Yamore.Services.Interfaces
         /// <summary>Marks a confirmed trip as completed after <see cref="Model.Reservation.EndDate"/> (UTC).</summary>
         Model.Reservation Complete(int id, int actorUserId, bool actorIsAdmin);
 
-        /// <summary>After Stripe reports success for an existing reservation; idempotent if already confirmed.</summary>
-        Model.Reservation ConfirmFromSuccessfulCardPayment(int reservationId, int? paidByUserId);
+        /// <summary>
+        /// Updates a tracked <see cref="Yamore.Services.Database.Reservation"/> to confirmed after a successful card payment. Does <b>not</b> call
+        /// <c>SaveChanges</c> — the caller (orchestrator) writes once with the payment row on the same <see cref="Microsoft.EntityFrameworkCore.DbContext"/>.
+        /// </summary>
+        void ApplyCardPaymentConfirmation(DatabaseReservation entity, int? paidByUserId);
 
-        /// <summary>Validates the yacht, overlap, and add-on services; returns the total price in EUR (server-side, same rules as the mobile app).</summary>
+        /// <summary>Validates the yacht, overlap, and add-on services; returns the total price in EUR (server-side, same rules as the mobile app). Does not persist changes.</summary>
         decimal ValidateAndQuoteCardBooking(int yachtId, DateTime start, DateTime end, IReadOnlyList<int> serviceIds);
 
-        /// <summary>Creates a confirmed reservation and add-on lines in one transaction. Total must match <see cref="ValidateAndQuoteCardBooking"/> for the same inputs (within 0.02 EUR).</summary>
-        Model.Reservation InsertConfirmedReservationWithServices(ReservationInsertRequest request, IReadOnlyList<int> serviceIds);
+        /// <summary>Creates a confirmed reservation, add-on lines, and optionally a pending card payment in one database transaction.</summary>
+        Model.Reservation InsertConfirmedReservationWithServices(ReservationInsertRequest request, IReadOnlyList<int> serviceIds, CardPaymentPendingInfo? recordPendingCardPayment = null);
 
         /// <summary>Loads user and yacht fields for messaging (no visibility filtering).</summary>
         ReservationMessageContext GetReservationMessageContext(int userId, int yachtId);

@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.Extensions.Hosting;
 using Yamore.Model;
 
 namespace Yamore.API.Filters
@@ -11,11 +12,16 @@ namespace Yamore.API.Filters
     {
         private readonly ILogger<ExceptionFilter> _logger;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IHostEnvironment _environment;
 
-        public ExceptionFilter(ILogger<ExceptionFilter> logger, IHttpContextAccessor httpContextAccessor)
+        public ExceptionFilter(
+            ILogger<ExceptionFilter> logger,
+            IHttpContextAccessor httpContextAccessor,
+            IHostEnvironment environment)
         {
             _logger = logger;
             _httpContextAccessor = httpContextAccessor;
+            _environment = environment;
         }
 
         public override void OnException(ExceptionContext context)
@@ -57,7 +63,8 @@ namespace Yamore.API.Filters
                     query,
                     traceId,
                     ex.Message);
-                context.ModelState.AddModelError("error", ex.Message);
+                var uMsg = _environment.IsDevelopment() ? ex.Message : "You are not allowed to perform this action.";
+                context.ModelState.AddModelError("error", uMsg);
                 context.HttpContext.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             }
             else if (ex is NotFoundException)
@@ -96,7 +103,10 @@ namespace Yamore.API.Filters
                     query,
                     traceId,
                     ex.Message);
-                context.ModelState.AddModelError("error", ex.Message);
+                var ioMsg = _environment.IsDevelopment()
+                    ? ex.Message
+                    : "The request could not be completed. Please check your input and try again.";
+                context.ModelState.AddModelError("error", ioMsg);
                 context.HttpContext.Response.StatusCode = (int)HttpStatusCode.BadRequest;
             }
             else
@@ -111,7 +121,10 @@ namespace Yamore.API.Filters
                     userId ?? "(anonymous)",
                     userName ?? "(n/a)",
                     ex.Message);
-                context.ModelState.AddModelError("ERROR", "Server side error, please check logs");
+                var serverMsg = _environment.IsDevelopment()
+                    ? "Server side error, please check logs"
+                    : "An unexpected error occurred. Please try again later.";
+                context.ModelState.AddModelError("error", serverMsg);
                 context.HttpContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
             }
 

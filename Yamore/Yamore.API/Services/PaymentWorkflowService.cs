@@ -399,19 +399,23 @@ public class PaymentWorkflowService : IPaymentWorkflowService
             CreatedAt = DateTime.UtcNow
         };
 
-        var reservation = _reservationService.InsertConfirmedReservationWithServices(insert, serviceIds);
-
         const string payStatus = "pending";
-        var paymentEntity = new DbPayment
+        var pendingPay = new CardPaymentPendingInfo
         {
-            ReservationId = reservation.ReservationId,
             Amount = total,
-            PaymentDate = DateTime.UtcNow,
             PaymentMethod = "Card",
-            Status = payStatus
+            Status = payStatus,
+            PaymentDateUtc = DateTime.UtcNow,
         };
-        _context.Payments.Add(paymentEntity);
-        await _context.SaveChangesAsync(cancellationToken);
+        var reservation = _reservationService.InsertConfirmedReservationWithServices(insert, serviceIds, pendingPay);
+        var paymentEntity = await _context.Payments.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.ReservationId == reservation.ReservationId, cancellationToken);
+        if (paymentEntity == null)
+        {
+            _logger.LogError(
+                "No payment row for reservation {ReservationId} after InsertConfirmedReservationWithServices.",
+                reservation.ReservationId);
+        }
 
         try
         {
@@ -439,9 +443,9 @@ public class PaymentWorkflowService : IPaymentWorkflowService
 
         var payMsg = new PaymentCompletedMessage
         {
-            PaymentId = paymentEntity.PaymentId,
-            ReservationId = paymentEntity.ReservationId,
-            Amount = paymentEntity.Amount,
+            PaymentId = paymentEntity?.PaymentId ?? 0,
+            ReservationId = paymentEntity?.ReservationId ?? reservation.ReservationId,
+            Amount = paymentEntity?.Amount ?? total,
             PaymentMethod = "Card",
             PaymentStatus = payStatus,
             IsConfirmed = true,
@@ -529,39 +533,33 @@ public class PaymentWorkflowService : IPaymentWorkflowService
             await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
         try
         {
-            _reservationService.ConfirmFromSuccessfulCardPayment(request.ReservationId, paidBy);
-            await _context.Entry(reservation).ReloadAsync(cancellationToken);
-
-            if (HasCardPaymentForReservation(request.ReservationId))
+            _reservationService.ApplyCardPaymentConfirmation(reservation, paidBy);
+            if (!HasCardPaymentForReservation(request.ReservationId))
             {
-                await transaction.CommitAsync(cancellationToken);
-                return new PaymentIntentDto
+                _context.Payments.Add(new DbPayment
                 {
-                    Status = "succeeded",
-                    PaymentIntentId = request.PaymentIntentId,
-                    AlreadyFinalized = true,
-                };
+                    ReservationId = request.ReservationId,
+                    Amount = reservation.TotalPrice ?? 0,
+                    PaymentDate = DateTime.UtcNow,
+                    PaymentMethod = paymentMethod,
+                    Status = status
+                });
             }
-
-            var payCard = new DbPayment
-            {
-                ReservationId = request.ReservationId,
-                Amount = reservation.TotalPrice ?? 0,
-                PaymentDate = DateTime.UtcNow,
-                PaymentMethod = paymentMethod,
-                Status = status
-            };
-            _context.Payments.Add(payCard);
             await _context.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             await _context.Entry(reservation).ReloadAsync(cancellationToken);
+            var payRow = await _context.Payments.AsNoTracking()
+                .OrderByDescending(p => p.PaymentId)
+                .FirstOrDefaultAsync(
+                    p => p.ReservationId == request.ReservationId,
+                    cancellationToken);
             var msgCtx = _reservationService.GetReservationMessageContext(reservation.UserId, reservation.YachtId);
 
             var payMsg2 = new PaymentCompletedMessage
             {
-                PaymentId = payCard.PaymentId,
-                ReservationId = payCard.ReservationId,
-                Amount = payCard.Amount,
+                PaymentId = payRow?.PaymentId ?? 0,
+                ReservationId = payRow?.ReservationId ?? request.ReservationId,
+                Amount = payRow?.Amount ?? (reservation.TotalPrice ?? 0),
                 PaymentMethod = paymentMethod,
                 PaymentStatus = status,
                 IsConfirmed = true,
@@ -579,7 +577,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
                 var displayYacht = string.IsNullOrWhiteSpace(msgCtx.YachtName) ? "the yacht" : msgCtx.YachtName.Trim();
                 var period =
                     $"{reservation.StartDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)} – {reservation.EndDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
-                var amt = payCard.Amount;
+                var amt = payRow?.Amount ?? (reservation.TotalPrice ?? 0);
                 _notifications.InsertUserNotification(
                     reservation.UserId,
                     "Payment received",

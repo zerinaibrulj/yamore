@@ -177,6 +177,7 @@ builder.Services.AddDbContext<_220245Context>(options => options.UseSqlServer(co
 
 builder.Services.AddMapster();
 
+builder.Services.AddHttpClient();
 builder.Services.AddMemoryCache();
 
 builder.Services.AddAuthentication("BasicAuthentication")
@@ -185,6 +186,13 @@ builder.Services.AddAuthentication("BasicAuthentication")
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+if (!app.Environment.IsDevelopment() && allowedOrigins.Length == 0)
+{
+    throw new InvalidOperationException(
+        "Cors:AllowedOrigins must be set (comma-separated list) in non-Development environments. " +
+        "Set Cors__AllowedOrigins in configuration or the process environment.");
+}
 
 var skipMigrate = string.Equals(
     app.Configuration["SKIP_EF_DATABASE_MIGRATE"],

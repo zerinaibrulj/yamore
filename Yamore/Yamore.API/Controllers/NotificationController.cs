@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Yamore.Model;
+using Yamore.Model.Api;
 using Yamore.Model.Requests.Notification;
 using Yamore.Model.SearchObjects;
 using Yamore.Services.Interfaces;
@@ -26,20 +27,20 @@ namespace Yamore.API.Controllers
         /// (non-cancelled reservations). This ensures both parties can read the warning.
         /// </summary>
         [HttpPost("warning-to-user-and-owners")]
-        public async Task<ActionResult<object>> SendWarningToUserAndOwners(
+        public async Task<ActionResult<WarningNotificationResultDto>> SendWarningToUserAndOwners(
             [FromBody] WarningNotificationRequest request,
             CancellationToken cancellationToken)
         {
-            if (request.UserId <= 0) return BadRequest(new { message = "UserId is required." });
+            if (request.UserId <= 0) return BadRequest(new SimpleMessageDto { Message = "UserId is required." });
             if (string.IsNullOrWhiteSpace(request.Message))
-                return BadRequest(new { message = "Message is required." });
+                return BadRequest(new SimpleMessageDto { Message = "Message is required." });
 
             var count = await _notificationService.SendWarningToUserAndOwnersAsync(
                 request.UserId,
                 request.Message,
                 title: null,
                 cancellationToken);
-            return Ok(new { message = "Warning sent.", recipients = count });
+            return Ok(new WarningNotificationResultDto { Message = "Warning sent.", Recipients = count });
         }
 
         /// <summary>Marks a notification as read for the current user (must own the row).</summary>
