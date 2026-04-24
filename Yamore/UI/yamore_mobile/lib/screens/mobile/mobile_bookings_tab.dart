@@ -811,7 +811,11 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
                                         Row(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            const Icon(Icons.calendar_today_outlined, size: 16),
+                                            Icon(
+                                              Icons.calendar_today_outlined,
+                                              size: 16,
+                                              color: AppTheme.primaryBlue,
+                                            ),
                                             const SizedBox(width: 6),
                                             Expanded(
                                               child: Text(
@@ -823,7 +827,11 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
                                       if (f.windSpeed != null)
                                         Row(
                                           children: [
-                                            const Icon(Icons.air, size: 16),
+                                            Icon(
+                                              Icons.air,
+                                              size: 16,
+                                              color: Colors.cyan.shade600,
+                                            ),
                                             const SizedBox(width: 6),
                                             Expanded(
                                               child: Text('Wind: ${f.windSpeed} km/h'),
@@ -833,7 +841,11 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
                                       if (f.temperature != null)
                                         Row(
                                           children: [
-                                            const Icon(Icons.thermostat, size: 16),
+                                            Icon(
+                                              Icons.thermostat,
+                                              size: 16,
+                                              color: Colors.deepOrange.shade400,
+                                            ),
                                             const SizedBox(width: 6),
                                             Expanded(
                                               child: Text('Temperature: ${f.temperature}°C'),
@@ -844,7 +856,11 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
                                         Row(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            const Icon(Icons.wb_sunny_outlined, size: 16),
+                                            Icon(
+                                              Icons.wb_sunny_outlined,
+                                              size: 16,
+                                              color: Colors.amber.shade600,
+                                            ),
                                             const SizedBox(width: 6),
                                             Expanded(
                                               child: Text('Condition: ${f.condition}'),
