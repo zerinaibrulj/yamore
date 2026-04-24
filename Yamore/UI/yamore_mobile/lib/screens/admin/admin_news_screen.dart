@@ -24,7 +24,7 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
   final _titleFilter = TextEditingController();
   final _textFilter = TextEditingController();
 
-  static const int _pageSize = 12;
+  static const int _pageSize = 10;
 
   int _currentPage = 0;
   int _totalCount = 0;
@@ -435,7 +435,7 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
             _buildTopHeader(context),
             const SizedBox(height: 8),
             const Text(
-              'Create and manage platform announcements. Newest posts first (12 per page, same as other admin lists).',
+              'Create and manage platform announcements. Newest posts first (10 per page, same as other admin lists).',
               style: TextStyle(
                 color: Color(0xFF424242),
                 fontSize: 14,
