@@ -23,6 +23,15 @@ public class StripePaymentService
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(_secretKey) && _secretKey.StartsWith("sk_", StringComparison.Ordinal);
 
+    /// <summary>Smallest-currency amount Stripe will charge, matching <see cref="CreatePaymentIntentAsync"/> and provisional intents.</summary>
+    public static long GetChargeAmountInCents(decimal amount)
+    {
+        var amountInCents = (long)Math.Round(amount * 100, MidpointRounding.AwayFromZero);
+        if (amountInCents < 50) // Stripe minimum
+            amountInCents = 50;
+        return amountInCents;
+    }
+
     /// <summary>
     /// Creates a Stripe PaymentIntent for the given amount. Amount is in the currency's smallest unit (e.g. cents for EUR/USD).
     /// </summary>
@@ -35,9 +44,7 @@ public class StripePaymentService
         if (_stripeClient == null)
             throw new InvalidOperationException("Stripe is not configured. Set Stripe:SecretKey in configuration.");
 
-        var amountInCents = (long)Math.Round(amount * 100);
-        if (amountInCents < 50) // Stripe minimum
-            amountInCents = 50;
+        var amountInCents = GetChargeAmountInCents(amount);
 
         var options = new PaymentIntentCreateOptions
         {
@@ -63,9 +70,7 @@ public class StripePaymentService
         if (_stripeClient == null)
             throw new InvalidOperationException("Stripe is not configured. Set Stripe:SecretKey in configuration.");
 
-        var amountInCents = (long)Math.Round(amount * 100);
-        if (amountInCents < 50) // Stripe minimum
-            amountInCents = 50;
+        var amountInCents = GetChargeAmountInCents(amount);
 
         var options = new PaymentIntentCreateOptions
         {

@@ -37,5 +37,8 @@ namespace Yamore.Model
 
         [JsonPropertyName("statusChangeReason")]
         public string? StatusChangeReason { get; set; }
+
+        [JsonPropertyName("isPaid")]
+        public bool IsPaid { get; set; }
     }
 }

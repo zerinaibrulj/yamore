@@ -499,6 +499,7 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
     final isActive = _activeReservations.contains(r);
     final status = (r.status ?? 'Pending');
     final isConfirmed = status.toLowerCase() == 'confirmed';
+    final paid = r.isPaid;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -527,19 +528,42 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
                         fontSize: 16, fontWeight: FontWeight.w700),
                   ),
                 ),
-                if (isConfirmed)
-                  OutlinedButton.icon(
-                    onPressed: () => _showWeatherForReservation(r),
-                    icon: const Icon(Icons.cloud_outlined, size: 18),
-                    label: const Text('Weather'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 8),
-                      side: BorderSide(color: Colors.blue.shade200),
-                      foregroundColor: Colors.blue.shade700,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (paid)
+                      Container(
+                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.teal.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'Paid',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.teal.shade800,
+                          ),
+                        ),
+                      ),
+                    if (isConfirmed)
+                      OutlinedButton.icon(
+                        onPressed: () => _showWeatherForReservation(r),
+                        icon: const Icon(Icons.cloud_outlined, size: 18),
+                        label: const Text('Weather'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 8),
+                          side: BorderSide(color: Colors.blue.shade200),
+                          foregroundColor: Colors.blue.shade700,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                  ],
+                ),
               ],
             ),
             const SizedBox(height: 4),

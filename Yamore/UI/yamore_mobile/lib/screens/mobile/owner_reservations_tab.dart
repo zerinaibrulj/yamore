@@ -540,6 +540,12 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
                 _infoRow(Icons.timelapse, 'Duration', '${r.durationDays} day${r.durationDays == 1 ? '' : 's'}'),
                 if (r.totalPrice != null)
                   _infoRow(Icons.euro, 'Total', '€${r.totalPrice!.toStringAsFixed(2)}'),
+                if (r.isPaid)
+                  _infoRow(
+                    Icons.payments_outlined,
+                    'Payment',
+                    'Recorded as paid',
+                  ),
                 if (r.status?.toLowerCase() != 'cancelled' &&
                     r.status?.toLowerCase() != 'completed') ...[
                   const SizedBox(height: 8),

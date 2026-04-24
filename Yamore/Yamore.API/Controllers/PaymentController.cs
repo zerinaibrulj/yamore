@@ -53,7 +53,14 @@ namespace Yamore.API.Controllers
             [FromBody] CreatePaymentIntentRequest request,
             CancellationToken cancellationToken)
         {
-            var result = await _paymentWorkflow.CreateIntentForExistingReservationAsync(request, cancellationToken);
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdStr, out var claimUserId))
+                return Unauthorized();
+
+            var isAdmin = User.IsInRole("Admin");
+            var isYachtOwner = User.IsInRole("YachtOwner");
+            var result = await _paymentWorkflow.CreateIntentForExistingReservationAsync(
+                request, claimUserId, isAdmin, isYachtOwner, cancellationToken);
             return Ok(result);
         }
 
@@ -64,8 +71,10 @@ namespace Yamore.API.Controllers
         {
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
             int? currentUserId = int.TryParse(userIdStr, out var uid) ? uid : null;
-
-            var result = await _paymentWorkflow.ConfirmPaymentAsync(request, currentUserId, cancellationToken);
+            var isAdmin = User.IsInRole("Admin");
+            var isYachtOwner = User.IsInRole("YachtOwner");
+            var result = await _paymentWorkflow.ConfirmPaymentAsync(
+                request, currentUserId, isAdmin, isYachtOwner, cancellationToken);
             return Ok(result);
         }
     }

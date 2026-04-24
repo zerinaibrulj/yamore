@@ -12,6 +12,7 @@ public static class StripeKeyResolver
     private static bool _loaded;
     private static string? _secretKey;
     private static string? _publishableKey;
+    private static string? _webhookSecret;
 
     public static string? GetSecretKey(IConfiguration configuration)
     {
@@ -23,6 +24,12 @@ public static class StripeKeyResolver
     {
         EnsureLoaded(configuration);
         return _publishableKey;
+    }
+
+    public static string? GetWebhookSecret(IConfiguration configuration)
+    {
+        EnsureLoaded(configuration);
+        return _webhookSecret;
     }
 
     private static void EnsureLoaded(IConfiguration configuration)
@@ -43,6 +50,11 @@ public static class StripeKeyResolver
                 Environment.GetEnvironmentVariable("STRIPE_PUBLISHABLE_KEY"),
                 configuration["STRIPE_PUBLISHABLE_KEY"],
                 configuration["Stripe:PublishableKey"]);
+            _webhookSecret = PickStripeKey(
+                "whsec_",
+                Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET"),
+                configuration["STRIPE_WEBHOOK_SECRET"],
+                configuration["Stripe:WebhookSecret"]);
             _loaded = true;
         }
     }

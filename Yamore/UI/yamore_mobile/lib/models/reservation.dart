@@ -7,6 +7,7 @@ class Reservation {
   final double? totalPrice;
   final String? status;
   final DateTime? createdAt;
+  final bool isPaid;
 
   Reservation({
     required this.reservationId,
@@ -17,6 +18,7 @@ class Reservation {
     this.totalPrice,
     this.status,
     this.createdAt,
+    this.isPaid = false,
   });
 
   int get durationDays {
@@ -34,6 +36,10 @@ class Reservation {
 
   factory Reservation.fromJson(Map<String, dynamic> json) {
     final statusRaw = _v(json, 'status');
+    final paidRaw = _v(json, 'isPaid');
+    final isPaid = paidRaw is bool
+        ? paidRaw
+        : (paidRaw is int ? paidRaw != 0 : (paidRaw?.toString() == 'true'));
     return Reservation(
       reservationId: _v(json, 'reservationId') as int,
       userId: _v(json, 'userId') as int,
@@ -45,6 +51,7 @@ class Reservation {
       createdAt: _v(json, 'createdAt') != null
           ? DateTime.tryParse(_v(json, 'createdAt').toString())
           : null,
+      isPaid: isPaid,
     );
   }
 }

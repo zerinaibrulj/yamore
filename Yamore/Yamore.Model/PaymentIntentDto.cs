@@ -7,13 +7,29 @@ namespace Yamore.Model
         public string? PaymentIntentId { get; set; }
         public string? RedirectUrl { get; set; }
         public string? Status { get; set; }
+
+        /// <summary>True when a repeat confirm is acknowledged without duplicating business effects (e.g. already finalized card payment for this reservation).</summary>
+        public bool? AlreadyFinalized { get; set; }
     }
 
     public class CreatePaymentIntentRequest
     {
         public int ReservationId { get; set; }
+
+        /// <summary>Ignored. The charge amount is always derived from the reservation on the server.</summary>
         public decimal Amount { get; set; }
+
         public string PaymentMethod { get; set; } = "stripe"; // "stripe" | "paypal"
+    }
+
+    public enum StripeWebhookHandleResult
+    {
+        /// <summary>Event ignored (wrong type) or not applicable.</summary>
+        Skipped = 0,
+        /// <summary>Handled successfully.</summary>
+        Processed = 1,
+        /// <summary>Webhook secret not set in configuration (request ignored, safe for Stripe 200 response).</summary>
+        NotConfigured = 2,
     }
 
     public class ConfirmPaymentRequest

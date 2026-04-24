@@ -1,5 +1,7 @@
+using System.Data;
 using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
 using Stripe;
 using Yamore.API.Configuration;
@@ -10,11 +12,14 @@ using Yamore.Model.Requests.Reservation;
 using Yamore.Services.Database;
 using Yamore.Services.Interfaces;
 using DbPayment = Yamore.Services.Database.Payment;
+using DbReservation = Yamore.Services.Database.Reservation;
 
 namespace Yamore.API.Services;
 
 public class PaymentWorkflowService : IPaymentWorkflowService
 {
+    private const string StripePaymentIntentSucceeded = "payment_intent.succeeded";
+
     private readonly _220245Context _context;
     private readonly StripePaymentService _stripe;
     private readonly IConfiguration _configuration;
@@ -89,6 +94,9 @@ public class PaymentWorkflowService : IPaymentWorkflowService
 
     public async Task<PaymentIntentDto> CreateIntentForExistingReservationAsync(
         CreatePaymentIntentRequest request,
+        int currentUserId,
+        bool isAdmin,
+        bool isYachtOwner,
         CancellationToken cancellationToken)
     {
         var reservation = await _context.Reservations.FindAsync(new object[] { request.ReservationId }, cancellationToken);
@@ -97,6 +105,8 @@ public class PaymentWorkflowService : IPaymentWorkflowService
         if (string.Equals(reservation.Status, ReservationStatuses.Cancelled, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Reservation is cancelled.");
 
+        EnsureCanPayForReservation(reservation, currentUserId, isAdmin, isYachtOwner, cancellationToken);
+
         var method = (request.PaymentMethod ?? "stripe").ToLowerInvariant();
         if (method != "stripe" && method != "card")
             throw new InvalidOperationException("Create intent is only for card (Stripe) payments.");
@@ -104,7 +114,13 @@ public class PaymentWorkflowService : IPaymentWorkflowService
         if (!_stripe.IsConfigured)
             throw new Exception("Stripe is not configured.");
 
-        var amount = request.Amount > 0 ? request.Amount : (reservation.TotalPrice ?? 0);
+        if (!string.Equals(reservation.Status, ReservationStatuses.Pending, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Only pending reservations can be paid for online.");
+
+        if (HasAnyPositivePayment(request.ReservationId))
+            throw new InvalidOperationException("A payment is already recorded for this reservation.");
+
+        var amount = reservation.TotalPrice ?? 0;
         if (amount <= 0)
             throw new InvalidOperationException("Reservation has no amount to charge.");
 
@@ -133,18 +149,27 @@ public class PaymentWorkflowService : IPaymentWorkflowService
     public async Task<PaymentIntentDto> ConfirmPaymentAsync(
         ConfirmPaymentRequest request,
         int? currentUserId,
+        bool isAdmin,
+        bool isYachtOwner,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.PaymentIntentId))
         {
             if (request.ReservationId <= 0)
                 throw new InvalidOperationException("Reservation is required for offline payment.");
+            if (currentUserId is not { } uid)
+                throw new UnauthorizedAccessException("You must be signed in.");
 
             var resOffline = await _context.Reservations.FindAsync(new object[] { request.ReservationId }, cancellationToken);
             if (resOffline == null)
                 throw new KeyNotFoundException("Reservation not found.");
             if (string.Equals(resOffline.Status, ReservationStatuses.Cancelled, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("Reservation is cancelled.");
+
+            EnsureCanPayForReservation(resOffline, uid, isAdmin, isYachtOwner, cancellationToken);
+
+            if (HasAnyPositivePayment(request.ReservationId))
+                throw new InvalidOperationException("A payment is already recorded for this reservation.");
 
             var paymentMethod = string.IsNullOrWhiteSpace(request.PaymentMethod)
                 ? "Cash"
@@ -181,33 +206,155 @@ public class PaymentWorkflowService : IPaymentWorkflowService
             && int.TryParse(fu, out var existingRid)
             && existingRid > 0)
         {
-            return new PaymentIntentDto { Status = "pending", PaymentIntentId = request.PaymentIntentId };
+            return new PaymentIntentDto
+            {
+                Status = "succeeded",
+                PaymentIntentId = request.PaymentIntentId,
+                AlreadyFinalized = true,
+            };
         }
 
         if (meta.TryGetValue("Kind", out var kind)
             && string.Equals(kind, "provisional_booking", StringComparison.Ordinal)
             && request.ReservationId == 0)
         {
+            if (currentUserId is not { } claimUid)
+                throw new UnauthorizedAccessException("You must be signed in.");
             return await ConfirmProvisionalCardBookingAsync(
-                request.PaymentIntentId!, intent, meta, currentUserId, cancellationToken);
+                request.PaymentIntentId!, intent, meta, claimUid, skipUserMatch: false, cancellationToken);
         }
 
         if (request.ReservationId <= 0)
             throw new InvalidOperationException("Reservation id is required for this payment, or use the new card flow with reservationId 0.");
+
+        if (currentUserId is not { } cuid)
+            throw new UnauthorizedAccessException("You must be signed in.");
 
         if (!meta.TryGetValue("ReservationId", out var resMeta)
             || !int.TryParse(resMeta, out var resFromMeta)
             || resFromMeta != request.ReservationId)
             throw new InvalidOperationException("Payment does not match this reservation.");
 
-        return await ConfirmCardForExistingReservationAsync(request, currentUserId, cancellationToken);
+        return await ConfirmCardForExistingReservationAsync(
+            request,
+            intent,
+            cuid,
+            isAdmin,
+            isYachtOwner,
+            fromWebhook: false,
+            cancellationToken);
+    }
+
+    public async Task<StripeWebhookHandleResult> ProcessStripeWebhookAsync(
+        string json,
+        string stripeSignatureHeader,
+        CancellationToken cancellationToken)
+    {
+        var secret = StripeKeyResolver.GetWebhookSecret(_configuration);
+        if (string.IsNullOrWhiteSpace(secret) || !secret.StartsWith("whsec_", StringComparison.Ordinal))
+        {
+            _logger.LogWarning("Stripe webhook received but Stripe:WebhookSecret is not set (or invalid).");
+            return StripeWebhookHandleResult.NotConfigured;
+        }
+
+        if (string.IsNullOrWhiteSpace(stripeSignatureHeader))
+        {
+            _logger.LogWarning("Stripe webhook missing Stripe-Signature header.");
+            throw new UnauthorizedAccessException("Missing Stripe-Signature header.");
+        }
+
+        Event stripeEvent;
+        try
+        {
+            stripeEvent = EventUtility.ConstructEvent(json, stripeSignatureHeader, secret, throwOnApiVersionMismatch: false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Stripe webhook signature verification failed.");
+            throw new UnauthorizedAccessException("Invalid webhook signature.");
+        }
+
+        if (!string.Equals(stripeEvent.Type, StripePaymentIntentSucceeded, StringComparison.Ordinal))
+            return StripeWebhookHandleResult.Skipped;
+
+        if (!_stripe.IsConfigured)
+            return StripeWebhookHandleResult.NotConfigured;
+
+        string? paymentIntentId;
+        if (stripeEvent.Data.Object is PaymentIntent pi)
+            paymentIntentId = pi.Id;
+        else
+        {
+            try
+            {
+                var idNode = JsonNode.Parse(json)?["data"]?["object"]?["id"];
+                paymentIntentId = idNode?.ToString();
+            }
+            catch
+            {
+                paymentIntentId = null;
+            }
+        }
+
+        if (string.IsNullOrEmpty(paymentIntentId))
+        {
+            _logger.LogWarning("Stripe webhook payment_intent.succeeded has no payment intent id.");
+            return StripeWebhookHandleResult.Skipped;
+        }
+
+        var fullIntent = await _stripe.GetPaymentIntentAsync(paymentIntentId, cancellationToken);
+        if (fullIntent.Status != "succeeded")
+            return StripeWebhookHandleResult.Skipped;
+
+        var meta = fullIntent.Metadata?.ToDictionary(x => x.Key, x => x.Value) ?? new Dictionary<string, string>();
+
+        if (meta.TryGetValue("FulfilledReservationId", out var fuf)
+            && int.TryParse(fuf, out var fufRid) && fufRid > 0)
+        {
+            return StripeWebhookHandleResult.Processed;
+        }
+
+        if (meta.TryGetValue("Kind", out var k) && string.Equals(k, "provisional_booking", StringComparison.Ordinal))
+        {
+            if (!meta.TryGetValue("UserId", out var userS) || !int.TryParse(userS, out var paidById))
+            {
+                _logger.LogWarning("Provisional webhook: missing user metadata.");
+                return StripeWebhookHandleResult.Skipped;
+            }
+
+            await ConfirmProvisionalCardBookingAsync(
+                paymentIntentId!,
+                fullIntent,
+                meta,
+                paidById,
+                skipUserMatch: true,
+                cancellationToken);
+            return StripeWebhookHandleResult.Processed;
+        }
+
+        if (meta.TryGetValue("ReservationId", out var ridS) && int.TryParse(ridS, out var rid) && rid > 0)
+        {
+            var req = new ConfirmPaymentRequest { PaymentIntentId = paymentIntentId, ReservationId = rid };
+            await ConfirmCardForExistingReservationAsync(
+                req,
+                fullIntent,
+                currentUserId: 0,
+                isAdmin: false,
+                isYachtOwner: false,
+                fromWebhook: true,
+                cancellationToken);
+            return StripeWebhookHandleResult.Processed;
+        }
+
+        return StripeWebhookHandleResult.Skipped;
     }
 
     private async Task<PaymentIntentDto> ConfirmProvisionalCardBookingAsync(
         string paymentIntentId,
         PaymentIntent intent,
         IReadOnlyDictionary<string, string> meta,
-        int? currentUserId,
+        int currentOrPaidByUserId,
+        bool skipUserMatch,
         CancellationToken cancellationToken)
     {
         if (!meta.TryGetValue("UserId", out var userS) || !int.TryParse(userS, out var metaUserId))
@@ -217,8 +364,11 @@ public class PaymentWorkflowService : IPaymentWorkflowService
         if (!meta.TryGetValue("StartUtc", out var startS) || !meta.TryGetValue("EndUtc", out var endS))
             throw new InvalidOperationException("Invalid payment metadata (dates).");
 
-        if (currentUserId is not { } uid || uid != metaUserId)
-            throw new UnauthorizedAccessException("The payment user must match the signed-in account.");
+        if (!skipUserMatch)
+        {
+            if (currentOrPaidByUserId != metaUserId)
+                throw new UnauthorizedAccessException("The payment user must match the signed-in account.");
+        }
 
         var start = DateTime.Parse(startS, null, DateTimeStyles.RoundtripKind);
         var end = DateTime.Parse(endS, null, DateTimeStyles.RoundtripKind);
@@ -234,7 +384,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
         }
 
         var total = _reservationService.ValidateAndQuoteCardBooking(yachtId, start, end, serviceIds);
-        var expectedCents = (long)Math.Max(50, Math.Round(total * 100));
+        var expectedCents = StripePaymentService.GetChargeAmountInCents(total);
         if (intent.Amount != expectedCents)
             throw new InvalidOperationException("Payment amount does not match the booking. Please start checkout again.");
 
@@ -325,7 +475,11 @@ public class PaymentWorkflowService : IPaymentWorkflowService
 
     private async Task<PaymentIntentDto> ConfirmCardForExistingReservationAsync(
         ConfirmPaymentRequest request,
-        int? currentUserId,
+        PaymentIntent intent,
+        int currentUserId,
+        bool isAdmin,
+        bool isYachtOwner,
+        bool fromWebhook,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.PaymentIntentId))
@@ -333,8 +487,8 @@ public class PaymentWorkflowService : IPaymentWorkflowService
 
         if (!_stripe.IsConfigured)
             throw new Exception("Stripe is not configured.");
-        var succeeded = await _stripe.PaymentSucceededAsync(request.PaymentIntentId, cancellationToken);
-        if (!succeeded)
+
+        if (intent.Status != "succeeded")
             throw new InvalidOperationException("Payment has not been completed or could not be verified.");
 
         var reservation = await _context.Reservations.FindAsync(new object[] { request.ReservationId }, cancellationToken);
@@ -343,63 +497,156 @@ public class PaymentWorkflowService : IPaymentWorkflowService
         if (string.Equals(reservation.Status, ReservationStatuses.Cancelled, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Reservation is cancelled.");
 
-        const string paymentMethod = "Card";
-        const string status = "pending";
-        _reservationService.ConfirmFromSuccessfulCardPayment(request.ReservationId, currentUserId);
-        await _context.Entry(reservation).ReloadAsync(cancellationToken);
-
-        var payCard = new DbPayment
+        if (!fromWebhook)
         {
-            ReservationId = request.ReservationId,
-            Amount = reservation.TotalPrice ?? 0,
-            PaymentDate = DateTime.UtcNow,
-            PaymentMethod = paymentMethod,
-            Status = status
-        };
-        _context.Payments.Add(payCard);
-        await _context.SaveChangesAsync(cancellationToken);
-        var msgCtx = _reservationService.GetReservationMessageContext(reservation.UserId, reservation.YachtId);
-
-        var payMsg = new PaymentCompletedMessage
-        {
-            PaymentId = payCard.PaymentId,
-            ReservationId = payCard.ReservationId,
-            Amount = payCard.Amount,
-            PaymentMethod = paymentMethod,
-            PaymentStatus = status,
-            IsConfirmed = true,
-            UserEmail = msgCtx.UserEmail,
-            UserName = msgCtx.UserDisplayName,
-            YachtName = msgCtx.YachtName,
-            ReservationStartDate = reservation.StartDate,
-            ReservationEndDate = reservation.EndDate,
-        };
-        _messagePublisher.Publish(MessageEnvelope.PaymentCompleted, JsonSerializer.Serialize(payMsg));
-
-        var y2 = await _context.Yachts.AsNoTracking().FirstOrDefaultAsync(x => x.YachtId == reservation.YachtId, cancellationToken);
-        if (y2 != null)
-        {
-            var displayYacht = string.IsNullOrWhiteSpace(msgCtx.YachtName) ? "the yacht" : msgCtx.YachtName.Trim();
-            var period =
-                $"{reservation.StartDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)} – {reservation.EndDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
-            var amt = payCard.Amount;
-            _notifications.InsertUserNotification(
-                reservation.UserId,
-                "Payment received",
-                $"Your card payment of {amt:0.00} EUR was recorded. {displayYacht} ({period}) is now confirmed.");
-            _notifications.InsertUserNotification(
-                y2.OwnerId,
-                "Payment received",
-                $"A card payment of {amt:0.00} EUR was received for {displayYacht} ({period}). The booking is confirmed.");
+            EnsureCanPayForReservation(reservation, currentUserId, isAdmin, isYachtOwner, cancellationToken);
         }
 
-        return new PaymentIntentDto { Status = status };
+        var total = reservation.TotalPrice ?? 0;
+        var expectedCents = StripePaymentService.GetChargeAmountInCents(total);
+        if (intent.Amount != expectedCents)
+            throw new InvalidOperationException("Payment amount does not match the reservation total.");
+
+        if (HasCardPaymentForReservation(request.ReservationId))
+        {
+            await _context.Entry(reservation).ReloadAsync(cancellationToken);
+            return new PaymentIntentDto
+            {
+                Status = "succeeded",
+                PaymentIntentId = request.PaymentIntentId,
+                AlreadyFinalized = true,
+            };
+        }
+
+        if (HasNonCardPayment(request.ReservationId))
+            throw new InvalidOperationException("A non-card payment is already recorded for this reservation.");
+
+        int? paidBy = fromWebhook ? null : currentUserId;
+        const string paymentMethod = "Card";
+        const string status = "pending";
+
+        await using var transaction =
+            await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+        try
+        {
+            _reservationService.ConfirmFromSuccessfulCardPayment(request.ReservationId, paidBy);
+            await _context.Entry(reservation).ReloadAsync(cancellationToken);
+
+            if (HasCardPaymentForReservation(request.ReservationId))
+            {
+                await transaction.CommitAsync(cancellationToken);
+                return new PaymentIntentDto
+                {
+                    Status = "succeeded",
+                    PaymentIntentId = request.PaymentIntentId,
+                    AlreadyFinalized = true,
+                };
+            }
+
+            var payCard = new DbPayment
+            {
+                ReservationId = request.ReservationId,
+                Amount = reservation.TotalPrice ?? 0,
+                PaymentDate = DateTime.UtcNow,
+                PaymentMethod = paymentMethod,
+                Status = status
+            };
+            _context.Payments.Add(payCard);
+            await _context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            await _context.Entry(reservation).ReloadAsync(cancellationToken);
+            var msgCtx = _reservationService.GetReservationMessageContext(reservation.UserId, reservation.YachtId);
+
+            var payMsg2 = new PaymentCompletedMessage
+            {
+                PaymentId = payCard.PaymentId,
+                ReservationId = payCard.ReservationId,
+                Amount = payCard.Amount,
+                PaymentMethod = paymentMethod,
+                PaymentStatus = status,
+                IsConfirmed = true,
+                UserEmail = msgCtx.UserEmail,
+                UserName = msgCtx.UserDisplayName,
+                YachtName = msgCtx.YachtName,
+                ReservationStartDate = reservation.StartDate,
+                ReservationEndDate = reservation.EndDate,
+            };
+            _messagePublisher.Publish(MessageEnvelope.PaymentCompleted, JsonSerializer.Serialize(payMsg2));
+
+            var y2 = await _context.Yachts.AsNoTracking().FirstOrDefaultAsync(x => x.YachtId == reservation.YachtId, cancellationToken);
+            if (y2 != null)
+            {
+                var displayYacht = string.IsNullOrWhiteSpace(msgCtx.YachtName) ? "the yacht" : msgCtx.YachtName.Trim();
+                var period =
+                    $"{reservation.StartDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)} – {reservation.EndDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
+                var amt = payCard.Amount;
+                _notifications.InsertUserNotification(
+                    reservation.UserId,
+                    "Payment received",
+                    $"Your card payment of {amt:0.00} EUR was recorded. {displayYacht} ({period}) is now confirmed.");
+                _notifications.InsertUserNotification(
+                    y2.OwnerId,
+                    "Payment received",
+                    $"A card payment of {amt:0.00} EUR was received for {displayYacht} ({period}). The booking is confirmed.");
+            }
+
+            return new PaymentIntentDto
+            {
+                Status = status,
+                PaymentIntentId = request.PaymentIntentId,
+            };
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
     }
+
+    private void EnsureCanPayForReservation(
+        DbReservation r,
+        int? currentUserId,
+        bool isAdmin,
+        bool isYachtOwner,
+        CancellationToken cancellationToken)
+    {
+        if (isAdmin)
+            return;
+        if (currentUserId is not { } uid)
+            throw new UnauthorizedAccessException("You must be signed in to act on this reservation payment.");
+        if (r.UserId == uid)
+            return;
+        if (isYachtOwner)
+        {
+            var ownerId = _context.Yachts.AsNoTracking()
+                .Where(y => y.YachtId == r.YachtId)
+                .Select(y => (int?)y.OwnerId)
+                .FirstOrDefault();
+            if (ownerId == uid)
+                return;
+        }
+        throw new UnauthorizedAccessException("You are not allowed to act on this reservation payment.");
+    }
+
+    private bool HasAnyPositivePayment(int reservationId) =>
+        _context.Payments.AsNoTracking()
+            .Any(p => p.ReservationId == reservationId && p.Amount > 0);
+
+    private static bool IsCardMethod(string? paymentMethod) =>
+        !string.IsNullOrEmpty(paymentMethod) && paymentMethod.Contains("card", StringComparison.OrdinalIgnoreCase);
+
+    private bool HasNonCardPayment(int reservationId) =>
+        _context.Payments.AsNoTracking()
+            .Any(p => p.ReservationId == reservationId && p.Amount > 0 && !IsCardMethod(p.PaymentMethod));
+
+    private bool HasCardPaymentForReservation(int reservationId) =>
+        _context.Payments.AsNoTracking()
+            .Any(p => p.ReservationId == reservationId && p.Amount > 0 && IsCardMethod(p.PaymentMethod));
 
     private void PublishPaymentCompleted(
         DbPayment payment,
         string paymentMethod,
-        string status,
+        string payStatus,
         bool isConfirmed)
     {
         var res = _context.Reservations.Find(payment.ReservationId);
@@ -412,7 +659,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
             ReservationId = payment.ReservationId,
             Amount = payment.Amount,
             PaymentMethod = paymentMethod,
-            PaymentStatus = status,
+            PaymentStatus = payStatus,
             IsConfirmed = isConfirmed,
             UserEmail = msgCtx?.UserEmail,
             UserName = msgCtx?.UserDisplayName,

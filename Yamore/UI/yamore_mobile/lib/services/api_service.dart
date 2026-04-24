@@ -1426,10 +1426,9 @@ class ApiService {
     );
   }
 
-  /// Creates a Stripe PaymentIntent for an <b>existing</b> reservation. Prefer [prepareCardBooking] for new card bookings.
+  /// Creates a Stripe PaymentIntent for an <b>existing</b> reservation. The amount is set on the server from the booking total.
   Future<PaymentIntentResult> createPaymentIntent({
     required int reservationId,
-    required double amount,
     String paymentMethod = 'stripe',
   }) async {
     final uri = Uri.parse('$baseUrl/Payment/create-intent');
@@ -1439,8 +1438,6 @@ class ApiService {
       body: jsonEncode({
         'reservationId': reservationId,
         'ReservationId': reservationId,
-        'amount': amount,
-        'Amount': amount,
         'paymentMethod': paymentMethod,
         'PaymentMethod': paymentMethod,
       }),

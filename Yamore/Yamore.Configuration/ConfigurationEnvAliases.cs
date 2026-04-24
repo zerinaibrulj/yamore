@@ -10,6 +10,7 @@ public static class ConfigurationEnvAliases
     {
         ApplyStripeKeyFromSource("Stripe__SecretKey", "STRIPE_SECRET_KEY", "sk_");
         ApplyStripeKeyFromSource("Stripe__PublishableKey", "STRIPE_PUBLISHABLE_KEY", "pk_");
+        ApplyStripeKeyFromSource("Stripe__WebhookSecret", "STRIPE_WEBHOOK_SECRET", "whsec_");
 
         CopyIfTargetEmpty("Smtp__Host", "SMTP_HOST");
         CopyIfTargetEmpty("Smtp__Port", "SMTP_PORT");

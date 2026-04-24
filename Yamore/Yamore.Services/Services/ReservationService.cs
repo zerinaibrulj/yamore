@@ -33,6 +33,17 @@ namespace Yamore.Services.Services
 
             var list = query.ToList();
             var result = list.Select(MapToModel).ToList();
+            if (result.Count > 0)
+            {
+                var ids = list.Select(x => x.ReservationId).ToList();
+                var paid = Context.Set<Database.Payment>().AsNoTracking()
+                    .Where(p => ids.Contains(p.ReservationId) && p.Amount > 0)
+                    .Select(p => p.ReservationId)
+                    .Distinct()
+                    .ToHashSet();
+                foreach (var m in result)
+                    m.IsPaid = paid.Contains(m.ReservationId);
+            }
 
             return new PagedResponse<Model.Reservation>
             {
@@ -40,6 +51,19 @@ namespace Yamore.Services.Services
                 ResultList = result
             };
         }
+
+        public override Model.Reservation GetById(int id)
+        {
+            var m = base.GetById(id);
+            if (m == null)
+                return null!;
+            m.IsPaid = HasRecordedPayment(id);
+            return m;
+        }
+
+        private bool HasRecordedPayment(int reservationId) =>
+            Context.Set<Database.Payment>().AsNoTracking()
+                .Any(p => p.ReservationId == reservationId && p.Amount > 0);
 
         private static Model.Reservation MapToModel(Database.Reservation r) => new()
         {
