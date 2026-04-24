@@ -54,7 +54,12 @@ class _OwnerSettingsTabState extends State<OwnerSettingsTab>
   List<NotificationModel> _notifications = const [];
   String? _notificationsError;
   Timer? _notificationPoll;
-  bool _notifRequestInFlight = false;
+  bool _notifInFlight = false;
+  static const int _notifPageSize = 15;
+  int? _notifTotalCount;
+  int _notifNextPage = 0;
+  bool _notifHasMore = false;
+  bool _notifLoadingMore = false;
   int? _markingNotificationId;
 
   @override
@@ -104,8 +109,8 @@ class _OwnerSettingsTabState extends State<OwnerSettingsTab>
 
   Future<void> _loadNotifications({bool silent = false}) async {
     if (!mounted) return;
-    if (_notifRequestInFlight) return;
-    _notifRequestInFlight = true;
+    if (_notifInFlight) return;
+    _notifInFlight = true;
     if (!silent) {
       setState(() {
         _notificationsLoading = true;
@@ -116,11 +121,20 @@ class _OwnerSettingsTabState extends State<OwnerSettingsTab>
       final paged = await _api.getNotifications(
         userId: widget.user.userId,
         page: 0,
-        pageSize: 30,
+        pageSize: _notifPageSize,
       );
       if (!mounted) return;
       setState(() {
         _notifications = paged.resultList;
+        _notifNextPage = 1;
+        _notifTotalCount = paged.count;
+        final t = paged.count;
+        if (t != null) {
+          _notifHasMore = _notifications.length < t;
+        } else {
+          _notifHasMore = paged.resultList.isNotEmpty &&
+              paged.resultList.length >= _notifPageSize;
+        }
         _notificationsError = null;
       });
     } on ApiException catch (e) {
@@ -138,10 +152,56 @@ class _OwnerSettingsTabState extends State<OwnerSettingsTab>
         }
       });
     } finally {
-      _notifRequestInFlight = false;
+      _notifInFlight = false;
       if (mounted) {
         setState(() {
           if (!silent) _notificationsLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadMoreNotifications() async {
+    if (!mounted) return;
+    if (_notifLoadingMore || _notifInFlight || !_notifHasMore) return;
+    _notifInFlight = true;
+    setState(() => _notifLoadingMore = true);
+    try {
+      final paged = await _api.getNotifications(
+        userId: widget.user.userId,
+        page: _notifNextPage,
+        pageSize: _notifPageSize,
+      );
+      if (!mounted) return;
+      setState(() {
+        _notifications = [..._notifications, ...paged.resultList];
+        _notifTotalCount = paged.count ?? _notifTotalCount;
+        final t = paged.count;
+        if (t != null) {
+          _notifHasMore = _notifications.length < t;
+        } else {
+          _notifHasMore = paged.resultList.isNotEmpty &&
+              paged.resultList.length >= _notifPageSize;
+        }
+        _notifNextPage = _notifNextPage + 1;
+      });
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not load more: ${e.displayMessage}')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not load more: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _notifLoadingMore = false;
+          _notifInFlight = false;
         });
       }
     }
@@ -359,7 +419,7 @@ class _OwnerSettingsTabState extends State<OwnerSettingsTab>
   Widget build(BuildContext context) {
     final user = widget.user;
     return RefreshIndicator(
-      onRefresh: _loadNotifications,
+      onRefresh: () => _loadNotifications(silent: false),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         physics: const AlwaysScrollableScrollPhysics(),
@@ -681,6 +741,10 @@ class _OwnerSettingsTabState extends State<OwnerSettingsTab>
                   formatDateTime: _formatDateTime,
                   markingNotificationId: _markingNotificationId,
                   onMarkRead: _markNotificationRead,
+                  totalCount: _notifTotalCount,
+                  hasMore: _notifHasMore,
+                  loadingMore: _notifLoadingMore,
+                  onLoadMore: _loadMoreNotifications,
                 ),
             ),
           ),
