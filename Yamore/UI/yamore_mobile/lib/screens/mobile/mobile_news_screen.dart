@@ -154,6 +154,7 @@ class _MobileNewsScreenState extends State<MobileNewsScreen> {
                             pageSize: _pageSize,
                             itemsOnPage: _items.length,
                             loading: _loading,
+                            narrowLayout: true,
                             onPrevious: () {
                               setState(() => _currentPage = _currentPage - 1);
                               _load();
