@@ -25,8 +25,7 @@ class YachtReviewScreen extends StatefulWidget {
 class _YachtReviewScreenState extends State<YachtReviewScreen> {
   late final ApiService _api = ApiService(
     baseUrl: authService.baseUrl,
-    username: authService.username,
-    password: authService.password,
+    auth: authService,
   );
 
   AuthService get authService => widget.authService;

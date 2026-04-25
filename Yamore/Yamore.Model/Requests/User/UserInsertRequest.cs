@@ -17,6 +17,8 @@ namespace Yamore.Model.Requests.User
         public string Password { get; set; } 
         public string PasswordConfirmation { get; set; }  
         public bool? Status { get; set; }
+        /// <summary>Used when an administrator creates a user. The public <c>POST Users/register</c> endpoint ignores this
+        /// (and <see cref="Status" />) so clients cannot self-assign roles.</summary>
         public string? RoleName { get; set; }
     }
 }

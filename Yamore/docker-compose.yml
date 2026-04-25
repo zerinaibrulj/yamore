@@ -42,6 +42,9 @@ services:
       context: .
       dockerfile: Yamore.API/Dockerfile
     container_name: yamore-api
+    # Loads Yamore/.env (JWT_SECRET, etc.) into the API process. Explicit `environment` below still wins.
+    env_file:
+      - .env
     logging: *default-logging
     # Stripe (and other HTTPS calls) need working DNS inside the container. On some Windows/Docker setups
     # the default resolver fails with "Name or service not known" for api.stripe.com — public DNS avoids that.

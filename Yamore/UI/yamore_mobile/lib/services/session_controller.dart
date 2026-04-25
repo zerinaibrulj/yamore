@@ -25,8 +25,9 @@ class SessionController {
 
   /// Clears credentials and returns the user to the login screen.
   void handleUnauthorized() {
-    _auth?.logout();
+    final a = _auth;
     _auth = null;
+    a?.logout();
     final nav = appNavigatorKey.currentState;
     if (nav != null && nav.mounted) {
       nav.pushAndRemoveUntil(

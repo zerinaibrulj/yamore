@@ -28,8 +28,7 @@ class MobileHomeTab extends StatefulWidget {
 class _MobileHomeTabState extends State<MobileHomeTab> {
   late final ApiService _api = ApiService(
     baseUrl: widget.authService.baseUrl,
-    username: widget.authService.username,
-    password: widget.authService.password,
+    auth: widget.authService,
   );
 
   List<YachtOverview> _allYachts = [];
@@ -134,7 +133,7 @@ class _MobileHomeTabState extends State<MobileHomeTab> {
           availableTo: _dateRange?.end,
         ),
         _api.getYachtCategories(),
-        _api.getRecommendations(userId: widget.user.userId, pageSize: 10),
+        _api.getRecommendations(pageSize: 10),
       ]);
       final overview = results[0] as PagedYachtOverview;
       final cats = results[1] as List<YachtCategoryModel>;

@@ -1,13 +1,18 @@
+using System.Security.Claims;
+using System.Text;
 using System.Text.Json.Serialization;
 using Mapster;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
+using Microsoft.IdentityModel.Tokens;
 using Yamore.API;
+using Yamore.API.Auth;
 using Yamore.API.Configuration;
 using Yamore.API.Hosted;
 using Yamore.Configuration;
@@ -20,6 +25,7 @@ using Yamore.Services.YachtStateMachine;
 using Yamore.API.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Data.SqlClient;
+using System.IdentityModel.Tokens.Jwt;
 using System.Reflection;
 
 LocalEnvFileLoader.Load();
@@ -142,24 +148,30 @@ builder.Services.AddValidatorsFromAssemblyContaining<UserInsertRequestValidator>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.AddSecurityDefinition("basicAuth", new Microsoft.OpenApi.Models.OpenApiSecurityScheme()
+    c.AddSecurityDefinition("bearer", new OpenApiSecurityScheme
     {
         Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
-        Scheme = "basic"
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
     });
 
-    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement()
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
             new OpenApiSecurityScheme
             {
-                Reference=new OpenApiReference{Type=ReferenceType.SecurityScheme, Id="basicAuth"}
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "bearer" }
             },
-            new string[]{}
+            Array.Empty<string>()
         }
     });
 });
 
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
+builder.Services.AddSingleton<JwtTokenIssuer>();
+builder.Services.AddSingleton<IJtiRevocationService, JtiRevocationService>();
+builder.Services.AddScoped<IRefreshTokenStore, RefreshTokenStore>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 if (string.IsNullOrWhiteSpace(connectionString) && builder.Environment.IsDevelopment())
@@ -181,8 +193,53 @@ builder.Services.AddMapster();
 builder.Services.AddHttpClient();
 builder.Services.AddMemoryCache();
 
-builder.Services.AddAuthentication("BasicAuthentication")
-    .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null);
+{
+    var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
+    var jwt = jwtSection.Get<JwtOptions>();
+    if (jwt == null || string.IsNullOrWhiteSpace(jwt.Secret) || jwt.Secret.Length < 32)
+    {
+        throw new InvalidOperationException(
+            "Jwt:Secret is missing or too short. Set a signing key of at least 32 characters in configuration " +
+            "(e.g. Jwt:Secret, or JWT_SECRET in the environment / .env).");
+    }
+
+    var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Secret));
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(o =>
+        {
+            o.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = key,
+                ValidateIssuer = !string.IsNullOrWhiteSpace(jwt.Issuer),
+                ValidIssuer = jwt.Issuer,
+                ValidateAudience = !string.IsNullOrWhiteSpace(jwt.Audience),
+                ValidAudience = jwt.Audience,
+                ValidateLifetime = true,
+                ClockSkew = TimeSpan.FromMinutes(1),
+            };
+            o.MapInboundClaims = true;
+            o.Events = new JwtBearerEvents
+            {
+                OnTokenValidated = ctx =>
+                {
+                    var jti = ctx.Principal?.FindFirstValue(JwtRegisteredClaimNames.Jti);
+                    if (string.IsNullOrEmpty(jti))
+                    {
+                        return Task.CompletedTask;
+                    }
+
+                    var rev = ctx.HttpContext.RequestServices
+                        .GetRequiredService<IJtiRevocationService>();
+                    if (rev.IsRevoked(jti))
+                    {
+                        ctx.Fail("This access token was revoked. Please sign in again.");
+                    }
+                    return Task.CompletedTask;
+                }
+            };
+        });
+}
 
 builder.Services.AddAuthorization();
 

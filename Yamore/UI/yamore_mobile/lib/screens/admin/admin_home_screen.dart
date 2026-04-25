@@ -25,8 +25,7 @@ class AdminHomeScreen extends StatefulWidget {
 class _AdminHomeScreenState extends State<AdminHomeScreen> {
   late final ApiService _api = ApiService(
     baseUrl: widget.authService.baseUrl,
-    username: widget.authService.username,
-    password: widget.authService.password,
+    auth: widget.authService,
   );
 
   StatisticsDtoModel? _stats;

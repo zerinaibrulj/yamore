@@ -29,13 +29,6 @@ namespace Yamore.API.Controllers
             return base.Delete(id);
         }
 
-        [HttpGet]
-        [AllowAnonymous]
-        public override PagedResponse<ServiceCategory> GetPaged([FromQuery] ServiceCategorySearchObject search)
-        {
-            return base.GetPaged(search);
-        }
-
         [HttpPost]
         [Authorize(Roles = AppRoles.Admin)]
         public override ActionResult<ServiceCategory> Insert(ServiceCategoryInsertRequest request)

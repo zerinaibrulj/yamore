@@ -129,8 +129,7 @@ class DeepLinkCoordinator {
     try {
       final api = ApiService(
         baseUrl: auth.baseUrl,
-        username: auth.username,
-        password: auth.password,
+        auth: auth,
       );
       final detail = await api.getYachtById(yachtId);
       final overview = YachtOverview.fromYachtDetail(detail);

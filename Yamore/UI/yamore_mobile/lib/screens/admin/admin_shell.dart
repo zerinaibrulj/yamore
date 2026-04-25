@@ -193,8 +193,9 @@ class _AdminShellState extends State<AdminShell> {
               ),
               const SizedBox(width: 16),
               TextButton.icon(
-                onPressed: () {
-                  widget.authService.logout();
+                onPressed: () async {
+                  await widget.authService.logout();
+                  if (!context.mounted) return;
                   SessionController.instance.clearAuthBinding();
                   Navigator.of(context).pushReplacement(
                     MaterialPageRoute(builder: (_) => const LoginScreen()),

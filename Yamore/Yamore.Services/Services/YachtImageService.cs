@@ -6,6 +6,7 @@ using Yamore.Model;
 using Yamore.Model.Requests.YachtImage;
 using Yamore.Services.Database;
 using Yamore.Services.Interfaces;
+using Yamore.Services.Security;
 
 namespace Yamore.Services.Services
 {
@@ -64,6 +65,23 @@ namespace Yamore.Services.Services
             catch (FormatException)
             {
                 throw new UserException("Image data is not valid Base64. Please re-upload the image.");
+            }
+
+            if (imageData.Length < 4)
+            {
+                throw new UserException("The uploaded file is too small to be a valid image.");
+            }
+
+            if (!UploadedImageGuard.IsAllowedImageMimeType(request.ContentType))
+            {
+                throw new UserException(
+                    "Unsupported or missing image MIME type. Use image/jpeg, image/png, image/gif, or image/webp.");
+            }
+
+            if (!UploadedImageGuard.IsKnownImageFile(imageData))
+            {
+                throw new UserException(
+                    "The file data does not match a known image format. Check the file is a real image.");
             }
 
             var isFirst = !_context.YachtImages.Any(i => i.YachtId == yachtId);

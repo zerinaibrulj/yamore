@@ -27,6 +27,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   bool _rememberMe = false;
   bool _isLoading = false;
   String? _errorMessage;
+  /// False until we know there is no restored JWT session to auto-open the shell.
+  bool _sessionCheckDone = false;
 
   late AnimationController _animController;
   late Animation<double> _fadeAnimation;
@@ -42,7 +44,19 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       CurvedAnimation(parent: _animController, curve: Curves.easeOut),
     );
     _animController.forward();
-    _loadRememberedUsername();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrap());
+  }
+
+  Future<void> _bootstrap() async {
+    await _loadRememberedUsername();
+    if (!mounted) return;
+    final ok = await _authService.tryRestoreSession();
+    if (!mounted) return;
+    if (ok) {
+      _navigateByRole(_authService.currentUser!, _authService);
+    } else {
+      setState(() => _sessionCheckDone = true);
+    }
   }
 
   Future<void> _loadRememberedUsername() async {
@@ -178,6 +192,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    if (!_sessionCheckDone) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     return Scaffold(
       body: Container(
         width: double.infinity,

@@ -18,8 +18,7 @@ class AdminUsersScreen extends StatefulWidget {
 class _AdminUsersScreenState extends State<AdminUsersScreen> {
   late final ApiService _api = ApiService(
     baseUrl: widget.authService.baseUrl,
-    username: widget.authService.username,
-    password: widget.authService.password,
+    auth: widget.authService,
   );
 
   final TextEditingController _searchController = TextEditingController();

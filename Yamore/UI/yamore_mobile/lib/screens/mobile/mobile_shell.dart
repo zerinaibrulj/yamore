@@ -102,7 +102,9 @@ class _MobileShellState extends State<MobileShell> {
           return MobileProfileTab(
             authService: widget.authService,
             user: user,
-            onLogout: _logout,
+            onLogout: () {
+              _logout();
+            },
             onProfileUpdated: () {
               if (mounted) setState(() {});
             },
@@ -118,8 +120,7 @@ class _MobileShellState extends State<MobileShell> {
     try {
       final api = ApiService(
         baseUrl: widget.authService.baseUrl,
-        username: widget.authService.username,
-        password: widget.authService.password,
+        auth: widget.authService,
       );
       final detail = await api.getYachtById(yachtId);
       final overview = YachtOverview.fromYachtDetail(detail);
@@ -139,8 +140,9 @@ class _MobileShellState extends State<MobileShell> {
     }
   }
 
-  void _logout() {
-    widget.authService.logout();
+  Future<void> _logout() async {
+    await widget.authService.logout();
+    if (!mounted) return;
     SessionController.instance.clearAuthBinding();
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -180,7 +182,9 @@ class _MobileShellState extends State<MobileShell> {
           IconButton(
             icon: const Icon(Icons.logout, size: 20),
             tooltip: 'Sign out',
-            onPressed: _logout,
+            onPressed: () {
+              _logout();
+            },
           ),
           const SizedBox(width: 4),
         ],

@@ -21,6 +21,9 @@ public static class ConfigurationEnvAliases
         CopyIfTargetEmpty("Smtp__FromDisplayName", "SMTP_FROM_DISPLAY_NAME");
 
         CopyIfTargetEmpty("DemoSeed__NotificationEmail", "DEMO_NOTIFICATION_EMAIL");
+        CopyIfTargetEmpty("Jwt__Secret", "JWT_SECRET");
+        CopyIfTargetEmpty("Jwt__Issuer", "JWT_ISSUER");
+        CopyIfTargetEmpty("Jwt__Audience", "JWT_AUDIENCE");
     }
 
     private static void ApplyStripeKeyFromSource(string target, string source, string expectedPrefix)

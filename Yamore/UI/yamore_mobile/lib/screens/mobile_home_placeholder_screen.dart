@@ -84,8 +84,9 @@ class MobileHomePlaceholderScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 32),
                       FilledButton.icon(
-                        onPressed: () {
-                          authService.logout();
+                        onPressed: () async {
+                          await authService.logout();
+                          if (!context.mounted) return;
                           Navigator.of(context).pushReplacement(
                             MaterialPageRoute(builder: (_) => const LoginScreen()),
                           );

@@ -29,8 +29,7 @@ class OwnerYachtsTab extends StatefulWidget {
 class _OwnerYachtsTabState extends State<OwnerYachtsTab> {
   late final ApiService _api = ApiService(
     baseUrl: widget.authService.baseUrl,
-    username: widget.authService.username,
-    password: widget.authService.password,
+    auth: widget.authService,
   );
 
   List<YachtOverview> _yachts = [];

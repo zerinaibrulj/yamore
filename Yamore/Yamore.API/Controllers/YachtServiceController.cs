@@ -16,12 +16,5 @@ namespace Yamore.API.Controllers
             : base(service)
         {
         }
-
-        [HttpGet]
-        [AllowAnonymous]
-        public override PagedResponse<YachtService> GetPaged([FromQuery] YachtServiceSearchObject search)
-        {
-            return base.GetPaged(search);
-        }
     }
 }

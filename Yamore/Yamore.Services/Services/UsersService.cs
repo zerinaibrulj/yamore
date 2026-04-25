@@ -256,8 +256,9 @@ namespace Yamore.Services.Services
                 throw new UserException("Password and password confirmation must match!");
             }
 
-            entity.PasswordSalt = GenerateSalt();
-            entity.PasswordHash = GenerateHash(entity.PasswordSalt, request.Password);
+            // BCrypt embeds salt; do not use SHA-1+salt.
+            entity.PasswordSalt = string.Empty;
+            entity.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password, workFactor: 11);
 
             base.BeforeInsret(request, entity);
         }
@@ -319,9 +320,9 @@ namespace Yamore.Services.Services
                 {
                     throw new UserException("Password and password confirmation must match!");
                 }
-                entity.PasswordSalt = GenerateSalt();
-                entity.PasswordHash = GenerateHash(entity.PasswordSalt, request.Password);
-            }  
+                entity.PasswordSalt = string.Empty;
+                entity.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password, workFactor: 11);
+            }
         }
 
 
@@ -354,6 +355,12 @@ namespace Yamore.Services.Services
 
 
 
+        public static bool IsBcryptPasswordHash(string? passwordHash) =>
+            !string.IsNullOrEmpty(passwordHash) &&
+            (passwordHash.StartsWith("$2a$", StringComparison.Ordinal) ||
+             passwordHash.StartsWith("$2b$", StringComparison.Ordinal) ||
+             passwordHash.StartsWith("$2y$", StringComparison.Ordinal));
+
         public Model.LoginResponseDto Login(string username, string password)
         {
             if (string.IsNullOrWhiteSpace(username) || string.IsNullOrEmpty(password))
@@ -369,9 +376,23 @@ namespace Yamore.Services.Services
             if (entity == null)
                 return null;
 
-            var hash = GenerateHash(entity.PasswordSalt, password);
-            if (hash != entity.PasswordHash)
-                return null;
+            if (IsBcryptPasswordHash(entity.PasswordHash))
+            {
+                if (!BCrypt.Net.BCrypt.Verify(password, entity.PasswordHash))
+                    return null;
+            }
+            else
+            {
+                if (string.IsNullOrEmpty(entity.PasswordSalt)
+                    || GenerateHash(entity.PasswordSalt, password) != entity.PasswordHash)
+                {
+                    return null;
+                }
+
+                entity.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password, workFactor: 11);
+                entity.PasswordSalt = string.Empty;
+                Context.SaveChanges();
+            }
 
             var roles = entity.UserRoles?.Select(ur => ur.Role?.Name).Where(n => !string.IsNullOrEmpty(n)).Cast<string>().ToList() ?? new List<string>();
             return new Model.LoginResponseDto
@@ -392,14 +413,28 @@ namespace Yamore.Services.Services
             var entity = Context.Users.Find(userId);
             if (entity == null)
                 return false;
-
-            var hash = GenerateHash(entity.PasswordSalt, password);
-            return hash == entity.PasswordHash;
+            if (IsBcryptPasswordHash(entity.PasswordHash))
+                return BCrypt.Net.BCrypt.Verify(password, entity.PasswordHash);
+            return !string.IsNullOrEmpty(entity.PasswordSalt) &&
+                   GenerateHash(entity.PasswordSalt, password) == entity.PasswordHash;
         }
 
         public Model.User Register(UserInsertRequest request)
         {
-            var user = Insert(request);
+            var safe = new UserInsertRequest
+            {
+                FirstName = request.FirstName,
+                LastName = request.LastName,
+                Email = request.Email,
+                Phone = request.Phone,
+                Username = request.Username,
+                Password = request.Password,
+                PasswordConfirmation = request.PasswordConfirmation,
+                // Self-registration: server assigns default role; ignore client role/status/flags.
+                Status = true,
+                RoleName = null,
+            };
+            var user = Insert(safe);
             var userRole = Context.Roles.FirstOrDefault(r => r.Name == AppRoles.User || r.Name == AppRoles.EndUser);
             if (userRole != null)
             {

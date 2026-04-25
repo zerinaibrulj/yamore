@@ -18,7 +18,7 @@ It includes:
 - 📊 **Admin dashboard** with statistics and export/print  
 - 💡 **Recommendations** for destinations and yachts  
 - 🐰 **RabbitMQ** — API publishes messages; **Worker** sends email notifications (reservation created, payment confirmed)
-- **Flutter client:** central HTTP error handling (including session reset on **401**), optional **deep links** (`yamore://…`; see Android manifest), and **`Future.wait`** where independent API calls can run in parallel
+- **Flutter client:** **JWT (Bearer) authentication** (access + refresh tokens, server-side **logout** via JTI + refresh revocation), central HTTP error handling (including session reset on **401**), optional **deep links** (`yamore://…`; see Android manifest), and **`Future.wait`** where independent API calls can run in parallel
 
 ---
 
@@ -39,16 +39,18 @@ It includes:
 
 2. **Optional — Stripe (card payments):** copy `Yamore/.env.example` → `Yamore/.env` and set `STRIPE_SECRET_KEY` and `STRIPE_PUBLISHABLE_KEY` (test keys). Without this, bookings still work with **Pay on arrival**.
 
-3. **Optional — email (Worker):** in `.env`, set `SMTP_HOST`, `SMTP_USER_NAME`, `SMTP_PASSWORD`, `SMTP_FROM_ADDRESS` (see `.env.example`). If SMTP is empty, reservations still work; the worker skips sending email.
+3. **JWT (required in production, optional in dev):** the API uses **HMAC-SHA256** JWT access tokens. Set a strong **`Jwt__Secret` (or `JWT_SECRET`)** in `.env` (at least **32 characters**). The default in `appsettings` is for local use only. After changing the secret, you must get new tokens (sign in again on clients and in Swagger). Endpoints: **`POST /Users/login`** and **`POST /Users/register`** return `accessToken`, `refreshToken`, and `accessTokenExpiresIn` (JSON). **`POST /Users/refresh`** accepts `{ "refreshToken": "..." }`. **`POST /Users/revoke`** (requires a valid `Authorization: Bearer` access token) can include `{ "refreshToken": "..." }` to revoke both access (JTI blacklist) and the refresh. Use Swagger’s **Authorize** button and paste the raw access token (without the `Bearer` prefix) when testing protected routes.
 
-4. Start the stack:
+4. **Optional — email (Worker):** in `.env`, set `SMTP_HOST`, `SMTP_USER_NAME`, `SMTP_PASSWORD`, `SMTP_FROM_ADDRESS` (see `.env.example`). If SMTP is empty, reservations still work; the worker skips sending email.
+
+5. Start the stack:
 
 ```bash
 cd Yamore
 docker compose up -d --build
 ```
 
-5. Wait until containers are healthy (first SQL Server image pull can take several minutes).
+6. Wait until containers are healthy (first SQL Server image pull can take several minutes).
 
 **What starts:**
 

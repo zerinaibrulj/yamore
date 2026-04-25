@@ -31,8 +31,7 @@ class _OwnerSettingsTabState extends State<OwnerSettingsTab>
     with WidgetsBindingObserver {
   late final ApiService _api = ApiService(
     baseUrl: widget.authService.baseUrl,
-    username: widget.authService.username,
-    password: widget.authService.password,
+    auth: widget.authService,
   );
 
   late final TextEditingController _firstNameCtrl;
@@ -273,8 +272,9 @@ class _OwnerSettingsTabState extends State<OwnerSettingsTab>
     super.dispose();
   }
 
-  void _logout(BuildContext context) {
-    widget.authService.logout();
+  Future<void> _logout(BuildContext context) async {
+    await widget.authService.logout();
+    if (!context.mounted) return;
     SessionController.instance.clearAuthBinding();
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const LoginScreen()),

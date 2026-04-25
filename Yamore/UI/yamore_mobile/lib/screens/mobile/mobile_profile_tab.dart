@@ -32,8 +32,7 @@ class _MobileProfileTabState extends State<MobileProfileTab>
     with WidgetsBindingObserver {
   late final ApiService _api = ApiService(
     baseUrl: widget.authService.baseUrl,
-    username: widget.authService.username,
-    password: widget.authService.password,
+    auth: widget.authService,
   );
 
   late final TextEditingController _firstNameCtrl;

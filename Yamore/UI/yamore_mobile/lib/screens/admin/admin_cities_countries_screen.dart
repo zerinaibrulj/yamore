@@ -21,8 +21,7 @@ class _AdminCitiesCountriesScreenState extends State<AdminCitiesCountriesScreen>
     with SingleTickerProviderStateMixin {
   late final ApiService _api = ApiService(
     baseUrl: widget.authService.baseUrl,
-    username: widget.authService.username,
-    password: widget.authService.password,
+    auth: widget.authService,
   );
 
   late TabController _tabController;

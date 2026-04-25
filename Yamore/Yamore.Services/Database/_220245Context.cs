@@ -48,6 +48,7 @@ public partial class _220245Context : DbContext
     public virtual DbSet<ServiceCategory> ServiceCategories { get; set; }
     public virtual DbSet<YachtImage> YachtImages { get; set; }
     public virtual DbSet<YachtService> YachtServices { get; set; }
+    public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -325,6 +326,18 @@ public partial class _220245Context : DbContext
             entity.HasKey(e => e.CategoryId).HasName("PK__YachtCat__19093A0B21D26F14");
 
             entity.Property(e => e.Name).HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.ToTable("RefreshTokens");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TokenHash).HasMaxLength(64);
+            entity.HasIndex(e => e.TokenHash);
+            entity.HasIndex(e => e.UserId);
+            entity.HasOne(d => d.User).WithMany()
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<UserRole>()

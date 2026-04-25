@@ -1,12 +1,17 @@
+using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Extensions.Options;
+using Yamore.API.Auth;
 using Yamore.Model;
 using Yamore.Model.Requests.User;
 using Yamore.Model.SearchObjects;
 using Yamore.Services.Interfaces;
+using Yamore.Services.Services;
 
 namespace Yamore.API.Controllers
 {
@@ -16,17 +21,39 @@ namespace Yamore.API.Controllers
     {
         private readonly IUsersService _usersService;
         private readonly IValidator<UserLoginRequest> _loginValidator;
+        private readonly JwtTokenIssuer _jwt;
+        private readonly IOptions<JwtOptions> _jwtOptions;
+        private readonly IRefreshTokenStore _refreshTokens;
+        private readonly IJtiRevocationService _jtiRevocation;
 
-        public UsersController(IUsersService service, IValidator<UserLoginRequest> loginValidator)
+        public UsersController(
+            IUsersService service,
+            IValidator<UserLoginRequest> loginValidator,
+            JwtTokenIssuer jwt,
+            IOptions<JwtOptions> jwtOptions,
+            IRefreshTokenStore refreshTokens,
+            IJtiRevocationService jtiRevocation)
             : base(service)
         {
             _usersService = service;
             _loginValidator = loginValidator;
+            _jwt = jwt;
+            _jwtOptions = jwtOptions;
+            _refreshTokens = refreshTokens;
+            _jtiRevocation = jtiRevocation;
         }
 
         [HttpPut("{id}")]
         public override ActionResult<Model.User> Update(int id, UserUpdateRequest request)
         {
+            if (User?.Identity?.IsAuthenticated == true
+                && int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var selfId)
+                && !User.IsInRole(AppRoles.Admin)
+                && selfId != id)
+            {
+                return Forbid();
+            }
+
             request.OldPassword = string.IsNullOrWhiteSpace(request.OldPassword) ? null : request.OldPassword;
             request.Password = string.IsNullOrWhiteSpace(request.Password) ? null : request.Password;
             request.PasswordConfirmation = string.IsNullOrWhiteSpace(request.PasswordConfirmation) ? null : request.PasswordConfirmation;
@@ -89,23 +116,15 @@ namespace Yamore.API.Controllers
         }
 
 
-        /// <summary>Login. Supports credentials in the query string (Flutter), form fields, or JSON body.</summary>
+        /// <summary>Login — credentials must be sent in the request body (JSON), never the query string.</summary>
         [HttpPost("login")]
         [AllowAnonymous]
-        public async Task<ActionResult<Model.LoginResponseDto>> Login(
-            [FromQuery] string? username,
-            [FromQuery] string? password,
-            [FromForm] string? formUsername,
-            [FromForm] string? formPassword,
-            [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] UserLoginRequest? body)
+        public async Task<ActionResult<Model.LoginResponseDto>> Login([FromBody] UserLoginRequest? body)
         {
-            var u = username?.Trim() ?? formUsername?.Trim() ?? body?.Username?.Trim();
-            var p = password ?? formPassword ?? body?.Password;
-            if (string.IsNullOrEmpty(u) || p is null)
-                return BadRequest(new { error = "username and password are required" });
+            if (body == null || string.IsNullOrWhiteSpace(body.Username) || string.IsNullOrEmpty(body.Password))
+                return BadRequest(new { error = "username and password are required in the request body" });
 
-            var merged = new UserLoginRequest { Username = u, Password = p };
-            var validation = await _loginValidator.ValidateAsync(merged, HttpContext.RequestAborted);
+            var validation = await _loginValidator.ValidateAsync(body, HttpContext.RequestAborted);
             if (!validation.IsValid)
             {
                 var ms = new ModelStateDictionary();
@@ -117,19 +136,70 @@ namespace Yamore.API.Controllers
                 return ValidationProblem(ms);
             }
 
-            var result = _usersService.Login(u, p);
+            var result = _usersService.Login(body.Username!.Trim(), body.Password!);
             if (result == null)
                 return Unauthorized();
-            return Ok(result);
+            return Ok(IssueTokens(result));
+        }
+
+        /// <summary>Exchanges a refresh token for a new access token and refresh token (rotation).</summary>
+        [HttpPost("refresh")]
+        [AllowAnonymous]
+        public ActionResult<Model.LoginResponseDto> Refresh([FromBody] TokenRefreshRequest? request)
+        {
+            if (request is null || string.IsNullOrWhiteSpace(request.RefreshToken))
+                return BadRequest(new { error = "RefreshToken is required" });
+
+            var uNow = DateTime.UtcNow;
+            var userId = _refreshTokens.GetValidUserIdIfActive(request.RefreshToken, uNow);
+            if (userId is null)
+                return Unauthorized();
+            _refreshTokens.RevokeByRaw(request.RefreshToken, uNow);
+
+            var u = _usersService.GetById(userId.Value);
+            if (u == null)
+                return Unauthorized();
+            var dto = MapToLoginResponse(u);
+            if (u.Status is false)
+                return Unauthorized();
+            return Ok(IssueTokens(dto));
+        }
+
+        /// <summary>Revokes the current access token (JTI) and the supplied refresh token server-side.</summary>
+        [HttpPost("revoke")]
+        [Authorize]
+        public IActionResult Revoke([FromBody] LogoutRequest? request)
+        {
+            if (!TryGetBearerToken(Request, out _, out var jwt) || jwt is null)
+            {
+                return BadRequest("Missing or invalid access token in Authorization header.");
+            }
+
+            var jti = jwt.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Jti)?.Value
+                ?? jwt.Payload.Jti;
+            if (string.IsNullOrEmpty(jti))
+            {
+                return BadRequest("Access token is missing a JTI for revocation.");
+            }
+
+            _jtiRevocation.Revoke(jti, new DateTimeOffset(jwt.ValidTo, TimeSpan.Zero));
+
+            if (request is { RefreshToken: { } r } && r.Length > 0)
+            {
+                _refreshTokens.RevokeByRaw(r, DateTime.UtcNow);
+            }
+
+            return NoContent();
         }
 
         [HttpPost("register")]
         [AllowAnonymous]
-        public ActionResult<Model.User> Register([FromBody] UserInsertRequest request)
+        public ActionResult<Model.LoginResponseDto> Register([FromBody] UserInsertRequest request)
         {
             var user = _usersService.Register(request);
+            var full = _usersService.GetById(user.UserId) ?? user;
             Response.Headers["X-Operation-Message"] = "Registration successful.";
-            return Ok(user);
+            return Ok(IssueTokens(MapToLoginResponse(full)));
         }
 
         [HttpGet("owners")]
@@ -183,6 +253,80 @@ namespace Yamore.API.Controllers
             };
             var result = _usersService.Update(id, update);
             return Ok(result);
+        }
+
+        private static bool TryGetBearerToken(
+            Microsoft.AspNetCore.Http.HttpRequest request,
+            out string raw,
+            out JwtSecurityToken? token)
+        {
+            raw = string.Empty;
+            token = null;
+            if (!request.Headers.TryGetValue("Authorization", out var h))
+            {
+                return false;
+            }
+
+            var v = h.ToString();
+            if (!v.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            raw = v["Bearer ".Length..].Trim();
+            if (string.IsNullOrEmpty(raw))
+            {
+                return false;
+            }
+
+            try
+            {
+                var handler = new JwtSecurityTokenHandler();
+                token = handler.ReadJwtToken(raw);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static LoginResponseDto MapToLoginResponse(Model.User u)
+        {
+            var roles = u.UserRoles?
+                .Select(ur => ur.Role?.Name)
+                .Where(n => !string.IsNullOrEmpty(n))
+                .Cast<string>()
+                .Distinct()
+                .ToList() ?? new List<string>();
+            return new LoginResponseDto
+            {
+                UserId = u.UserId,
+                FirstName = u.FirstName,
+                LastName = u.LastName,
+                Email = u.Email,
+                Phone = u.Phone,
+                Username = u.Username,
+                Status = u.Status,
+                Roles = roles,
+            };
+        }
+
+        private LoginResponseDto IssueTokens(LoginResponseDto d)
+        {
+            var (a, _, exp) = _jwt.CreateAccess(d);
+            d.AccessToken = a;
+            d.AccessTokenExpiresIn = exp;
+            d.TokenType = "Bearer";
+            var days = _jwtOptions.Value.RefreshTokenDays;
+            if (days < 1)
+            {
+                days = 14;
+            }
+
+            var (raw, _) = _refreshTokens.Create(d.UserId, TimeSpan.FromDays(days), DateTime.UtcNow);
+            d.RefreshToken = raw;
+            return d;
         }
     }
 }

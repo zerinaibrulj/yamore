@@ -33,12 +33,5 @@ namespace Yamore.API.Controllers
         {
             return base.Insert(request);
         }
-
-        /// <summary>Anonymous listing for browse and booking flows.</summary>
-        [AllowAnonymous]
-        public override PagedResponse<YachtCategory> GetPaged([FromQuery] YachtCategorySearchObject search)
-        {
-            return base.GetPaged(search);
-        }
     }
 }

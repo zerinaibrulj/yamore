@@ -81,7 +81,6 @@ public static class DemoDataSeeder
 
         static User MakeUser(string username, string email, string first, string last)
         {
-            var salt = UsersService.GenerateSalt();
             return new User
             {
                 Username = username,
@@ -90,8 +89,8 @@ public static class DemoDataSeeder
                 LastName = last,
                 Phone = null,
                 Status = true,
-                PasswordSalt = salt,
-                PasswordHash = UsersService.GenerateHash(salt, DemoPassword),
+                PasswordSalt = string.Empty,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(DemoPassword, workFactor: 11),
             };
         }
 

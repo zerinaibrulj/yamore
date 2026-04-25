@@ -18,8 +18,7 @@ class OwnerServicesTab extends StatefulWidget {
 class _OwnerServicesTabState extends State<OwnerServicesTab> {
   late final ApiService _api = ApiService(
     baseUrl: widget.authService.baseUrl,
-    username: widget.authService.username,
-    password: widget.authService.password,
+    auth: widget.authService,
   );
 
   List<ServiceModel> _services = [];

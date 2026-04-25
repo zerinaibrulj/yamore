@@ -70,4 +70,18 @@ class AppUser {
       roles: roles,
     );
   }
+
+  /// Serializes the profile fields (no token fields) for [SharedPreferences] restore.
+  Map<String, dynamic> toJson() {
+    return {
+      'userId': userId,
+      'firstName': firstName,
+      'lastName': lastName,
+      'email': email,
+      'phone': phone,
+      'username': username,
+      'status': status,
+      'roles': roles,
+    };
+  }
 }

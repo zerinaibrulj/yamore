@@ -21,8 +21,7 @@ class _AdminServicesScreenState extends State<AdminServicesScreen>
     with SingleTickerProviderStateMixin {
   late final ApiService _api = ApiService(
     baseUrl: widget.authService.baseUrl,
-    username: widget.authService.username,
-    password: widget.authService.password,
+    auth: widget.authService,
   );
 
   late final TabController _tabController;

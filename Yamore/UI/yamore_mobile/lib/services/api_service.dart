@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import 'api_exception.dart';
 import 'api_response_handler.dart';
+import 'auth_service.dart';
 import '../utils/payment_platform.dart';
 import '../models/yacht_overview.dart';
 import '../models/yacht_detail.dart';
@@ -28,33 +29,33 @@ export 'api_exception.dart';
 
 class ApiService {
   final String baseUrl;
-  final String? username;
-  final String? password;
+  final AuthService? auth;
 
   ApiService({
     required this.baseUrl,
-    this.username,
-    this.password,
+    this.auth,
   });
 
-  Map<String, String> get authHeaders {
-    final headers = <String, String>{};
-    if (username != null && password != null && username!.isNotEmpty) {
-      final credentials = base64Encode(utf8.encode('$username:$password'));
-      headers['Authorization'] = 'Basic $credentials';
+  /// Synchronous; current access token. Call [AuthService.ensureValidAccess] before
+  /// loading images that require auth, if the session was idle a long time.
+  Map<String, String> get authHeaders => auth?.authHeaders ?? const {};
+
+  Future<Map<String, String>> _httpHeaders() async {
+    if (auth != null) {
+      await auth!.ensureValidAccess();
     }
-    return headers;
+    return _baseHeaders();
   }
 
-  Map<String, String> get _headers {
+  Map<String, String> _baseHeaders() {
     final headers = <String, String>{
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       'X-Yamore-Client': yamoreClientKindHeaderValue,
     };
-    if (username != null && password != null && username!.isNotEmpty) {
-      final credentials = base64Encode(utf8.encode('$username:$password'));
-      headers['Authorization'] = 'Basic $credentials';
+    final t = auth?.accessToken;
+    if (t != null && t.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $t';
     }
     return headers;
   }
@@ -88,7 +89,7 @@ class ApiService {
     }
     final uri = Uri.parse('$baseUrl/Yachts/admin/overview')
         .replace(queryParameters: query.isNotEmpty ? query : null);
-    final response = await http.get(uri, headers: _headers);
+    final response = await http.get(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
     return PagedYachtOverview.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
@@ -104,14 +105,14 @@ class ApiService {
     if (pageSize != null) query['PageSize'] = pageSize.toString();
     final uri = Uri.parse('$baseUrl/Yachts/owner/my')
         .replace(queryParameters: query.isNotEmpty ? query : null);
-    final response = await http.get(uri, headers: _headers);
+    final response = await http.get(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
     return PagedYachtOverview.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
   }
 
-  /// Personalized yacht recommendations (content-based + collaborative). Pass [userId] when logged in, or null for anonymous/popular.
+  /// Personalized recommendations; the API uses the JWT (non-admins cannot target another [userId]).
   Future<PagedYachtOverview> getRecommendations({
     int? userId,
     int page = 0,
@@ -121,10 +122,12 @@ class ApiService {
       'page': page.toString(),
       'pageSize': pageSize.toString(),
     };
-    if (userId != null) query['userId'] = userId.toString();
+    if (userId != null) {
+      query['userId'] = userId.toString();
+    }
     final uri = Uri.parse('$baseUrl/Yachts/recommendations')
         .replace(queryParameters: query);
-    final response = await http.get(uri, headers: _headers);
+    final response = await http.get(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
     return PagedYachtOverview.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
@@ -133,7 +136,7 @@ class ApiService {
 
   Future<YachtDetail> getYachtById(int id) async {
     final uri = Uri.parse('$baseUrl/Yachts/$id');
-    final response = await http.get(uri, headers: _headers);
+    final response = await http.get(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
     return YachtDetail.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
@@ -144,7 +147,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Yachts');
     final response = await http.post(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode(yacht.toJsonForSave()),
     );
     _ensureSuccess(response, allow201: true);
@@ -160,7 +163,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Yachts/${yacht.yachtId}');
     final response = await http.put(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode(yacht.toJsonForSave()),
     );
     _ensureSuccess(response);
@@ -171,28 +174,28 @@ class ApiService {
 
   Future<void> deleteYacht(int id) async {
     final uri = Uri.parse('$baseUrl/Yachts/$id');
-    final response = await http.delete(uri, headers: _headers);
+    final response = await http.delete(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
   }
 
   /// Move yacht to active (visible to users). Allowed from draft.
   Future<void> activateYacht(int id) async {
     final uri = Uri.parse('$baseUrl/Yachts/$id/activate');
-    final response = await http.put(uri, headers: _headers, body: '{}');
+    final response = await http.put(uri, headers: await _httpHeaders(), body: '{}');
     _ensureSuccess(response);
   }
 
   /// Move yacht to hidden (not visible). Allowed from draft or active.
   Future<void> hideYacht(int id) async {
     final uri = Uri.parse('$baseUrl/Yachts/$id/hide');
-    final response = await http.put(uri, headers: _headers, body: '{}');
+    final response = await http.put(uri, headers: await _httpHeaders(), body: '{}');
     _ensureSuccess(response);
   }
 
   /// Move yacht from hidden back to draft. Allowed from hidden only.
   Future<void> setYachtToDraft(int id) async {
     final uri = Uri.parse('$baseUrl/Yachts/$id/edit');
-    final response = await http.put(uri, headers: _headers, body: '{}');
+    final response = await http.put(uri, headers: await _httpHeaders(), body: '{}');
     _ensureSuccess(response);
   }
 
@@ -211,7 +214,7 @@ class ApiService {
       q['NameGTE'] = t;
     }
     final uri = Uri.parse('$baseUrl/City').replace(queryParameters: q);
-    final response = await http.get(uri, headers: _headers);
+    final response = await http.get(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
     return PagedCities.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
@@ -243,7 +246,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/City');
     final response = await http.post(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({'CountryId': countryId, 'Name': name}),
     );
     _ensureSuccess(response, allow201: true);
@@ -253,7 +256,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/City/$id');
     final response = await http.put(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({'CountryId': countryId, 'Name': name}),
     );
     _ensureSuccess(response);
@@ -261,7 +264,7 @@ class ApiService {
 
   Future<void> deleteCity(int id) async {
     final uri = Uri.parse('$baseUrl/City/$id');
-    final response = await http.delete(uri, headers: _headers);
+    final response = await http.delete(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
   }
 
@@ -280,7 +283,7 @@ class ApiService {
       q['NameGTE'] = t;
     }
     final uri = Uri.parse('$baseUrl/Country').replace(queryParameters: q);
-    final response = await http.get(uri, headers: _headers);
+    final response = await http.get(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
     return PagedCountries.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
@@ -312,7 +315,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Country');
     final response = await http.post(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({'Name': name}),
     );
     _ensureSuccess(response, allow201: true);
@@ -322,7 +325,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Country/$id');
     final response = await http.put(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({'Name': name}),
     );
     _ensureSuccess(response);
@@ -330,7 +333,7 @@ class ApiService {
 
   Future<void> deleteCountry(int id) async {
     final uri = Uri.parse('$baseUrl/Country/$id');
-    final response = await http.delete(uri, headers: _headers);
+    final response = await http.delete(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
   }
 
@@ -341,7 +344,7 @@ class ApiService {
         'PageSize': '100',
       },
     );
-    final response = await http.get(uri, headers: _headers);
+    final response = await http.get(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final list = json['resultList'] as List<dynamic>? ?? [];
@@ -354,7 +357,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/YachtCategory');
     final response = await http.post(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({'Name': name}),
     );
     _ensureSuccess(response, allow201: true);
@@ -364,7 +367,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/YachtCategory/$id');
     final response = await http.put(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({'Name': name}),
     );
     _ensureSuccess(response);
@@ -372,7 +375,7 @@ class ApiService {
 
   Future<void> deleteYachtCategory(int id) async {
     final uri = Uri.parse('$baseUrl/YachtCategory/$id');
-    final response = await http.delete(uri, headers: _headers);
+    final response = await http.delete(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
   }
 
@@ -388,7 +391,7 @@ class ApiService {
           'PageSize': pageSize.toString(),
         },
       );
-      final response = await http.get(uri, headers: _headers);
+      final response = await http.get(uri, headers: await _httpHeaders());
       _ensureSuccess(response);
       final json = jsonDecode(response.body) as Map<String, dynamic>;
       final list = json['resultList'] as List<dynamic>? ?? [];
@@ -408,7 +411,7 @@ class ApiService {
       queryParameters:
           year != null ? <String, String>{'year': year.toString()} : null,
     );
-    final response = await http.get(uri, headers: _headers);
+    final response = await http.get(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
     return StatisticsDtoModel.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
@@ -439,7 +442,7 @@ class ApiService {
 
     final uri = Uri.parse('$baseUrl/Users')
         .replace(queryParameters: query.isNotEmpty ? query : null);
-    final response = await http.get(uri, headers: _headers);
+    final response = await http.get(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
     return PagedUsers.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
@@ -472,7 +475,7 @@ class ApiService {
     }
     final response = await http.post(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode(body),
     );
     _ensureSuccess(response, allow201: true);
@@ -506,7 +509,7 @@ class ApiService {
     }
     final response = await http.put(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode(body),
     );
     _ensureSuccess(response);
@@ -517,19 +520,19 @@ class ApiService {
 
   Future<void> deleteUser(int id) async {
     final uri = Uri.parse('$baseUrl/Users/$id');
-    final response = await http.delete(uri, headers: _headers);
+    final response = await http.delete(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
   }
 
   Future<void> suspendUser(int id) async {
     final uri = Uri.parse('$baseUrl/Users/$id/suspend');
-    final response = await http.put(uri, headers: _headers);
+    final response = await http.put(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
   }
 
   Future<void> activateUser(int id) async {
     final uri = Uri.parse('$baseUrl/Users/$id/activate');
-    final response = await http.put(uri, headers: _headers);
+    final response = await http.put(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
   }
 
@@ -551,7 +554,7 @@ class ApiService {
     }
     final response = await http.put(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode(body),
     );
     _ensureSuccess(response);
@@ -582,7 +585,7 @@ class ApiService {
     }
     final response = await http.put(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode(body),
     );
     _ensureSuccess(response);
@@ -593,7 +596,7 @@ class ApiService {
 
   Future<AppUser> getUserById(int id) async {
     final uri = Uri.parse('$baseUrl/Users/$id');
-    final response = await http.get(uri, headers: _headers);
+    final response = await http.get(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
     return AppUser.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
@@ -604,7 +607,7 @@ class ApiService {
     final stopwatch = Stopwatch()..start();
     final uri = Uri.parse('$baseUrl/Yachts/admin/overview')
         .replace(queryParameters: {'Page': '0', 'PageSize': '1'});
-    final response = await http.get(uri, headers: _headers).timeout(
+    final response = await http.get(uri, headers: await _httpHeaders()).timeout(
       const Duration(seconds: 10),
       onTimeout: () => throw ApiException(0, 'Connection timed out after 10 seconds.'),
     );
@@ -626,7 +629,7 @@ class ApiService {
           'PageSize': pageSize.toString(),
         },
       );
-      final response = await http.get(uri, headers: _headers);
+      final response = await http.get(uri, headers: await _httpHeaders());
       _ensureSuccess(response);
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
       final list = (decoded['resultList'] ?? decoded['ResultList'] ?? [])
@@ -658,7 +661,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/YachtImages/upload/$yachtId');
     final response = await http.post(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({
         'ImageDataBase64': base64Data,
         'ContentType': contentType,
@@ -673,13 +676,13 @@ class ApiService {
 
   Future<void> deleteYachtImage(int imageId) async {
     final uri = Uri.parse('$baseUrl/YachtImages/$imageId');
-    final response = await http.delete(uri, headers: _headers);
+    final response = await http.delete(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
   }
 
   Future<void> setYachtImageThumbnail(int imageId) async {
     final uri = Uri.parse('$baseUrl/YachtImages/$imageId/thumbnail');
-    final response = await http.put(uri, headers: _headers);
+    final response = await http.put(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
   }
 
@@ -691,7 +694,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Notification');
     final response = await http.post(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({
         'UserId': userId,
         'Title': title ?? 'Yamore',
@@ -705,7 +708,7 @@ class ApiService {
 
   Future<void> markNotificationRead(int notificationId) async {
     final uri = Uri.parse('$baseUrl/Notification/$notificationId/mark-read');
-    final response = await http.put(uri, headers: _headers);
+    final response = await http.put(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
   }
 
@@ -736,7 +739,7 @@ class ApiService {
       q['CreatedTo'] = createdTo.toUtc().toIso8601String();
     }
     final uri = Uri.parse('$baseUrl/news').replace(queryParameters: q);
-    final response = await http.get(uri, headers: _headers);
+    final response = await http.get(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
     return PagedNewsItems.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
@@ -756,7 +759,7 @@ class ApiService {
     };
     final response = await http.post(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode(body),
     );
     _ensureSuccess(response, allow201: true);
@@ -767,7 +770,7 @@ class ApiService {
 
   Future<void> deleteNews(int newsId) async {
     final uri = Uri.parse('$baseUrl/news/$newsId');
-    final response = await http.delete(uri, headers: _headers);
+    final response = await http.delete(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
   }
 
@@ -778,7 +781,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Notification/warning-to-user-and-owners');
     final response = await http.post(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({
         'UserId': userId,
         'Message': message,
@@ -806,7 +809,7 @@ class ApiService {
       queryParameters: query,
     );
 
-    final response = await http.get(uri, headers: _headers);
+    final response = await http.get(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
 
     return PagedNotifications.fromJson(
@@ -829,7 +832,7 @@ class ApiService {
     if (isReported != null) query['IsReported'] = isReported.toString();
     final uri = Uri.parse('$baseUrl/Review')
         .replace(queryParameters: query.isNotEmpty ? query : null);
-    final response = await http.get(uri, headers: _headers);
+    final response = await http.get(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
     return PagedReviews.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
@@ -846,7 +849,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Review');
     final response = await http.post(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({
         'ReservationId': reservationId,
         'UserId': userId,
@@ -873,7 +876,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Review/$reviewId');
     final response = await http.put(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({
         'ReservationId': reservationId,
         'UserId': userId,
@@ -891,19 +894,19 @@ class ApiService {
 
   Future<void> deleteReview(int id) async {
     final uri = Uri.parse('$baseUrl/Review/$id');
-    final response = await http.delete(uri, headers: _headers);
+    final response = await http.delete(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
   }
 
   Future<void> reportReview(int id) async {
     final uri = Uri.parse('$baseUrl/Review/$id/report');
-    final response = await http.put(uri, headers: _headers);
+    final response = await http.put(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
   }
 
   Future<void> unreportReview(int id) async {
     final uri = Uri.parse('$baseUrl/Review/$id/unreport');
-    final response = await http.put(uri, headers: _headers);
+    final response = await http.put(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
   }
 
@@ -911,7 +914,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Review/$id/respond');
     final response = await http.put(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({'OwnerResponse': ownerResponse}),
     );
     _ensureSuccess(response);
@@ -929,7 +932,7 @@ class ApiService {
     if (pageSize != null) query['PageSize'] = pageSize.toString();
     final uri = Uri.parse('$baseUrl/YachtAvailability')
         .replace(queryParameters: query);
-    final response = await http.get(uri, headers: _headers);
+    final response = await http.get(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
     return PagedYachtAvailabilities.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
@@ -946,7 +949,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/YachtAvailability');
     final response = await http.post(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({
         'YachtId': yachtId,
         'StartDate': startDate.toUtc().toIso8601String(),
@@ -960,14 +963,14 @@ class ApiService {
 
   Future<void> deleteYachtAvailability(int id) async {
     final uri = Uri.parse('$baseUrl/YachtAvailability/$id');
-    final response = await http.delete(uri, headers: _headers);
+    final response = await http.delete(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
   }
 
   Future<List<int>> getYachtServiceIds(int yachtId) async {
     final uri = Uri.parse('$baseUrl/YachtService')
         .replace(queryParameters: {'YachtId': yachtId.toString(), 'PageSize': '200'});
-    final response = await http.get(uri, headers: _headers);
+    final response = await http.get(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final list = (json['resultList'] ?? json['ResultList'] ?? []) as List;
@@ -978,7 +981,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/YachtService');
     final response = await http.post(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({'YachtId': yachtId, 'ServiceId': serviceId}),
     );
     _ensureSuccess(response, allow201: true);
@@ -987,14 +990,14 @@ class ApiService {
   Future<void> removeYachtService({required int yachtId, required int serviceId}) async {
     final uri = Uri.parse('$baseUrl/YachtService')
         .replace(queryParameters: {'YachtId': yachtId.toString(), 'ServiceId': serviceId.toString(), 'PageSize': '1'});
-    final response = await http.get(uri, headers: _headers);
+    final response = await http.get(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final list = (json['resultList'] ?? json['ResultList'] ?? []) as List;
     if (list.isEmpty) return;
     final ysId = list.first['yachtServiceId'] as int;
     final delUri = Uri.parse('$baseUrl/YachtService/$ysId');
-    final delResp = await http.delete(delUri, headers: _headers);
+    final delResp = await http.delete(delUri, headers: await _httpHeaders());
     _ensureSuccess(delResp);
   }
 
@@ -1009,7 +1012,7 @@ class ApiService {
     if (name != null && name.isNotEmpty) query['Name'] = name;
     final uri = Uri.parse('$baseUrl/ServiceCategory')
         .replace(queryParameters: query.isNotEmpty ? query : null);
-    final response = await http.get(uri, headers: _headers);
+    final response = await http.get(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
     return PagedServiceCategories.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
@@ -1023,7 +1026,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/ServiceCategory');
     final response = await http.post(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({
         'Name': name,
         'Description': description,
@@ -1036,7 +1039,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/ServiceCategory/$id');
     final response = await http.put(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({
         'Name': name,
         'Description': description,
@@ -1047,7 +1050,7 @@ class ApiService {
 
   Future<void> deleteServiceCategory(int id) async {
     final uri = Uri.parse('$baseUrl/ServiceCategory/$id');
-    final response = await http.delete(uri, headers: _headers);
+    final response = await http.delete(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
   }
 
@@ -1062,7 +1065,7 @@ class ApiService {
     if (nameGTE != null && nameGTE.isNotEmpty) query['NameGTE'] = nameGTE;
     final uri = Uri.parse('$baseUrl/Service')
         .replace(queryParameters: query.isNotEmpty ? query : null);
-    final response = await http.get(uri, headers: _headers);
+    final response = await http.get(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
     return PagedServices.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
@@ -1078,7 +1081,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Service');
     final response = await http.post(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({
         'Name': name,
         'Description': description,
@@ -1098,7 +1101,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Service/$id');
     final response = await http.put(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({
         'Name': name,
         'Description': description,
@@ -1111,7 +1114,7 @@ class ApiService {
 
   Future<void> deleteService(int id) async {
     final uri = Uri.parse('$baseUrl/Service/$id');
-    final response = await http.delete(uri, headers: _headers);
+    final response = await http.delete(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
   }
 
@@ -1130,7 +1133,7 @@ class ApiService {
     if (status != null && status.isNotEmpty) query['Status'] = status;
     final uri = Uri.parse('$baseUrl/Reservation')
         .replace(queryParameters: query.isNotEmpty ? query : null);
-    final response = await http.get(uri, headers: _headers);
+    final response = await http.get(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
     return PagedReservations.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
@@ -1145,7 +1148,7 @@ class ApiService {
         'YachtId': yachtId.toString(),
       },
     );
-    final response = await http.get(uri, headers: _headers);
+    final response = await http.get(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final list = (json['resultList'] ?? json['ResultList'] ?? []) as List;
@@ -1163,7 +1166,7 @@ class ApiService {
     if (pageSize != null) query['PageSize'] = pageSize.toString();
     final uri = Uri.parse('$baseUrl/Route')
         .replace(queryParameters: query.isNotEmpty ? query : null);
-    final response = await http.get(uri, headers: _headers);
+    final response = await http.get(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final list = (json['resultList'] ?? json['ResultList'] ?? []) as List;
@@ -1182,7 +1185,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Route');
     final response = await http.post(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({
         'YachtId': yachtId,
         'StartCityId': startCityId,
@@ -1208,7 +1211,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Route/$routeId');
     final response = await http.put(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({
         'YachtId': yachtId,
         'StartCityId': startCityId,
@@ -1225,7 +1228,7 @@ class ApiService {
 
   Future<void> deleteRoute(int routeId) async {
     final uri = Uri.parse('$baseUrl/Route/$routeId');
-    final response = await http.delete(uri, headers: _headers);
+    final response = await http.delete(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
   }
 
@@ -1250,7 +1253,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/WeatherForecast').replace(
       queryParameters: query,
     );
-    final response = await http.get(uri, headers: _headers);
+    final response = await http.get(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final list = (json['resultList'] ?? json['ResultList'] ?? []) as List;
@@ -1278,7 +1281,7 @@ class ApiService {
     }
     final uri = Uri.parse('$baseUrl/WeatherForecast')
         .replace(queryParameters: query.isNotEmpty ? query : null);
-    final response = await http.get(uri, headers: _headers);
+    final response = await http.get(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final list = (json['resultList'] ?? json['ResultList'] ?? []) as List;
@@ -1297,7 +1300,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/WeatherForecast');
     final response = await http.post(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({
         'RouteId': routeId,
         'ForecastDate': _weatherForecastDateToJson(forecastDate),
@@ -1323,7 +1326,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/WeatherForecast/$forecastId');
     final response = await http.put(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({
         'RouteId': routeId,
         'ForecastDate': _weatherForecastDateToJson(forecastDate),
@@ -1357,7 +1360,7 @@ class ApiService {
 
   Future<void> deleteWeatherForecast(int forecastId) async {
     final uri = Uri.parse('$baseUrl/WeatherForecast/$forecastId');
-    final response = await http.delete(uri, headers: _headers);
+    final response = await http.delete(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
   }
 
@@ -1372,7 +1375,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Reservation');
     final response = await http.post(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({
         'UserId': userId,
         'YachtId': yachtId,
@@ -1393,7 +1396,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Reservation/$id/cancel');
     final response = await http.put(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({'reason': reason}),
     );
     _ensureSuccess(response);
@@ -1423,7 +1426,7 @@ class ApiService {
   /// Marks a confirmed reservation completed after the trip end time (API enforces rules).
   Future<void> completeReservation(int id) async {
     final uri = Uri.parse('$baseUrl/Reservation/$id/complete');
-    final response = await http.put(uri, headers: _headers, body: '{}');
+    final response = await http.put(uri, headers: await _httpHeaders(), body: '{}');
     _ensureSuccess(response);
   }
 
@@ -1432,7 +1435,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Reservation/$id/reject');
     final response = await http.put(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({'reason': reason}),
     );
     _ensureSuccess(response);
@@ -1440,7 +1443,7 @@ class ApiService {
 
   Future<void> confirmReservation(int id) async {
     final uri = Uri.parse('$baseUrl/Reservation/$id/confirm');
-    final response = await http.put(uri, headers: _headers, body: '{}');
+    final response = await http.put(uri, headers: await _httpHeaders(), body: '{}');
     _ensureSuccess(response);
   }
 
@@ -1451,7 +1454,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/ReservationService');
     final response = await http.post(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({
         'ReservationId': reservationId,
         'ServiceId': serviceId,
@@ -1463,7 +1466,7 @@ class ApiService {
   /// Fetches Stripe publishable key (endpoint is AllowAnonymous). Use to init Stripe SDK.
   Future<String> getStripePublishableKey() async {
     final uri = Uri.parse('$baseUrl/Payment/stripe-config');
-    final response = await http.get(uri, headers: _headers);
+    final response = await http.get(uri, headers: await _httpHeaders());
     if (response.statusCode != 200) return '';
     final map = jsonDecode(response.body) as Map<String, dynamic>;
     return (map['publishableKey'] ?? map['PublishableKey'] ?? '') as String;
@@ -1480,7 +1483,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Payment/prepare-card-booking');
     final response = await http.post(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({
         'userId': userId,
         'UserId': userId,
@@ -1511,7 +1514,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/Payment/create-intent');
     final response = await http.post(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode({
         'reservationId': reservationId,
         'ReservationId': reservationId,
@@ -1549,7 +1552,7 @@ class ApiService {
     }
     final response = await http.post(
       uri,
-      headers: _headers,
+      headers: await _httpHeaders(),
       body: jsonEncode(body),
     );
     _ensureSuccess(response);
