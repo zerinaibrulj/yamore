@@ -18,4 +18,4 @@ Client for Yamore: admin/desktop and mobile flows.
   flutter build apk --dart-define=API_BASE_URL=https://your-api.example.com
   ```
 
-Full stack (Docker, ports, login credentials): **[../../../README.md](../../../README.md)** (repository root).
+Full stack (Docker, database `.bak`, ports, configuration): **[../../../README.md](../../../README.md)** (repository root).
