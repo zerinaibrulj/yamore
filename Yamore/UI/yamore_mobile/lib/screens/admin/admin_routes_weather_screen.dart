@@ -21,6 +21,10 @@ class AdminRoutesWeatherScreen extends StatefulWidget {
 }
 
 class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
+  /// Same default height as [UserNotificationsInbox.listMaxHeight] for a matching scroll feel.
+  static const double _kInboxListHeight = 360;
+  static const double _kWideLayoutMinWidth = 900;
+
   late final ApiService _api = ApiService(
     baseUrl: widget.authService.baseUrl,
     username: widget.authService.username,
@@ -45,11 +49,14 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
     _loadAll();
   }
 
-  Future<void> _loadAll() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  /// When [silent] is true, keeps the current body visible (e.g. pull-to-refresh).
+  Future<void> _loadAll({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
     try {
       final results = await Future.wait([
         _api.getRoutes(page: 0, pageSize: 200),
@@ -89,6 +96,7 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
       }
       if (!mounted) return;
       setState(() {
+        _error = null;
         _routes = availableRoutes;
         _cities = cities;
         _yachts = yachts;
@@ -101,13 +109,13 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
                 ? _reservationContextsForSelectedRoute.first
                 : null);
         _forecasts = forecasts;
-        _loading = false;
+        if (!silent) _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _error = 'Failed to load data: $e';
-        _loading = false;
+        if (!silent) _loading = false;
       });
     }
   }
@@ -204,26 +212,53 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
       );
     }
 
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(child: _buildRoutesCard()),
-          const SizedBox(width: 24),
-          Expanded(child: _buildWeatherCard()),
-        ],
-      ),
+    return LayoutBuilder(
+      builder: (context, outerConstraints) {
+        final isNarrow = outerConstraints.maxWidth < _kWideLayoutMinWidth;
+        return RefreshIndicator(
+          onRefresh: () => _loadAll(silent: true),
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: outerConstraints.maxHeight),
+                  child: isNarrow
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildRoutesCard(),
+                            const SizedBox(height: 16),
+                            _buildWeatherCard(),
+                          ],
+                        )
+                      : Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: _buildRoutesCard()),
+                            const SizedBox(width: 24),
+                            Expanded(child: _buildWeatherCard()),
+                          ],
+                        ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
   Widget _buildRoutesCard() {
     return Card(
-      elevation: 2,
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -263,8 +298,10 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
                 style: const TextStyle(fontSize: 13),
               )
             else
-              Expanded(
+              SizedBox(
+                height: _kInboxListHeight,
                 child: ListView.separated(
+                  primary: false,
                   itemCount: _routes.length,
                   separatorBuilder: (_, __) => const Divider(),
                   itemBuilder: (context, index) {
@@ -328,19 +365,23 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
           'Weather – route: ${startCity?.name ?? 'City ${route.startCityId}'} → ${endCity?.name ?? 'City ${route.endCityId}'}';
     }
     return Card(
-      elevation: 2,
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w700),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
                 ),
                 FilledButton.icon(
                   onPressed: route == null
@@ -361,7 +402,7 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
             ],
             if (route == null)
               const Text(
-                'Select a route on the left to manage forecasts.',
+                'Select a route to manage forecasts.',
                 style: TextStyle(fontSize: 13),
               )
             else if (_forecasts.isEmpty)
@@ -370,8 +411,10 @@ class _AdminRoutesWeatherScreenState extends State<AdminRoutesWeatherScreen> {
                 style: TextStyle(fontSize: 13),
               )
             else
-              Expanded(
+              SizedBox(
+                height: _kInboxListHeight,
                 child: ListView.separated(
+                  primary: false,
                   itemCount: _forecasts.length,
                   separatorBuilder: (_, __) => const Divider(),
                   itemBuilder: (context, index) {
