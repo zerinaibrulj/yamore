@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../utils/payment_platform.dart';
 import '../../models/user.dart';
 import '../../models/yacht_overview.dart';
 import '../../models/service_model.dart';
@@ -39,6 +40,14 @@ class _MobileBookingPaymentScreenState
     extends State<MobileBookingPaymentScreen> {
   String _paymentMethod = 'card';
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!isStripeCardPaymentAvailable) {
+      _paymentMethod = 'cash';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -182,15 +191,50 @@ class _MobileBookingPaymentScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (!isStripeCardPaymentAvailable) ...[
+              Semantics(
+                liveRegion: true,
+                child: Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  color: Colors.amber.shade50,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.amber.shade200),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.info_outline, size: 22, color: Colors.amber.shade900),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Text(
+                            'Stripe payment is not available on desktop. Please choose Pay on arrival (Cash) to complete your booking, or use the Yamore app on an iOS or Android phone to pay by card.',
+                            style: TextStyle(fontSize: 13, height: 1.35),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
             const Text(
               'Please select your preferred payment method',
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
-            Text(
-              'Card payments are secure and powered by Stripe.',
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-            ),
+            if (isStripeCardPaymentAvailable)
+              Text(
+                'Card payments are secure and powered by Stripe.',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              )
+            else
+              Text(
+                'On this device, card checkout is not offered — please select Pay on arrival below.',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontStyle: FontStyle.italic),
+              ),
             const SizedBox(height: 12),
             RadioListTile<String>(
               value: 'card',
@@ -203,8 +247,15 @@ class _MobileBookingPaymentScreenState
                   Text('Credit/Debit card (Stripe)'),
                 ],
               ),
-              subtitle: const Text('Pay now – secure online payment', style: TextStyle(fontSize: 12)),
-              onChanged: (v) => setState(() => _paymentMethod = v!),
+              subtitle: Text(
+                isStripeCardPaymentAvailable
+                    ? 'Pay now – secure online payment'
+                    : 'Only in the iOS or Android app',
+                style: const TextStyle(fontSize: 12),
+              ),
+              onChanged: isStripeCardPaymentAvailable
+                  ? (v) => setState(() => _paymentMethod = v!)
+                  : null,
             ),
             RadioListTile<String>(
               value: 'cash',

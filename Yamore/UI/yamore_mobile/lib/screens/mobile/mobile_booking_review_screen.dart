@@ -7,6 +7,7 @@ import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../models/service_model.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/payment_platform.dart';
 import '../../utils/yamore_service_icon.dart';
 import 'mobile_shell.dart';
 
@@ -364,6 +365,27 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
     final end = widget.endDateTime;
     try {
       final isCard = widget.paymentMethod == 'card';
+      if (isCard && !isStripeCardPaymentAvailable) {
+        if (!mounted) return;
+        setState(() => _saving = false);
+        if (!mounted) return;
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Stripe not available here'),
+            content: const Text(
+              'Stripe payment is not available on desktop. Please go back and choose Pay on arrival (Cash), or use the Yamore app on an iOS or Android phone to pay by card.',
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
       String offlineMethod = 'Cash';
       if (isCard) {
         final intentResult = await widget.api.prepareCardBooking(

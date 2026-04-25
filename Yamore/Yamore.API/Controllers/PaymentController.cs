@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,6 +25,25 @@ namespace Yamore.API.Controllers
             _paymentWorkflow = paymentWorkflow;
         }
 
+        private const string YamoreClientHeader = "X-Yamore-Client";
+        private const string YamoreClientMobile = "mobile";
+
+        private static bool IsYamoreMobileClient(HttpRequest request) =>
+            request.Headers.TryGetValue(YamoreClientHeader, out var values) &&
+            string.Equals(values.ToString(), YamoreClientMobile, StringComparison.OrdinalIgnoreCase);
+
+        private static BadRequestObjectResult StripeNotAvailableOnThisClient() =>
+            new BadRequestObjectResult(new
+            {
+                errors = new Dictionary<string, string[]>
+                {
+                    ["userError"] = new[]
+                    {
+                        "Stripe payment is not available on desktop. Please choose Pay on arrival (Cash), or use the Yamore iOS or Android app to pay by card."
+                    }
+                }
+            });
+
         /// <summary>
         /// Returns Stripe publishable key for client-side SDK (e.g. Flutter). No auth required so the app can init Stripe before login if needed.
         /// </summary>
@@ -43,6 +63,9 @@ namespace Yamore.API.Controllers
             [FromBody] PrepareCardBookingRequest request,
             CancellationToken cancellationToken)
         {
+            if (!IsYamoreMobileClient(Request))
+                return StripeNotAvailableOnThisClient();
+
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!int.TryParse(userIdStr, out var claimUserId))
                 return Unauthorized();
@@ -57,6 +80,9 @@ namespace Yamore.API.Controllers
             [FromBody] CreatePaymentIntentRequest request,
             CancellationToken cancellationToken)
         {
+            if (!IsYamoreMobileClient(Request))
+                return StripeNotAvailableOnThisClient();
+
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!int.TryParse(userIdStr, out var claimUserId))
                 return Unauthorized();

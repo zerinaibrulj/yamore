@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import 'api_exception.dart';
 import 'api_response_handler.dart';
+import '../utils/payment_platform.dart';
 import '../models/yacht_overview.dart';
 import '../models/yacht_detail.dart';
 import '../models/yacht_image.dart';
@@ -49,6 +50,7 @@ class ApiService {
     final headers = <String, String>{
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'X-Yamore-Client': yamoreClientKindHeaderValue,
     };
     if (username != null && password != null && username!.isNotEmpty) {
       final credentials = base64Encode(utf8.encode('$username:$password'));
