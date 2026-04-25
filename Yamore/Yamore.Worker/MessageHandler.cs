@@ -83,7 +83,6 @@ public class MessageHandler
         body.AppendLine();
         body.AppendLine($"Yacht: {yachtLine}");
         body.AppendLine($"Charter period: {period}");
-        body.AppendLine($"Reference: #{msg.ReservationId}");
         if (totalLine != null)
             body.AppendLine(totalLine);
         body.AppendLine();
@@ -116,7 +115,7 @@ public class MessageHandler
 
         var yachtLine = !string.IsNullOrWhiteSpace(msg.YachtName)
             ? msg.YachtName.Trim()
-            : $"Yacht (ID from reservation #{msg.ReservationId})";
+            : "Yacht";
         var period = msg.ReservationStartDate.HasValue && msg.ReservationEndDate.HasValue
             ? FormatDateRange(msg.ReservationStartDate.Value, msg.ReservationEndDate.Value)
             : null;
@@ -137,13 +136,12 @@ public class MessageHandler
         body.AppendLine($"Yacht: {yachtLine}");
         if (period != null)
             body.AppendLine($"Charter period: {period}");
-        body.AppendLine($"Reservation reference: #{msg.ReservationId}");
         body.AppendLine($"Amount: EUR {msg.Amount:N2}");
         body.AppendLine($"Payment method: {msg.PaymentMethod ?? "—"}");
         if (!string.IsNullOrWhiteSpace(msg.PaymentStatus) && !msg.IsConfirmed)
             body.AppendLine($"Status: {msg.PaymentStatus}");
         body.AppendLine();
-        body.AppendLine("If you have any questions, please contact us and quote your reservation reference.");
+        body.AppendLine("If you have any questions, please contact us.");
         body.AppendLine();
         body.AppendLine("Kind regards,");
         body.AppendLine("Yamore");
@@ -151,10 +149,10 @@ public class MessageHandler
         var subject = msg.IsConfirmed
             ? (period != null
                 ? $"Payment received - {yachtLine} ({period})"
-                : $"Payment received - {yachtLine} (ref. #{msg.ReservationId})")
+                : $"Payment received - {yachtLine}")
             : (period != null
                 ? $"Payment update - {yachtLine} ({period})"
-                : $"Payment update - {yachtLine} (ref. #{msg.ReservationId})");
+                : $"Payment update - {yachtLine}");
 
         await SendEmailAsync(msg.UserEmail!, subject, body.ToString());
     }
