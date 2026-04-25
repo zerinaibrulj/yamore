@@ -1,6 +1,5 @@
 services:
   sqlserver:
-    # Pin a concrete CU + OS (avoid :2022-latest / *-latest — reproducible builds and reviews).
     image: mcr.microsoft.com/mssql/server:2022-CU22-ubuntu-22.04
     container_name: yamore-sqlserver
     logging: &default-logging
@@ -8,24 +7,34 @@ services:
       options:
         max-size: "20m"
         max-file: "5"
+    env_file:
+      - .env
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "YourStrong!Passw0rd"
+      SA_PASSWORD: ${SQL_SA_PASSWORD:-YourStrong!Passw0rd}
+      MSSQL_SA_PASSWORD: ${SQL_SA_PASSWORD:-YourStrong!Passw0rd}
     ports:
       - "1433:1433"
     volumes:
       - sqlserver_data:/var/opt/mssql
+      # Povezivanje tvog foldera i fajlova sa Dockerom
+      - ./db-backup/220245.bak:/var/opt/mssql/backup/220245.bak:ro
+      - ./db-backup/init.sh:/init.sh:ro
+    # Pokretanje init skripte za automatski restore baze
+    entrypoint: >
+      /bin/bash -c "chmod +x /init.sh && /init.sh"
     healthcheck:
-      test: [ "CMD-SHELL", "pidof sqlservr || exit 1" ]
+      test: [ "CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P $${MSSQL_SA_PASSWORD} -Q 'SELECT 1' || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 10
 
   rabbitmq:
-    # Patch-pinned (avoid bare :3-management, which can float within the major line).
     image: rabbitmq:3.13.7-management
     container_name: yamore-rabbitmq
     logging: *default-logging
+    env_file:
+      - .env
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -42,12 +51,9 @@ services:
       context: .
       dockerfile: Yamore.API/Dockerfile
     container_name: yamore-api
-    # Loads Yamore/.env (JWT_SECRET, etc.) into the API process. Explicit `environment` below still wins.
     env_file:
       - .env
     logging: *default-logging
-    # Stripe (and other HTTPS calls) need working DNS inside the container. On some Windows/Docker setups
-    # the default resolver fails with "Name or service not known" for api.stripe.com — public DNS avoids that.
     dns:
       - 8.8.8.8
       - 8.8.4.4
@@ -58,26 +64,22 @@ services:
         condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      # Ensures Swagger UI is registered even if the runtime treats the container as non-Development.
       ENABLE_SWAGGER: "true"
-      # API is only exposed as HTTP on host port 5096; avoid redirect to HTTPS that breaks Swagger/browser.
       DISABLE_HTTPS_REDIRECT: "true"
-      # Listen on all interfaces (not only loopback) so Docker port publish 5096→8080 works from the host.
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=220245;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;"
+      # Konekcijski string koristi tvoj indeks 220245
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=220245;User Id=sa;Password=${SQL_SA_PASSWORD:-YourStrong!Passw0rd};TrustServerCertificate=True;"
       RabbitMQ__HostName: rabbitmq
       RabbitMQ__Port: "5672"
-      RabbitMQ__UserName: guest
-      RabbitMQ__Password: guest
+      RabbitMQ__UserName: ${RABBITMQ_USER:-guest}
+      RabbitMQ__Password: ${RABBITMQ_PASS:-guest}
       RabbitMQ__VirtualHost: /
       RabbitMQ__QueueName: yamore-tasks
-      # Keep Docker behavior deterministic: always migrate + seed on first empty DB.
-      SKIP_EF_DATABASE_MIGRATE: "false"
-      SKIP_DEMO_SEED: "false"
-      # Set in Yamore/.env (see .env.example) — required for card payments in the mobile app
+      # Isključujemo migracije jer imamo gotov .bak fajl
+      SKIP_EF_DATABASE_MIGRATE: "true"
+      SKIP_DEMO_SEED: "true"
       Stripe__SecretKey: "${STRIPE_SECRET_KEY:-}"
       Stripe__PublishableKey: "${STRIPE_PUBLISHABLE_KEY:-}"
-      # Optional: real inbox for demo.admin / demo.owner / demo.user so Worker emails are deliverable (Gmail etc.)
       DemoSeed__NotificationEmail: "${DEMO_NOTIFICATION_EMAIL:-}"
     ports:
       - "5096:8080"
@@ -100,11 +102,10 @@ services:
       DOTNET_ENVIRONMENT: Development
       RabbitMQ__HostName: rabbitmq
       RabbitMQ__Port: "5672"
-      RabbitMQ__UserName: guest
-      RabbitMQ__Password: guest
+      RabbitMQ__UserName: ${RABBITMQ_USER:-guest}
+      RabbitMQ__Password: ${RABBITMQ_PASS:-guest}
       RabbitMQ__VirtualHost: /
       RabbitMQ__QueueName: yamore-tasks
-      # Set in Yamore/.env (see .env.example) — Worker sends reservation/payment emails
       Smtp__Host: "${SMTP_HOST:-}"
       Smtp__Port: "${SMTP_PORT:-587}"
       Smtp__UserName: "${SMTP_USER_NAME:-}"
