@@ -17,7 +17,7 @@ namespace Yamore.Services.YachtStateMachine
         {
         }
 
-        public override Model.Yacht Update(int id, YachtsUpdateRequest request)   // na ovaj nacin smo mi dozvolili Update u stanju "draft"
+        public override Model.Yacht Update(int id, YachtsUpdateRequest request)  
         {
             var set = Context.Set<Database.Yacht>();
             var entity = set.Find(id);
