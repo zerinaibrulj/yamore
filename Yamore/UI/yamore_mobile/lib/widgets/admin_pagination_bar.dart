@@ -52,27 +52,55 @@ class AdminPaginationBar extends StatelessWidget {
     );
   }
 
-  Widget _navButtons(int totalPages) {
+  /// Desktop-style footer row (e.g. admin).
+  static const _rowFont = TextStyle(
+    fontSize: 10.5,
+    height: 1.2,
+    letterSpacing: 0.15,
+  );
+  static const _rowSubFont = TextStyle(
+    fontSize: 10.5,
+    height: 1.2,
+    letterSpacing: 0.15,
+    color: Color(0x8A000000),
+  );
+
+  /// Mobile News stacked layout — smaller than the row layout.
+  static const _stackFont = TextStyle(
+    fontSize: 10.0,
+    height: 1.25,
+    letterSpacing: 0.1,
+  );
+  static const _stackMuted = TextStyle(
+    fontSize: 9.5,
+    height: 1.25,
+    letterSpacing: 0.1,
+    color: Color(0x8A000000),
+  );
+
+  Widget _navButtonsImpl(int totalPages, {required bool compact}) {
+    final s = compact ? 18.0 : 20.0;
+    final box = compact ? 32.0 : 36.0;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton.filledTonal(
           style: IconButton.styleFrom(
-            visualDensity: VisualDensity.compact,
-            minimumSize: const Size(40, 40),
-            padding: const EdgeInsets.all(6),
+            visualDensity: compact ? VisualDensity.compact : VisualDensity.standard,
+            minimumSize: Size(box, box),
+            padding: const EdgeInsets.all(4),
           ),
-          icon: const Icon(Icons.chevron_left, size: 22),
+          icon: Icon(Icons.chevron_left, size: s),
           onPressed: !loading && currentPage > 0 ? onPrevious : null,
         ),
         const SizedBox(width: 2),
         IconButton.filledTonal(
           style: IconButton.styleFrom(
-            visualDensity: VisualDensity.compact,
-            minimumSize: const Size(40, 40),
-            padding: const EdgeInsets.all(6),
+            visualDensity: compact ? VisualDensity.compact : VisualDensity.standard,
+            minimumSize: Size(box, box),
+            padding: const EdgeInsets.all(4),
           ),
-          icon: const Icon(Icons.chevron_right, size: 22),
+          icon: Icon(Icons.chevron_right, size: s),
           onPressed: !loading && (currentPage + 1) < totalPages ? onNext : null,
         ),
       ],
@@ -88,7 +116,7 @@ class AdminPaginationBar extends StatelessWidget {
       children: [
         const SizedBox(height: 12),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
@@ -105,19 +133,16 @@ class AdminPaginationBar extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.info_outline, size: 16),
-                  const SizedBox(width: 6),
+                  const Icon(Icons.info_outline, size: 14),
+                  const SizedBox(width: 5),
                   Text(
                     'Showing $start–$end of $total',
-                    style: const TextStyle(fontSize: 12),
+                    style: _rowFont,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   Text(
                     'Page ${currentPage + 1} of $totalPages',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.black54,
-                    ),
+                    style: _rowSubFont,
                   ),
                 ],
               ),
@@ -125,10 +150,10 @@ class AdminPaginationBar extends StatelessWidget {
                 children: [
                   Text(
                     'Rows per page: $pageSize',
-                    style: const TextStyle(fontSize: 12),
+                    style: _rowFont,
                   ),
-                  const SizedBox(width: 12),
-                  _navButtons(totalPages),
+                  const SizedBox(width: 10),
+                  _navButtonsImpl(totalPages, compact: false),
                 ],
               ),
             ],
@@ -145,16 +170,16 @@ class AdminPaginationBar extends StatelessWidget {
   }) {
     return Column(
       children: [
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 6,
+                blurRadius: 5,
                 offset: const Offset(0, 2),
               ),
             ],
@@ -166,27 +191,43 @@ class AdminPaginationBar extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Padding(
-                    padding: EdgeInsets.only(top: 2),
-                    child: Icon(Icons.info_outline, size: 16),
+                    padding: EdgeInsets.only(top: 1),
+                    child: Icon(Icons.info_outline, size: 14),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 5),
                   Expanded(
-                    child: Text(
-                      'Showing $start–$end of $total  •  Page ${currentPage + 1} of $totalPages',
-                      style: const TextStyle(fontSize: 12),
+                    child: Text.rich(
+                      TextSpan(
+                        style: _stackFont,
+                        children: [
+                          const TextSpan(text: 'Showing '),
+                          TextSpan(
+                            text: '$start–$end',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          TextSpan(text: ' of $total  ·  '),
+                          TextSpan(
+                            text: 'Page ${currentPage + 1} of $totalPages',
+                            style: _stackMuted,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 7),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
                     'Rows per page: $pageSize',
-                    style: const TextStyle(fontSize: 12),
+                    style: _stackMuted,
                   ),
-                  _navButtons(totalPages),
+                  _navButtonsImpl(totalPages, compact: true),
                 ],
               ),
             ],
