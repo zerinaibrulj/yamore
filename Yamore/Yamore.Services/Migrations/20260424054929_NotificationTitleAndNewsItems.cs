@@ -37,7 +37,6 @@ namespace Yamore.Services.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Title = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
                     Text = table.Column<string>(type: "nvarchar(max)", maxLength: 8000, nullable: false),
-                    ImageUrl = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
@@ -51,11 +50,10 @@ UPDATE [dbo].[Notifications] SET [Title] = N'Yamore' WHERE [Title] = N'' OR [Tit
 
             migrationBuilder.Sql(@"
 IF NOT EXISTS (SELECT 1 FROM [dbo].[NewsItems])
-INSERT INTO [dbo].[NewsItems] ([Title], [Text], [ImageUrl], [CreatedAt])
+INSERT INTO [dbo].[NewsItems] ([Title], [Text], [CreatedAt])
 VALUES (
     N'Welcome to Yamore',
     N'Browse available yachts, check routes and weather, and book your next trip. This section lists platform news and updates (obavijesti).',
-    NULL,
     GETUTCDATE()
 );
 ");

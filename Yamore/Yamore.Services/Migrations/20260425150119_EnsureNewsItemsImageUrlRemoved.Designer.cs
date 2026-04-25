@@ -12,8 +12,8 @@ using Yamore.Services.Database;
 namespace Yamore.Services.Migrations
 {
     [DbContext(typeof(_220245Context))]
-    [Migration("20260424054929_NotificationTitleAndNewsItems")]
-    partial class NotificationTitleAndNewsItems
+    [Migration("20260425150119_EnsureNewsItemsImageUrlRemoved")]
+    partial class EnsureNewsItemsImageUrlRemoved
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -164,6 +164,40 @@ namespace Yamore.Services.Migrations
                     b.HasIndex("ReservationId");
 
                     b.ToTable("Payments");
+                });
+
+            modelBuilder.Entity("Yamore.Services.Database.RefreshToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("Revoked")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens", (string)null);
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.Reservation", b =>
@@ -728,6 +762,17 @@ namespace Yamore.Services.Migrations
                         .HasConstraintName("FK__Payments__Reserv__4E88ABD4");
 
                     b.Navigation("Reservation");
+                });
+
+            modelBuilder.Entity("Yamore.Services.Database.RefreshToken", b =>
+                {
+                    b.HasOne("Yamore.Services.Database.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Yamore.Services.Database.Reservation", b =>
