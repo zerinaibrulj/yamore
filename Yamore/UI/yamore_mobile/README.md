@@ -9,8 +9,9 @@ Client for Yamore: admin/desktop and mobile flows.
   flutter pub get
   flutter run
   ```
-  - Windows / iOS simulator / web: defaults to **`http://localhost:5096`**
-  - Android emulator: defaults to **`http://10.0.2.2:5096`** (reaches the API on your PC)
+  - Web: **`http://localhost:5096`**; Windows (desktop) / iOS simulator: **`http://localhost:5096`**
+  - Android emulator: **`http://10.0.2.2:5096`**
+  - Port is [defaultDevApiPort](lib/config.dart) (must match `Yamore.API/Properties/launchSettings.json` and `docker-compose.yml` when using Docker)
 
 - **Staging / production / custom host:** override at build time:
   ```bash

@@ -1,15 +1,29 @@
-import 'package:flutter/foundation.dart'
-    show kIsWeb, kReleaseMode, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
+
+import 'api_base_url_native.dart' if (dart.library.html) 'api_base_url_stub.dart'
+    as platform_api;
 
 /// API base URL for the Yamore backend.
 ///
-/// **Required in release:** pass the URL at build time (no hardcoded production URL in source):
+/// **Release / production:** pass the full URL at build time (overrides all defaults):
 /// ```bash
 /// flutter run --dart-define=API_BASE_URL=https://api.example.com
 /// flutter build apk --dart-define=API_BASE_URL=https://api.example.com
+/// flutter build windows --dart-define=API_BASE_URL=https://api.example.com
 /// ```
-/// The value is read with [String.fromEnvironment] so it is supplied by the build/run, not from JSON-in-app.
+///
+/// **Debug / profile (no `API_BASE_URL` set):** uses [defaultDevApiPort] with:
+/// - Web (`kIsWeb`) → `http://localhost:<port>`
+/// - Android (emulator; `Platform.isAndroid` in `api_base_url_native.dart`) → `http://10.0.2.2:<port>`
+/// - Windows (`Platform.isWindows`) → `http://localhost:<port>`
+/// - other native → `http://localhost:<port>`
+///
+/// `AuthService` and `ApiService` take a single `baseUrl` from [apiBaseUrl] (see
+/// `login_screen.dart` / `register_screen.dart`); do not duplicate URL rules in services.
 class AppConfig {
+  /// Dev default port — must match the API (see `Yamore.API/Properties/launchSettings.json`, e.g. `http` profile on **5096**).
+  static const int defaultDevApiPort = 5096;
+
   static String get apiBaseUrl {
     const fromEnv = String.fromEnvironment('API_BASE_URL', defaultValue: '');
     if (fromEnv.isNotEmpty) {
@@ -19,16 +33,15 @@ class AppConfig {
     if (kReleaseMode) {
       throw StateError(
         'API_BASE_URL is not set. Rebuild with --dart-define=API_BASE_URL=<your API base URL> '
-        '(e.g. http://10.0.2.2:5096 for Android emulator, http://localhost:5096 for desktop, same port as Docker 5096).',
+        '(e.g. https://api.example.com, or for local dev: http://10.0.2.2:5096 on Android '
+        'emulator, http://localhost:5096 on Windows; port must match your API).',
       );
     }
-    String raw;
+    final String raw;
     if (kIsWeb) {
-      raw = 'http://localhost:5096';
-    } else if (defaultTargetPlatform == TargetPlatform.android) {
-      raw = 'http://10.0.2.2:5096';
+      raw = 'http://localhost:$defaultDevApiPort';
     } else {
-      raw = 'http://localhost:5096';
+      raw = platform_api.defaultApiBaseUrlForPlatform(defaultDevApiPort);
     }
     return raw.endsWith('/') ? raw.substring(0, raw.length - 1) : raw;
   }
