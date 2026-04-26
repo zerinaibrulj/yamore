@@ -32,28 +32,22 @@ It includes:
 
 ---
 
-### Database (required)
+### Database (Automated)
 
-The course provides a **SQL Server `.bak`** file. Restore it to an instance the API can use.
+The project is configured to **automatically restore** the database from the provided `.bak` file during the Docker startup process.
 
-1. **Restore the backup** with SQL Server Management Studio, Azure Data Studio, or `sqlcmd`, on:
-   - the **Docker** SQL Server started by this repo (`localhost` / `127.0.0.1`, port **1433** — see `docker-compose.yml` for the `sa` password), or  
-   - a **local** SQL Server (e.g. Express), if you run the API outside Docker.
+**Automated setup:** When you run `docker compose up`, the `sqlserver` service will automatically use the `init.sh` script to restore the database from `db-backup/220245.bak`.
 
-2. **Point the app at that database** by setting **`ConnectionStrings__DefaultConnection`** in **`Yamore/.env`** (copy from **`Yamore/.env.example`**). Use the correct **server**, **database name** (must match the restored database), and authentication.
+**Manual restore (optional):** If you run the API outside of Docker, you can manually restore the `.bak` file to your local SQL Server instance (e.g. via SSMS).
 
-3. **Migrations:** if the backup is **older** than the current code, apply pending migrations after restore (from the `Yamore` folder):
+**Connection:** The Docker container is pre-configured to connect to the `220245` database using the credentials provided in the **`.env`** file.
 
-   ```powershell
-   $env:ASPNETCORE_ENVIRONMENT = "Development"
-   dotnet ef database update --project Yamore.Services\Yamore.Services.csproj --startup-project Yamore.API\Yamore.API.csproj
-   ```
+**Migrations:** If the code schema is newer than the backup, you can still apply migrations manually (from the `Yamore` folder) using:
 
-   If the backup already matches the latest schema, this is a no-op.
-
-4. **Docker Compose** sets a default connection string to the bundled SQL Server (`Server=sqlserver,…;Database=220245;…` in `docker-compose.yml`). If your restored database uses a **different name**, update the connection string (or your restore target) so they match.
-
-More detail and alternative layouts: **`Yamore/CONFIGURATION.md`**.
+```powershell
+$env:ASPNETCORE_ENVIRONMENT = "Development"
+dotnet ef database update --project Yamore.Services\Yamore.Services.csproj --startup-project Yamore.API\Yamore.API.csproj
+```
 
 ---
 
