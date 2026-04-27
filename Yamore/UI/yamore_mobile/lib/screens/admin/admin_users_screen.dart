@@ -4,7 +4,9 @@ import '../../theme/app_theme.dart';
 import '../../models/user.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../utils/delete_constraint_dialog.dart';
 import '../../utils/form_validators.dart';
+import '../../widgets/admin_scrollable_data_table.dart';
 
 class AdminUsersScreen extends StatefulWidget {
   final AuthService authService;
@@ -266,11 +268,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.vertical,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
+          child: AdminScrollableDataTable(
+            minContentWidth: 1240,
+            child: DataTable(
                 showCheckboxColumn: false,
                 headingRowColor: WidgetStateProperty.all(AppTheme.primaryBlue),
                 headingTextStyle: const TextStyle(
@@ -382,7 +382,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                     })
                     .toList(),
               ),
-            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -690,10 +689,22 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             'The user was removed and can no longer sign in.',
           );
         }
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete user: $e')),
+      } on ApiException catch (e) {
+        if (!mounted) return;
+        await showDeleteBlockedDialog(
+          context: context,
+          dialogTitle: 'Cannot delete user',
+          itemDisplayName: user.displayName,
+          e: e,
+          fallbackLinkedData:
+              'This User cannot be deleted because it is linked to other data in the system.',
         );
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete user: $e')),
+          );
+        }
       }
     }
   }

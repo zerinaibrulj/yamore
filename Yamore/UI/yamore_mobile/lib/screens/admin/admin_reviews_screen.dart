@@ -3,6 +3,7 @@ import '../../theme/app_theme.dart';
 import '../../models/review.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/admin_scrollable_data_table.dart';
 
 class AdminReviewsScreen extends StatefulWidget {
   final AuthService authService;
@@ -512,11 +513,9 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.vertical,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
+          child: AdminScrollableDataTable(
+            minContentWidth: 1180,
+            child: DataTable(
                 showCheckboxColumn: false,
                 headingRowColor: WidgetStateProperty.all(AppTheme.primaryBlue),
                 headingTextStyle: const TextStyle(
@@ -614,7 +613,6 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
                   );
                 }).toList(),
               ),
-            ),
           ),
         ),
         const SizedBox(height: 12),

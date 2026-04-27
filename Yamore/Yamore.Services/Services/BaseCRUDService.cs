@@ -50,7 +50,7 @@ namespace Yamore.Services.Services
             var entity = set.Find(id);
 
             Mapper.Map(request, entity);
-            BeforeUpdate(request, entity);                           //prije snimanja u bazu pozvat cemo metodu BeforeUpdate
+            BeforeUpdate(request, entity);                           
 
 
             Context.SaveChanges();

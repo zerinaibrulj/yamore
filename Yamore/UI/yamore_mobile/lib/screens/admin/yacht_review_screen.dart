@@ -11,6 +11,8 @@ import '../../models/yacht_category.dart';
 import '../../models/user.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../utils/delete_constraint_dialog.dart';
+import '../../widgets/admin_scrollable_data_table.dart';
 import '../../widgets/custom_date_range_picker_dialog.dart';
 
 class YachtReviewScreen extends StatefulWidget {
@@ -197,11 +199,9 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.vertical,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
+          child: AdminScrollableDataTable(
+            minContentWidth: 1280,
+            child: DataTable(
                 showCheckboxColumn: false,
                 headingRowColor:
                     WidgetStateProperty.all(AppTheme.primaryBlue),
@@ -316,7 +316,6 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
                     })
                     .toList(),
               ),
-            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -646,9 +645,21 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
         );
       }
     } on ApiException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Delete failed: ${e.displayMessage}')),
+      if (!mounted) return;
+      await showDeleteBlockedDialog(
+        context: context,
+        dialogTitle: 'Cannot delete yacht',
+        itemDisplayName: y.name,
+        e: e,
+        fallbackLinkedData:
+            'This Yacht cannot be deleted because it is linked to other data in the system.',
       );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Delete failed: $e')),
+        );
+      }
     }
   }
 }
