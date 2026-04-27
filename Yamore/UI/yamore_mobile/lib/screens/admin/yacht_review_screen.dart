@@ -644,20 +644,25 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
           message: 'The yacht has been deleted successfully.',
         );
       }
-    } on ApiException catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('Delete yacht failed: $e\n$stackTrace');
       if (!mounted) return;
-      await showDeleteBlockedDialog(
-        context: context,
-        dialogTitle: 'Cannot delete yacht',
-        itemDisplayName: y.name,
-        e: e,
-        fallbackLinkedData:
-            'This Yacht cannot be deleted because it is linked to other data in the system.',
-      );
-    } catch (e) {
-      if (mounted) {
+      if (e is ApiException) {
+        await showDeleteBlockedDialog(
+          context: context,
+          dialogTitle: 'Cannot delete yacht',
+          itemDisplayName: y.name,
+          e: e,
+          fallbackLinkedData:
+              'This Yacht cannot be deleted because it is currently in use and linked to other data in the system.',
+        );
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Delete failed: $e')),
+          SnackBar(
+            content: Text(
+              'Could not delete yacht. ${e is Exception ? e.toString() : 'Please try again.'}',
+            ),
+          ),
         );
       }
     }

@@ -689,20 +689,25 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             'The user was removed and can no longer sign in.',
           );
         }
-      } on ApiException catch (e) {
+      } catch (e, stackTrace) {
+        debugPrint('Delete user failed: $e\n$stackTrace');
         if (!mounted) return;
-        await showDeleteBlockedDialog(
-          context: context,
-          dialogTitle: 'Cannot delete user',
-          itemDisplayName: user.displayName,
-          e: e,
-          fallbackLinkedData:
-              'This User cannot be deleted because it is linked to other data in the system.',
-        );
-      } catch (e) {
-        if (mounted) {
+        if (e is ApiException) {
+          await showDeleteBlockedDialog(
+            context: context,
+            dialogTitle: 'Cannot delete user',
+            itemDisplayName: user.displayName,
+            e: e,
+            fallbackLinkedData:
+                'This User cannot be deleted because it is currently in use and linked to other data in the system.',
+          );
+        } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete user: $e')),
+            SnackBar(
+              content: Text(
+                'Could not delete user. ${e is Exception ? e.toString() : 'Please try again.'}',
+              ),
+            ),
           );
         }
       }

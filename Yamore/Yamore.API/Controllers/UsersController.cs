@@ -115,6 +115,24 @@ namespace Yamore.API.Controllers
             return Ok(result);
         }
 
+        /// <summary>
+        /// Catches <see cref="BusinessException"/> from delete rules (e.g. FK / still in use) and returns HTTP 400
+        /// without throwing — avoids Visual Studio breaking on user-unhandled exceptions and matches Flutter expectations.
+        /// </summary>
+        [HttpDelete("{id}")]
+        public override ActionResult<Model.User> Delete(int id)
+        {
+            try
+            {
+                var result = _service.Delete(id);
+                Response.Headers["X-Operation-Message"] = "User deleted successfully.";
+                return Ok(result);
+            }
+            catch (BusinessException ex)
+            {
+                return RejectWithUserError(ex.Message);
+            }
+        }
 
         /// <summary>Login — credentials must be sent in the request body (JSON), never the query string.</summary>
         [HttpPost("login")]

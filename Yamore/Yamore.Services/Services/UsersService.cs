@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Yamore.Model;
 using Yamore.Model.Requests.User;
+using Yamore.Services;
 using Yamore.Model.SearchObjects;
 using Yamore.Services.Database;
 using Yamore.Services.Interfaces;
@@ -447,6 +448,21 @@ namespace Yamore.Services.Services
                 Context.SaveChanges();
             }
             return user;
+        }
+
+        public override Model.User Delete(int id)
+        {
+            try
+            {
+                return base.Delete(id);
+            }
+            catch (DbUpdateException ex)
+            {
+                DeleteReferentialGuard.ThrowBusinessIfReferentialIntegrity(
+                    ex,
+                    "This user cannot be deleted because they are linked to existing reservations or other data in the system.");
+                throw;
+            }
         }
 
         public PagedResponse<Model.LoginResponseDto> GetOwnersPaged(int page, int pageSize)

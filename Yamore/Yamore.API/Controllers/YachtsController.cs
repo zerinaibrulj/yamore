@@ -76,5 +76,24 @@ namespace Yamore.API.Controllers
                 return Unauthorized();
             return Ok(_yachtsService.GetOverviewForOwner(ownerId, search ?? new YachtsSearchObject()));
         }
+
+        /// <summary>
+        /// Catches <see cref="BusinessException"/> from delete rules (e.g. FK / reservations) and returns HTTP 400
+        /// without throwing — avoids debugger breaks on user-unhandled exceptions.
+        /// </summary>
+        [HttpDelete("{id}")]
+        public override ActionResult<Model.Yacht> Delete(int id)
+        {
+            try
+            {
+                var result = _service.Delete(id);
+                Response.Headers["X-Operation-Message"] = "Yacht deleted successfully.";
+                return Ok(result);
+            }
+            catch (BusinessException ex)
+            {
+                return RejectWithUserError(ex.Message);
+            }
+        }
     }
 }

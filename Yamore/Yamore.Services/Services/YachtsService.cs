@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Yamore.Model;
 using Yamore.Model.Requests.Yachts;
+using Yamore.Services;
 using Yamore.Model.SearchObjects;
 using Yamore.Services.Database;
 using Yamore.Services.Interfaces;
@@ -537,6 +538,21 @@ namespace Yamore.Services.Services
             }).ToList();
 
             return new PagedResponse<YachtOverviewDto> { Count = count, ResultList = result };
+        }
+
+        public override Model.Yacht Delete(int id)
+        {
+            try
+            {
+                return base.Delete(id);
+            }
+            catch (DbUpdateException ex)
+            {
+                DeleteReferentialGuard.ThrowBusinessIfReferentialIntegrity(
+                    ex,
+                    "This yacht cannot be deleted because it is linked to existing reservations or other data in the system.");
+                throw;
+            }
         }
     }
 }
