@@ -56,15 +56,13 @@ class Reservation {
   }
 }
 
-/// Result of [ApiService.cancelReservation] (reservation + whether a card payment was on file).
+/// Result of [ApiService.cancelReservation].
 class CancelReservationResult {
   const CancelReservationResult({
     required this.reservation,
-    this.hadCardPayment = false,
   });
 
   final Reservation reservation;
-  final bool hadCardPayment;
 }
 
 class PagedReservations {

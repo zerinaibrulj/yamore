@@ -154,42 +154,78 @@ class _OwnerReservationsTabState extends State<OwnerReservationsTab> {
   }
 
   Future<void> _cancelReservation(Reservation r) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Cancel Reservation'),
-        content: const Text('Are you sure you want to cancel this reservation?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-            child: const Text('Cancel It'),
+    final controller = TextEditingController();
+    try {
+      final reason = await showDialog<String?>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Cancel reservation'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'The guest will be notified. Please provide a clear cancellation reason (required).',
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(
+                  labelText: 'Cancellation reason',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+                textCapitalization: TextCapitalization.sentences,
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      try {
-        final cancelResult = await _api.cancelReservation(r.reservationId);
-        await _loadReservations();
-        if (mounted) {
-          await showOperationSuccessDialog(
-            context,
-            title: 'Reservation cancelled',
-            message: cancelResult.hadCardPayment
-                ? 'The reservation is cancelled. A card payment was on file—ask the guest to contact support for refund questions if needed.'
-                : 'The reservation has been cancelled successfully.',
-          );
-          _scrollReservationsListToTop();
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to cancel: $e')),
-          );
-        }
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Back'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final t = controller.text.trim();
+                if (t.isEmpty) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter a cancellation reason for the guest.'),
+                    ),
+                  );
+                  return;
+                }
+                Navigator.pop(ctx, t);
+              },
+              style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+              child: const Text('Cancel booking'),
+            ),
+          ],
+        ),
+      );
+      if (reason == null || reason.isEmpty) return;
+
+      await _api.cancelReservation(
+        r.reservationId,
+        cancellationReason: reason,
+      );
+      await _loadReservations();
+      if (mounted) {
+        await showOperationSuccessDialog(
+          context,
+          title: 'Reservation cancelled',
+          message: 'The reservation has been cancelled successfully.',
+        );
+        _scrollReservationsListToTop();
       }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to cancel: $e')),
+        );
+      }
+    } finally {
+      controller.dispose();
     }
   }
 

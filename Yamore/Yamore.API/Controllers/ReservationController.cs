@@ -90,9 +90,9 @@ namespace Yamore.API.Controllers
                 return Unauthorized();
 
             var isAdmin = User.IsInRole(AppRoles.Admin);
-            var outcome = _reservationService.Cancel(id, actorId, isAdmin, body?.Reason);
+            var message = body?.GetEffectiveCancellationMessage();
+            var outcome = _reservationService.Cancel(id, actorId, isAdmin, message);
             Response.Headers["X-Operation-Message"] = "Reservation cancelled.";
-            Response.Headers["X-Reservation-Cancel-Has-Card-Payment"] = outcome.HadCardPayment ? "true" : "false";
             return Ok(outcome.Reservation);
         }
 

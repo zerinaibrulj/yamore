@@ -477,7 +477,7 @@ namespace Yamore.Services.Services
             entity.Status = ReservationStatuses.Confirmed;
         }
 
-        public CancelReservationOutcome Cancel(int id, int actorUserId, bool actorIsAdmin, string? reason)
+        public CancelReservationOutcome Cancel(int id, int actorUserId, bool actorIsAdmin, string? cancellationMessage)
         {
             var entity = LoadReservationWithYacht(id);
 
@@ -498,9 +498,23 @@ namespace Yamore.Services.Services
             if (!actorIsAdmin && !isGuest && !isOwner)
                 throw new UnauthorizedAccessException("You are not allowed to cancel this reservation.");
 
-            var hadCardPayment = HasCardPayment(entity.ReservationId);
+            if (HasCardPayment(entity.ReservationId))
+            {
+                throw new UserException(
+                    "Paid reservations cannot be cancelled automatically. Please contact an administrator for a manual review and refund process.");
+            }
 
-            ApplyStatusAudit(entity, actorUserId, DateTime.UtcNow, string.IsNullOrWhiteSpace(reason) ? "Cancelled" : reason.Trim());
+            var cancellingAsCounterparty = (actorIsAdmin || isOwner) && entity.UserId != actorUserId;
+            if (cancellingAsCounterparty && string.IsNullOrWhiteSpace(cancellationMessage))
+            {
+                throw new UserException(
+                    "A cancellation reason is required when cancelling a guest's booking as an administrator or yacht owner.");
+            }
+
+            var auditReason = string.IsNullOrWhiteSpace(cancellationMessage)
+                ? "Cancelled"
+                : cancellationMessage.Trim();
+            ApplyStatusAudit(entity, actorUserId, DateTime.UtcNow, auditReason);
             entity.Status = ReservationStatuses.Cancelled;
             Context.SaveChanges();
 
@@ -510,15 +524,18 @@ namespace Yamore.Services.Services
                     "Booking cancelled",
                     BuildOwnerCancelMessage(entity));
             else if ((isOwner || actorIsAdmin) && entity.UserId != actorUserId)
+            {
+                var guestNote = auditReason.Length > 400 ? auditReason[..400] + "…" : auditReason;
                 _notifications.InsertUserNotification(
                     entity.UserId,
                     "Booking cancelled",
-                    BuildGuestNotifiedOnOwnerOrAdminCancelMessage(entity));
+                    BuildGuestNotifiedOnOwnerOrAdminCancelMessage(entity, guestNote));
+            }
 
             return new CancelReservationOutcome
             {
                 Reservation = Mapper.Map<Model.Reservation>(entity),
-                HadCardPayment = hadCardPayment,
+                HadCardPayment = false,
             };
         }
 
@@ -688,12 +705,12 @@ namespace Yamore.Services.Services
             return $"Cancelled: {guest} · {vessel} · {period}";
         }
 
-        private string BuildGuestNotifiedOnOwnerOrAdminCancelMessage(Database.Reservation r)
+        private string BuildGuestNotifiedOnOwnerOrAdminCancelMessage(Database.Reservation r, string cancellationReason)
         {
             var ctx = GetReservationMessageContext(r.UserId, r.YachtId);
             var vessel = string.IsNullOrWhiteSpace(ctx.YachtName) ? "the yacht" : ctx.YachtName.Trim();
             var period = $"{r.StartDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)} – {r.EndDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
-            return $"Your booking for {vessel} ({period}) was cancelled.";
+            return $"Your booking for {vessel} ({period}) was cancelled. Reason: {cancellationReason}";
         }
 
         private string BuildRejectionNotificationMessage(Database.Reservation r, string reasonNote)

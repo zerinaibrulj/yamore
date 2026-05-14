@@ -1,11 +1,11 @@
 namespace Yamore.Model
 {
-    /// <summary>Result of cancelling a reservation (includes flag for client messaging, e.g. card refunds).</summary>
+    /// <summary>Result of cancelling a reservation.</summary>
     public class CancelReservationOutcome
     {
         public Reservation Reservation { get; set; } = null!;
 
-        /// <summary>True if a card payment with amount was on file before cancel (for user-facing copy).</summary>
+        /// <summary>Reserved for API compatibility; paid-with-card bookings can no longer be cancelled via this flow.</summary>
         public bool HadCardPayment { get; set; }
     }
 }

@@ -1414,35 +1414,22 @@ class ApiService {
     );
   }
 
-  Future<CancelReservationResult> cancelReservation(int id, {String? reason}) async {
+  Future<CancelReservationResult> cancelReservation(int id, {String? cancellationReason}) async {
     final uri = Uri.parse('$baseUrl/Reservation/$id/cancel');
+    final body = <String, dynamic>{};
+    if (cancellationReason != null && cancellationReason.trim().isNotEmpty) {
+      body['cancellationReason'] = cancellationReason.trim();
+    }
     final response = await http.put(
       uri,
       headers: await _httpHeaders(),
-      body: jsonEncode({'reason': reason}),
+      body: jsonEncode(body),
     );
     _ensureSuccess(response);
-    final hadCard = _headerEqualsTrue(
-      response,
-      'x-reservation-cancel-has-card-payment',
-    );
     final reservation = Reservation.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
-    return CancelReservationResult(
-      reservation: reservation,
-      hadCardPayment: hadCard,
-    );
-  }
-
-  static bool _headerEqualsTrue(http.Response response, String name) {
-    final want = name.toLowerCase();
-    for (final e in response.headers.entries) {
-      if (e.key.toLowerCase() == want) {
-        return e.value.trim().toLowerCase() == 'true';
-      }
-    }
-    return false;
+    return CancelReservationResult(reservation: reservation);
   }
 
   /// Marks a confirmed reservation completed after the trip end time (API enforces rules).

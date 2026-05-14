@@ -920,16 +920,14 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
     );
     if (confirmed == true) {
       try {
-        final cancelResult = await _api.cancelReservation(r.reservationId);
+        await _api.cancelReservation(r.reservationId);
         if (!mounted) return;
         await _loadReservations();
         if (!mounted) return;
         await showOperationSuccessDialog(
           context,
           title: 'Reservation cancelled',
-          message: cancelResult.hadCardPayment
-              ? 'Your booking is cancelled. You had a card payment on this reservation—please contact support if you need a refund or have questions.'
-              : 'Your reservation has been cancelled successfully.',
+          message: 'Your reservation has been cancelled successfully.',
         );
       } catch (e) {
         if (!mounted) return;

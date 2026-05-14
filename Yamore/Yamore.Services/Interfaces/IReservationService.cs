@@ -11,8 +11,11 @@ namespace Yamore.Services.Interfaces
         /// <summary>Admin or yacht owner confirms a <see cref="ReservationStatuses.Pending"/> reservation.</summary>
         Model.Reservation Confirm(int id, int actorUserId, bool actorIsAdmin, bool actorIsYachtOwner);
 
-        /// <summary>Guest, owner, or admin cancels an active reservation (not completed).</summary>
-        CancelReservationOutcome Cancel(int id, int actorUserId, bool actorIsAdmin, string? reason);
+        /// <summary>
+        /// Guest, owner, or admin cancels an active reservation (not completed). Card-paid bookings are blocked.
+        /// When an admin or yacht owner cancels a guest booking, <paramref name="cancellationMessage"/> must be non-empty.
+        /// </summary>
+        CancelReservationOutcome Cancel(int id, int actorUserId, bool actorIsAdmin, string? cancellationMessage);
 
         /// <summary>Admin-only: decline a pending booking (stored as cancelled with audit reason).</summary>
         Model.Reservation Reject(int id, int adminUserId, string reason);
