@@ -68,8 +68,31 @@ namespace Yamore.Services.Services
             var m = base.GetById(id);
             if (m == null)
                 return null!;
+            if (!CurrentUserMayViewReservation(m))
+                return null!;
             m.IsPaid = HasRecordedPayment(id);
             return m;
+        }
+
+        /// <summary>
+        /// Admins: any row. Yacht owners: own booking or reservation on own yacht. Others: own booking only.
+        /// </summary>
+        private bool CurrentUserMayViewReservation(Model.Reservation m)
+        {
+            var http = _httpContextAccessor?.HttpContext;
+            if (http?.User?.IsInRole(AppRoles.Admin) == true)
+                return true;
+            if (!int.TryParse(http?.User?.FindFirstValue(ClaimTypes.NameIdentifier), out var uid))
+                return false;
+            if (m.UserId == uid)
+                return true;
+            if (http.User.IsInRole(AppRoles.YachtOwner))
+            {
+                return Context.Set<Database.Yacht>().AsNoTracking()
+                    .Any(y => y.YachtId == m.YachtId && y.OwnerId == uid);
+            }
+
+            return false;
         }
 
         private bool HasRecordedPayment(int reservationId) =>
@@ -94,26 +117,40 @@ namespace Yamore.Services.Services
         public override IQueryable<Database.Reservation> AddFilter(ReservationSearchObject search, IQueryable<Database.Reservation> query)
         {
             var filteredQurey = base.AddFilter(search, query);
+            var http = _httpContextAccessor?.HttpContext;
+
+            if (http?.User?.IsInRole(AppRoles.Admin) == true)
+            {
+                if (search?.ReservationId != null)
+                    filteredQurey = filteredQurey.Where(x => x.ReservationId == search.ReservationId);
+                if (search?.UserId != null)
+                    filteredQurey = filteredQurey.Where(x => x.UserId == search.UserId);
+                if (search?.YachtId != null)
+                    filteredQurey = filteredQurey.Where(x => x.YachtId == search.YachtId);
+                if (!string.IsNullOrWhiteSpace(search?.Status))
+                    filteredQurey = filteredQurey.Where(x => x.Status == search.Status);
+                return filteredQurey;
+            }
+
+            if (!int.TryParse(http?.User?.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                return filteredQurey.Where(_ => false);
+
+            if (http.User.IsInRole(AppRoles.YachtOwner))
+            {
+                filteredQurey = filteredQurey.Where(r =>
+                    r.UserId == userId || r.Yacht.OwnerId == userId);
+            }
+            else
+            {
+                filteredQurey = filteredQurey.Where(r => r.UserId == userId);
+            }
 
             if (search?.ReservationId != null)
-            {
                 filteredQurey = filteredQurey.Where(x => x.ReservationId == search.ReservationId);
-            }
-
-            if (search?.UserId != null)
-            {
-                filteredQurey = filteredQurey.Where(x => x.UserId == search.UserId);
-            }
-
             if (search?.YachtId != null)
-            {
                 filteredQurey = filteredQurey.Where(x => x.YachtId == search.YachtId);
-            }
-
             if (!string.IsNullOrWhiteSpace(search?.Status))
-            {
                 filteredQurey = filteredQurey.Where(x => x.Status == search.Status);
-            }
 
             return filteredQurey;
         }

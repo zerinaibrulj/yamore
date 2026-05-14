@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 using MapsterMapper;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Yamore.Model;
 using Yamore.Model.Requests.Notification;
@@ -15,9 +17,62 @@ namespace Yamore.Services.Services
 {
     public class NotificationService : BaseCRUDService<Model.Notification, NotificationSearchObject, Database.Notification, NotificationInsertRequest, NotificationUpdateRequest, NotificationDeleteRequest>, INotificationService
     {
-        public NotificationService(_220245Context context, IMapper mapper)
+        private readonly IHttpContextAccessor? _httpContextAccessor;
+
+        public NotificationService(
+            _220245Context context,
+            IMapper mapper,
+            IHttpContextAccessor? httpContextAccessor = null)
             : base(context, mapper)
         {
+            _httpContextAccessor = httpContextAccessor;
+        }
+
+        public override Model.Notification GetById(int id)
+        {
+            var entity = Context.Set<Database.Notification>().Find(id);
+            if (entity == null)
+                return null!;
+            if (!CurrentUserMayAccessNotification(entity.UserId))
+                return null!;
+            return Mapper.Map<Model.Notification>(entity);
+        }
+
+        public override Model.Notification Update(int id, NotificationUpdateRequest request)
+        {
+            var set = Context.Set<Database.Notification>();
+            var entity = set.Find(id);
+            if (entity == null)
+                throw new NotFoundException($"Entity with id {id} not found.");
+            if (!CurrentUserMayAccessNotification(entity.UserId))
+                throw new NotFoundException($"Entity with id {id} not found.");
+            Mapper.Map(request, entity);
+            BeforeUpdate(request, entity);
+            Context.SaveChanges();
+            return Mapper.Map<Model.Notification>(entity);
+        }
+
+        public override Model.Notification Delete(int id)
+        {
+            var set = Context.Set<Database.Notification>();
+            var entity = set.Find(id);
+            if (entity == null)
+                throw new NotFoundException($"Entity with id {id} not found.");
+            if (!CurrentUserMayAccessNotification(entity.UserId))
+                throw new NotFoundException($"Entity with id {id} not found.");
+            set.Remove(entity);
+            Context.SaveChanges();
+            return Mapper.Map<Model.Notification>(entity);
+        }
+
+        /// <summary>Admins may access any notification; others only rows where <see cref="Database.Notification.UserId"/> matches the JWT subject.</summary>
+        private bool CurrentUserMayAccessNotification(int notificationRecipientUserId)
+        {
+            var http = _httpContextAccessor?.HttpContext;
+            if (http?.User?.IsInRole(AppRoles.Admin) == true)
+                return true;
+            return int.TryParse(http?.User?.FindFirstValue(ClaimTypes.NameIdentifier), out var uid)
+                && uid == notificationRecipientUserId;
         }
 
         public override PagedResponse<Model.Notification> GetPaged(NotificationSearchObject search)
@@ -41,16 +96,24 @@ namespace Yamore.Services.Services
         public override IQueryable<Database.Notification> AddFilter(NotificationSearchObject search, IQueryable<Database.Notification> query)
         {
             var filteredQurey = base.AddFilter(search, query);
+            var http = _httpContextAccessor?.HttpContext;
 
-            if (search?.UserId != null)
+            if (http?.User?.IsInRole(AppRoles.Admin) == true)
             {
-                filteredQurey = filteredQurey.Where(x => x.UserId == search.UserId);
+                if (search?.UserId != null)
+                    filteredQurey = filteredQurey.Where(x => x.UserId == search.UserId);
+                if (search?.IsRead != null)
+                    filteredQurey = filteredQurey.Where(x => x.IsRead == search.IsRead);
+                return filteredQurey;
             }
+
+            if (!int.TryParse(http?.User?.FindFirstValue(ClaimTypes.NameIdentifier), out var recipientId))
+                return filteredQurey.Where(_ => false);
+
+            filteredQurey = filteredQurey.Where(x => x.UserId == recipientId);
 
             if (search?.IsRead != null)
-            {
                 filteredQurey = filteredQurey.Where(x => x.IsRead == search.IsRead);
-            }
 
             return filteredQurey;
         }
