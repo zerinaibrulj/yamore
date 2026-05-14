@@ -14,6 +14,9 @@ public class StripePaymentService
     private readonly string? _secretKey;
     private readonly StripeClient? _stripeClient;
 
+    /// <summary>Payment row / DTO status for a completed Stripe card charge (not offline "pending").</summary>
+    public const string CardChargeSucceededStatus = "succeeded";
+
     public StripePaymentService(IConfiguration configuration)
     {
         _secretKey = StripeKeyResolver.GetSecretKey(configuration);
@@ -37,6 +40,7 @@ public class StripePaymentService
     /// </summary>
     public async Task<(string? ClientSecret, string? PaymentIntentId)> CreatePaymentIntentAsync(
         int reservationId,
+        int reservationBookerUserId,
         decimal amount,
         string currency = "eur",
         CancellationToken cancellationToken = default)
@@ -53,7 +57,8 @@ public class StripePaymentService
             PaymentMethodTypes = new List<string> { "card" },
             Metadata = new Dictionary<string, string>
             {
-                { "ReservationId", reservationId.ToString() }
+                { "ReservationId", reservationId.ToString(CultureInfo.InvariantCulture) },
+                { "UserId", reservationBookerUserId.ToString(CultureInfo.InvariantCulture) },
             },
         };
 

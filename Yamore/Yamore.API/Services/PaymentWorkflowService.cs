@@ -164,6 +164,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
         {
             var (clientSecret, paymentIntentId) = await _stripe.CreatePaymentIntentAsync(
                 request.ReservationId,
+                reservation.UserId,
                 amount,
                 "eur",
                 cancellationToken);
@@ -430,12 +431,12 @@ public class PaymentWorkflowService : IPaymentWorkflowService
         if (intent.Amount != expectedCents)
             throw new InvalidOperationException("Payment amount does not match the booking. Please start checkout again.");
 
-        const string payStatus = "pending";
+        var succeededStatus = StripePaymentService.CardChargeSucceededStatus;
         var pendingPay = new CardPaymentPendingInfo
         {
             Amount = total,
             PaymentMethod = "Card",
-            Status = payStatus,
+            Status = succeededStatus,
             PaymentDateUtc = DateTime.UtcNow,
         };
 
@@ -485,7 +486,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
             ReservationId = paymentEntity?.ReservationId ?? reservation.ReservationId,
             Amount = paymentEntity?.Amount ?? total,
             PaymentMethod = "Card",
-            PaymentStatus = payStatus,
+            PaymentStatus = succeededStatus,
             IsConfirmed = true,
             UserEmail = msgCtx.UserEmail,
             UserName = msgCtx.UserDisplayName,
@@ -512,7 +513,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
                 $"{guestName} completed payment. Booking for {displayYacht} ({p}) is confirmed.");
         }
 
-        return new PaymentIntentDto { Status = payStatus, PaymentIntentId = paymentIntentId };
+        return new PaymentIntentDto { Status = succeededStatus, PaymentIntentId = paymentIntentId };
     }
 
     private async Task<PaymentIntentDto> ConfirmCardForExistingReservationAsync(
@@ -533,11 +534,32 @@ public class PaymentWorkflowService : IPaymentWorkflowService
         if (intent.Status != "succeeded")
             throw new InvalidOperationException("Payment has not been completed or could not be verified.");
 
+        var meta = intent.Metadata?.ToDictionary(x => x.Key, x => x.Value) ?? new Dictionary<string, string>();
+
         var reservation = await _context.Reservations.FindAsync(new object[] { request.ReservationId }, cancellationToken);
         if (reservation == null)
             throw new NotFoundException("Reservation not found.");
         if (string.Equals(reservation.Status, ReservationStatuses.Cancelled, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Reservation is cancelled.");
+
+        if (!meta.TryGetValue("ReservationId", out var resMeta) ||
+            !int.TryParse(resMeta, NumberStyles.Integer, CultureInfo.InvariantCulture, out var resFromMeta) ||
+            resFromMeta != request.ReservationId)
+        {
+            throw new InvalidOperationException("Payment does not match this reservation.");
+        }
+
+        if (meta.TryGetValue("UserId", out var userMeta) &&
+            int.TryParse(userMeta, NumberStyles.Integer, CultureInfo.InvariantCulture, out var userFromMeta))
+        {
+            if (userFromMeta != reservation.UserId)
+                throw new InvalidOperationException("Payment does not match the guest on this reservation.");
+        }
+        else if (fromWebhook)
+        {
+            throw new InvalidOperationException(
+                "Payment intent metadata is incomplete; cannot verify the booking guest for webhook confirmation.");
+        }
 
         if (!fromWebhook)
         {
@@ -554,7 +576,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
             await _context.Entry(reservation).ReloadAsync(cancellationToken);
             return new PaymentIntentDto
             {
-                Status = "succeeded",
+                Status = StripePaymentService.CardChargeSucceededStatus,
                 PaymentIntentId = request.PaymentIntentId,
                 AlreadyFinalized = true,
             };
@@ -563,9 +585,9 @@ public class PaymentWorkflowService : IPaymentWorkflowService
         if (HasNonCardPayment(request.ReservationId))
             throw new InvalidOperationException("A non-card payment is already recorded for this reservation.");
 
-        int? paidBy = fromWebhook ? null : currentUserId;
+        int? paidBy = fromWebhook ? reservation.UserId : currentUserId;
         const string paymentMethod = "Card";
-        const string status = "pending";
+        var succeededStatus = StripePaymentService.CardChargeSucceededStatus;
 
         await using var transaction =
             await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
@@ -580,7 +602,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
                     Amount = reservation.TotalPrice ?? 0,
                     PaymentDate = DateTime.UtcNow,
                     PaymentMethod = paymentMethod,
-                    Status = status
+                    Status = succeededStatus
                 });
             }
             await _context.SaveChangesAsync(cancellationToken);
@@ -599,7 +621,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
                 ReservationId = payRow?.ReservationId ?? request.ReservationId,
                 Amount = payRow?.Amount ?? (reservation.TotalPrice ?? 0),
                 PaymentMethod = paymentMethod,
-                PaymentStatus = status,
+                PaymentStatus = succeededStatus,
                 IsConfirmed = true,
                 UserEmail = msgCtx.UserEmail,
                 UserName = msgCtx.UserDisplayName,
@@ -628,7 +650,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
 
             return new PaymentIntentDto
             {
-                Status = status,
+                Status = succeededStatus,
                 PaymentIntentId = request.PaymentIntentId,
             };
         }

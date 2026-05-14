@@ -2,12 +2,12 @@ using System;
 
 namespace Yamore.Model
 {
-    /// <summary>Optional pending card payment row created in the same transaction as a new confirmed booking (Stripe card flow).</summary>
+    /// <summary>Optional card payment row created with a new confirmed booking; <see cref="Status"/> should be <c>succeeded</c> once Stripe confirms the charge.</summary>
     public class CardPaymentPendingInfo
     {
         public decimal Amount { get; set; }
         public string PaymentMethod { get; set; } = "Card";
-        public string Status { get; set; } = "pending";
+        public string Status { get; set; } = "succeeded";
         public DateTime? PaymentDateUtc { get; set; }
     }
 }
