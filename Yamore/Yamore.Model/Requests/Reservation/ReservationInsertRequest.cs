@@ -1,22 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace Yamore.Model.Requests.Reservation
 {
+    /// <summary>
+    /// Self-service booking create. User, pricing, and initial status are determined only on the server.
+    /// </summary>
     public class ReservationInsertRequest
     {
-        public int UserId { get; set; }
-
         public int YachtId { get; set; }
 
         public DateTime StartDate { get; set; }
 
         public DateTime EndDate { get; set; }
 
-        public decimal? TotalPrice { get; set; }
-
-        public string? Status { get; set; }
-        public DateTime? CreatedAt { get; set; }
+        /// <summary>Add-on services for this booking (must be linked to the yacht). Optional.</summary>
+        public List<int>? ServiceIds { get; set; }
     }
 }

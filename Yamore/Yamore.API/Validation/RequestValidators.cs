@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using FluentValidation;
 using Yamore.Model;
 using Yamore.Model.Requests.News;
@@ -470,7 +471,6 @@ public sealed class ReservationInsertRequestValidator : AbstractValidator<Reserv
 {
     public ReservationInsertRequestValidator()
     {
-        RuleFor(x => x.UserId).GreaterThan(0).WithMessage("Please select a valid user.");
         RuleFor(x => x.YachtId).GreaterThan(0).WithMessage("Please select a valid yacht.");
 
         RuleFor(x => x.StartDate)
@@ -480,37 +480,23 @@ public sealed class ReservationInsertRequestValidator : AbstractValidator<Reserv
             .NotEmpty().WithMessage(ValidationMessages.Required("End date"))
             .GreaterThan(x => x.StartDate).WithMessage("End date must be after the start date.");
 
-        RuleFor(x => x.TotalPrice)
-            .GreaterThanOrEqualTo(0).WithMessage("Total price must be 0 or greater.")
-            .When(x => x.TotalPrice.HasValue);
-
-        RuleFor(x => x.Status)
-            .MaximumLength(20).WithMessage(ValidationMessages.MaxLength("Status", 20))
-            .When(x => x.Status != null);
+        RuleFor(x => x.ServiceIds!)
+            .Must(ids => ids == null || ids.All(id => id > 0))
+            .WithMessage("Each service id must be greater than zero.")
+            .When(x => x.ServiceIds != null);
     }
 }
 
-public sealed class ReservationUpdateRequestValidator : AbstractValidator<ReservationUpdateRequest>
+public sealed class ReservationChangeDatesRequestValidator : AbstractValidator<ReservationChangeDatesRequest>
 {
-    public ReservationUpdateRequestValidator()
+    public ReservationChangeDatesRequestValidator()
     {
-        RuleFor(x => x.UserId).GreaterThan(0).WithMessage("Please select a valid user.");
-        RuleFor(x => x.YachtId).GreaterThan(0).WithMessage("Please select a valid yacht.");
-
         RuleFor(x => x.StartDate)
             .NotEmpty().WithMessage(ValidationMessages.Required("Start date"));
 
         RuleFor(x => x.EndDate)
             .NotEmpty().WithMessage(ValidationMessages.Required("End date"))
             .GreaterThan(x => x.StartDate).WithMessage("End date must be after the start date.");
-
-        RuleFor(x => x.TotalPrice)
-            .GreaterThanOrEqualTo(0).WithMessage("Total price must be 0 or greater.")
-            .When(x => x.TotalPrice.HasValue);
-
-        RuleFor(x => x.Status)
-            .MaximumLength(20).WithMessage(ValidationMessages.MaxLength("Status", 20))
-            .When(x => x.Status != null);
     }
 }
 
@@ -740,7 +726,6 @@ public sealed class PrepareCardBookingRequestValidator : AbstractValidator<Prepa
 {
     public PrepareCardBookingRequestValidator()
     {
-        RuleFor(x => x.UserId).GreaterThan(0).WithMessage("Please select a valid user.");
         RuleFor(x => x.YachtId).GreaterThan(0).WithMessage("Please select a valid yacht.");
         RuleFor(x => x.StartDate)
             .NotEmpty().WithMessage(ValidationMessages.Required("Start date"));

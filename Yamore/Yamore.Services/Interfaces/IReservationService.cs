@@ -1,3 +1,4 @@
+using System;
 using Yamore.Model;
 using Yamore.Model.Requests.Reservation;
 using Yamore.Model.SearchObjects;
@@ -29,7 +30,16 @@ namespace Yamore.Services.Interfaces
         decimal ValidateAndQuoteCardBooking(int yachtId, DateTime start, DateTime end, IReadOnlyList<int> serviceIds);
 
         /// <summary>Creates a confirmed reservation, add-on lines, and optionally a pending card payment in one database transaction.</summary>
-        Model.Reservation InsertConfirmedReservationWithServices(ReservationInsertRequest request, IReadOnlyList<int> serviceIds, CardPaymentPendingInfo? recordPendingCardPayment = null);
+        Model.Reservation InsertConfirmedReservationWithServices(
+            int userId,
+            int yachtId,
+            DateTime startDate,
+            DateTime endDate,
+            IReadOnlyList<int> serviceIds,
+            CardPaymentPendingInfo? recordPendingCardPayment = null);
+
+        /// <summary>Pending reservation only: validates availability and recomputes <see cref="Model.Reservation.TotalPrice"/>.</summary>
+        Model.Reservation ChangeDates(int id, int actorUserId, bool actorIsAdmin, DateTime newStart, DateTime newEnd);
 
         /// <summary>Loads user and yacht fields for messaging (no visibility filtering).</summary>
         ReservationMessageContext GetReservationMessageContext(int userId, int yachtId);

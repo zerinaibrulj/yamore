@@ -389,7 +389,6 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
       String offlineMethod = 'Cash';
       if (isCard) {
         final intentResult = await widget.api.prepareCardBooking(
-          userId: widget.user.userId,
           yachtId: widget.overview.yachtId,
           startDate: start,
           endDate: end,
@@ -473,19 +472,11 @@ class _MobileBookingReviewScreenState extends State<MobileBookingReviewScreen> {
         );
       } else {
         final reservation = await widget.api.createReservation(
-          userId: widget.user.userId,
           yachtId: widget.overview.yachtId,
           startDate: start,
           endDate: end,
-          totalPrice: totalPrice,
-          status: 'Pending',
+          serviceIds: widget.selectedServices.map((s) => s.serviceId).toList(),
         );
-        for (final s in widget.selectedServices) {
-          await widget.api.addServiceToReservation(
-            reservationId: reservation.reservationId,
-            serviceId: s.serviceId,
-          );
-        }
         offlineMethod = 'Cash';
         await widget.api.confirmPayment(
           reservationId: reservation.reservationId,

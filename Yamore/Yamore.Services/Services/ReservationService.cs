@@ -1,6 +1,11 @@
+using System;
 using System.Globalization;
 using MapsterMapper;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Claims;
 using Yamore.Model;
 using Yamore.Model.Requests.Reservation;
 using Yamore.Model.SearchObjects;
@@ -12,11 +17,17 @@ namespace Yamore.Services.Services
     public class ReservationService : BaseCRUDService<Model.Reservation, ReservationSearchObject, Database.Reservation, ReservationInsertRequest, ReservationUpdateRequest, ReservationDeleteRequest>, IReservationService
     {
         private readonly INotificationService _notifications;
+        private readonly IHttpContextAccessor? _httpContextAccessor;
 
-        public ReservationService(_220245Context context, IMapper mapper, INotificationService notifications)
+        public ReservationService(
+            _220245Context context,
+            IMapper mapper,
+            INotificationService notifications,
+            IHttpContextAccessor? httpContextAccessor = null)
             : base(context, mapper)
         {
             _notifications = notifications;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public override PagedResponse<Model.Reservation> GetPaged(ReservationSearchObject search)
@@ -107,23 +118,16 @@ namespace Yamore.Services.Services
             return filteredQurey;
         }
 
-        public override void BeforeInsret(ReservationInsertRequest request, Database.Reservation entity)
-        {
-            var now = DateTime.UtcNow;
-            entity.Status = ReservationStatuses.Pending;
-            if (entity.CreatedAt == null)
-                entity.CreatedAt = now;
-            entity.StatusChangedAt = now;
-            entity.StatusChangedByUserId = request.UserId;
-            entity.StatusChangeReason = "Created";
-            base.BeforeInsret(request, entity);
-        }
-
         public override Model.Reservation Insert(ReservationInsertRequest request)
         {
+            var http = _httpContextAccessor?.HttpContext;
+            if (!int.TryParse(http?.User?.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                throw new ForbiddenException("You must be signed in to create a reservation.");
+
             var yachtId = request.YachtId;
             var start = request.StartDate;
             var end = request.EndDate;
+            var serviceIds = request.ServiceIds ?? new List<int>();
 
             var yacht = Context.Set<Database.Yacht>().AsNoTracking().FirstOrDefault(y => y.YachtId == yachtId);
             if (yacht == null)
@@ -137,33 +141,80 @@ namespace Yamore.Services.Services
             if (HasOverlap(yachtId, start, end))
                 throw new UserException("This yacht is already reserved for the selected dates. Please choose different dates or times.");
 
-            var created = base.Insert(request);
-            TryNotifyNewPendingReservation(created, yacht);
-            return created;
+            var total = ComputeQuotedTotalForCardBooking(yachtId, start, end, serviceIds);
+            var now = DateTime.UtcNow;
+
+            using var tx = Context.Database.BeginTransaction();
+            try
+            {
+                var entity = new Database.Reservation
+                {
+                    UserId = userId,
+                    YachtId = yachtId,
+                    StartDate = start,
+                    EndDate = end,
+                    TotalPrice = total,
+                    Status = ReservationStatuses.Pending,
+                    CreatedAt = now,
+                };
+                ApplyStatusAudit(entity, userId, now, "Created");
+                Context.Add(entity);
+                Context.SaveChanges();
+
+                foreach (var sid in serviceIds.Distinct())
+                {
+                    Context.Add(new Database.ReservationService
+                    {
+                        ReservationId = entity.ReservationId,
+                        ServiceId = sid,
+                    });
+                }
+
+                Context.SaveChanges();
+                tx.Commit();
+
+                var model = MapToModel(entity);
+                TryNotifyNewPendingReservation(model, yacht);
+                return model;
+            }
+            catch
+            {
+                tx.Rollback();
+                throw;
+            }
         }
 
-        public override Model.Reservation Update(int id, ReservationUpdateRequest request)
+        public Model.Reservation ChangeDates(int id, int actorUserId, bool actorIsAdmin, DateTime newStart, DateTime newEnd)
         {
-            var entity = Context.Set<Database.Reservation>().Find(id);
-            if (entity == null)
-                throw new NotFoundException($"Reservation with id {id} not found.");
+            var entity = LoadReservationWithYacht(id);
 
-            var preserveStatus = entity.Status;
-            var sAt = entity.StatusChangedAt;
-            var sBy = entity.StatusChangedByUserId;
-            var sReason = entity.StatusChangeReason;
+            if (!actorIsAdmin && entity.UserId != actorUserId && entity.Yacht.OwnerId != actorUserId)
+                throw new UnauthorizedAccessException("You are not allowed to change dates for this reservation.");
 
-            Mapper.Map(request, entity);
+            if (!string.Equals(entity.Status, ReservationStatuses.Pending, StringComparison.OrdinalIgnoreCase))
+                throw new UserException("Only pending reservations can have their dates changed.");
 
-            entity.Status = preserveStatus;
-            entity.StatusChangedAt = sAt;
-            entity.StatusChangedByUserId = sBy;
-            entity.StatusChangeReason = sReason;
+            if (HasOverlapExcluding(entity.YachtId, newStart, newEnd, entity.ReservationId))
+                throw new UserException("This yacht is already reserved for the selected dates. Please choose different dates or times.");
 
-            BeforeUpdate(request, entity);
+            var serviceIds = Context.Set<Database.ReservationService>().AsNoTracking()
+                .Where(rs => rs.ReservationId == id)
+                .Select(rs => rs.ServiceId)
+                .ToList();
+
+            var total = ComputeQuotedTotalForCardBooking(entity.YachtId, newStart, newEnd, serviceIds);
+            var now = DateTime.UtcNow;
+            entity.StartDate = newStart;
+            entity.EndDate = newEnd;
+            entity.TotalPrice = total;
+            ApplyStatusAudit(entity, actorUserId, now, "Dates changed");
             Context.SaveChanges();
             return Mapper.Map<Model.Reservation>(entity);
         }
+
+        public override Model.Reservation Update(int id, ReservationUpdateRequest request) =>
+            throw new UserException(
+                "Reservations cannot be updated with PUT. Use cancel, confirm, reject, complete, or change-dates.");
 
         public override Model.Reservation Delete(int id) =>
             throw new UserException("Reservations cannot be deleted. Cancel the booking instead.");
@@ -175,31 +226,41 @@ namespace Yamore.Services.Services
         }
 
         public Model.Reservation InsertConfirmedReservationWithServices(
-            ReservationInsertRequest request,
+            int userId,
+            int yachtId,
+            DateTime startDate,
+            DateTime endDate,
             IReadOnlyList<int> serviceIds,
             CardPaymentPendingInfo? recordPendingCardPayment = null)
         {
             serviceIds ??= Array.Empty<int>();
-            var quoted = ComputeQuotedTotalForCardBooking(request.YachtId, request.StartDate, request.EndDate, serviceIds);
-            if (request.TotalPrice == null || Math.Abs(request.TotalPrice.Value - quoted) > 0.02m)
+            var quoted = ComputeQuotedTotalForCardBooking(yachtId, startDate, endDate, serviceIds);
+            if (recordPendingCardPayment != null && Math.Abs(recordPendingCardPayment.Amount - quoted) > 0.02m)
             {
-                throw new UserException("Price mismatch. Please refresh and try again.");
+                throw new InvalidOperationException("Payment amount does not match the server-calculated booking total.");
             }
 
             using var tx = Context.Database.BeginTransaction();
             try
             {
-                if (HasOverlap(request.YachtId, request.StartDate, request.EndDate))
+                if (HasOverlap(yachtId, startDate, endDate))
                 {
                     throw new UserException(
                         "This yacht is already reserved for the selected dates. Please choose different dates or times.");
                 }
 
-                var entity = Mapper.Map<Database.Reservation>(request);
                 var now = DateTime.UtcNow;
-                entity.Status = ReservationStatuses.Confirmed;
-                entity.CreatedAt ??= now;
-                ApplyStatusAudit(entity, request.UserId, now, "Paid card booking");
+                var entity = new Database.Reservation
+                {
+                    UserId = userId,
+                    YachtId = yachtId,
+                    StartDate = startDate,
+                    EndDate = endDate,
+                    TotalPrice = quoted,
+                    Status = ReservationStatuses.Confirmed,
+                    CreatedAt = now,
+                };
+                ApplyStatusAudit(entity, userId, now, "Paid card booking");
 
                 Context.Add(entity);
                 Context.SaveChanges();
@@ -242,6 +303,15 @@ namespace Yamore.Services.Services
                 .AsNoTracking()
                 .Where(r => r.YachtId == yachtId)
                 // Inline (see ReservationStatuses.BlocksAvailability): not cancelled/completed, including null. Must be translatable to SQL (no custom C# in Where).
+                .Where(r => r.Status == null
+                    || (r.Status != ReservationStatuses.Cancelled
+                        && r.Status != ReservationStatuses.Completed))
+                .Any(r => start < r.EndDate && end > r.StartDate);
+
+        private bool HasOverlapExcluding(int yachtId, DateTime start, DateTime end, int excludeReservationId) =>
+            Context.Set<Database.Reservation>()
+                .AsNoTracking()
+                .Where(r => r.YachtId == yachtId && r.ReservationId != excludeReservationId)
                 .Where(r => r.Status == null
                     || (r.Status != ReservationStatuses.Cancelled
                         && r.Status != ReservationStatuses.Completed))

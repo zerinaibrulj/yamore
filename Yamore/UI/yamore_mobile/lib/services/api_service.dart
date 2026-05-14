@@ -1398,25 +1398,20 @@ class ApiService {
   }
 
   Future<Reservation> createReservation({
-    required int userId,
     required int yachtId,
     required DateTime startDate,
     required DateTime endDate,
-    double? totalPrice,
-    String status = 'Pending',
+    List<int> serviceIds = const [],
   }) async {
     final uri = Uri.parse('$baseUrl/Reservation');
     final response = await http.post(
       uri,
       headers: await _httpHeaders(),
       body: jsonEncode({
-        'UserId': userId,
         'YachtId': yachtId,
         'StartDate': startDate.toUtc().toIso8601String(),
         'EndDate': endDate.toUtc().toIso8601String(),
-        'TotalPrice': totalPrice,
-        'Status': status,
-        'CreatedAt': DateTime.now().toUtc().toIso8601String(),
+        'ServiceIds': serviceIds,
       }),
     );
     _ensureSuccess(response, allow201: true);
@@ -1507,7 +1502,6 @@ class ApiService {
 
   /// Starts card checkout without creating a reservation. After Stripe succeeds, call [confirmPayment] with [reservationId] 0 and the [paymentIntentId].
   Future<PaymentIntentResult> prepareCardBooking({
-    required int userId,
     required int yachtId,
     required DateTime startDate,
     required DateTime endDate,
@@ -1518,8 +1512,6 @@ class ApiService {
       uri,
       headers: await _httpHeaders(),
       body: jsonEncode({
-        'userId': userId,
-        'UserId': userId,
         'yachtId': yachtId,
         'YachtId': yachtId,
         'startDate': startDate.toUtc().toIso8601String(),

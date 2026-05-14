@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Yamore.API.Services;
 using Yamore.Model;
@@ -44,6 +46,35 @@ namespace Yamore.API.Controllers
             };
             _messagePublisher.Publish(MessageEnvelope.ReservationCreated, JsonSerializer.Serialize(msg));
             Response.Headers["X-Operation-Message"] = "Reservation created successfully.";
+            return Ok(result);
+        }
+
+        /// <summary>Generic PUT is disabled; use cancel, confirm, reject, complete, or change-dates.</summary>
+        [HttpPut("{id}")]
+        public override ActionResult<Model.Reservation> Update(int id, ReservationUpdateRequest request) =>
+            StatusCode(
+                StatusCodes.Status405MethodNotAllowed,
+                new
+                {
+                    errors = new Dictionary<string, string[]>
+                    {
+                        ["error"] = new[]
+                        {
+                            "Reservations cannot be updated with PUT. Use PUT .../cancel, /confirm, /reject, /complete, or PUT .../dates."
+                        }
+                    }
+                });
+
+        [HttpPut("{id}/dates")]
+        [Authorize]
+        public ActionResult<Model.Reservation> ChangeDates(int id, [FromBody] ReservationChangeDatesRequest body)
+        {
+            if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId))
+                return Unauthorized();
+
+            var isAdmin = User.IsInRole(AppRoles.Admin);
+            var result = _reservationService.ChangeDates(id, actorId, isAdmin, body.StartDate, body.EndDate);
+            Response.Headers["X-Operation-Message"] = "Reservation dates updated.";
             return Ok(result);
         }
 

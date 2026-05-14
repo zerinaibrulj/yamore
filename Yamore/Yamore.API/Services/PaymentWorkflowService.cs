@@ -8,7 +8,6 @@ using Yamore.API.Configuration;
 using Yamore.Model;
 using Yamore.Model.Messages;
 using Yamore.Model.Requests.Payment;
-using Yamore.Model.Requests.Reservation;
 using Yamore.Services.Database;
 using Yamore.Services.Interfaces;
 using DbPayment = Yamore.Services.Database.Payment;
@@ -54,9 +53,6 @@ public class PaymentWorkflowService : IPaymentWorkflowService
         int claimUserId,
         CancellationToken cancellationToken)
     {
-        if (claimUserId != request.UserId)
-            throw new UnauthorizedAccessException("The booking user must match the signed-in account.");
-
         if (!_stripe.IsConfigured)
             throw new BusinessException("Stripe is not configured.");
 
@@ -67,7 +63,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
         var metadata = new Dictionary<string, string>
         {
             ["Kind"] = "provisional_booking",
-            ["UserId"] = request.UserId.ToString(CultureInfo.InvariantCulture),
+            ["UserId"] = claimUserId.ToString(CultureInfo.InvariantCulture),
             ["YachtId"] = request.YachtId.ToString(CultureInfo.InvariantCulture),
             ["StartUtc"] = request.StartDate.ToUniversalTime().ToString("o", CultureInfo.InvariantCulture),
             ["EndUtc"] = request.EndDate.ToUniversalTime().ToString("o", CultureInfo.InvariantCulture),
@@ -434,17 +430,6 @@ public class PaymentWorkflowService : IPaymentWorkflowService
         if (intent.Amount != expectedCents)
             throw new InvalidOperationException("Payment amount does not match the booking. Please start checkout again.");
 
-        var insert = new ReservationInsertRequest
-        {
-            UserId = metaUserId,
-            YachtId = yachtId,
-            StartDate = start,
-            EndDate = end,
-            TotalPrice = total,
-            Status = "Confirmed",
-            CreatedAt = DateTime.UtcNow
-        };
-
         const string payStatus = "pending";
         var pendingPay = new CardPaymentPendingInfo
         {
@@ -453,7 +438,14 @@ public class PaymentWorkflowService : IPaymentWorkflowService
             Status = payStatus,
             PaymentDateUtc = DateTime.UtcNow,
         };
-        var reservation = _reservationService.InsertConfirmedReservationWithServices(insert, serviceIds, pendingPay);
+
+        var reservation = _reservationService.InsertConfirmedReservationWithServices(
+            metaUserId,
+            yachtId,
+            start,
+            end,
+            serviceIds,
+            pendingPay);
         var paymentEntity = await _context.Payments.AsNoTracking()
             .FirstOrDefaultAsync(p => p.ReservationId == reservation.ReservationId, cancellationToken);
         if (paymentEntity == null)

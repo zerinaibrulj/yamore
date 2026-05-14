@@ -1,22 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Yamore.Model.Requests.Reservation
+﻿namespace Yamore.Model.Requests.Reservation
 {
+    /// <summary>Unused: generic PUT is disabled for reservations.</summary>
     public class ReservationUpdateRequest
     {
-        public int UserId { get; set; }
-
-        public int YachtId { get; set; }
-
-        public DateTime StartDate { get; set; }
-
-        public DateTime EndDate { get; set; }
-
-        public decimal? TotalPrice { get; set; }
-
-        public string? Status { get; set; }
-        public DateTime? CreatedAt { get; set; }
     }
 }
