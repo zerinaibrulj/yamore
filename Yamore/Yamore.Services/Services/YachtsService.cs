@@ -540,6 +540,29 @@ namespace Yamore.Services.Services
             return new PagedResponse<YachtOverviewDto> { Count = count, ResultList = result };
         }
 
+        public bool CurrentUserMayManageYacht(int yachtId)
+        {
+            var http = _httpContextAccessor?.HttpContext;
+            if (http?.User?.IsInRole(AppRoles.Admin) == true)
+                return true;
+
+            if (!int.TryParse(http?.User?.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                return false;
+
+            return Context.Set<Database.Yacht>().AsNoTracking().Any(y => y.YachtId == yachtId && y.OwnerId == userId);
+        }
+
+        public bool CurrentUserMayManageRoute(int routeId)
+        {
+            var yachtId = Context.Set<Database.Route>().AsNoTracking()
+                .Where(r => r.RouteId == routeId)
+                .Select(r => (int?)r.YachtId)
+                .FirstOrDefault();
+            if (yachtId == null)
+                return false;
+            return CurrentUserMayManageYacht(yachtId.Value);
+        }
+
         public override Model.Yacht Delete(int id)
         {
             try

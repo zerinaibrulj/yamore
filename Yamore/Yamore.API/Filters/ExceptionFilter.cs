@@ -53,6 +53,20 @@ namespace Yamore.API.Filters
                 context.ModelState.AddModelError("userError", ex.Message);
                 context.HttpContext.Response.StatusCode = (int)HttpStatusCode.BadRequest;
             }
+            else if (ex is ForbiddenException)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Forbidden {Method} {Path}{Query} TraceId={TraceId} | {Message}",
+                    method,
+                    path,
+                    query,
+                    traceId,
+                    ex.Message);
+                var fMsg = _environment.IsDevelopment() ? ex.Message : "You are not allowed to perform this action.";
+                context.ModelState.AddModelError("error", fMsg);
+                context.HttpContext.Response.StatusCode = (int)HttpStatusCode.Forbidden;
+            }
             else if (ex is UnauthorizedAccessException)
             {
                 _logger.LogWarning(

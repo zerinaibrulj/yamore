@@ -1,4 +1,5 @@
 using MapsterMapper;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -18,9 +19,12 @@ namespace Yamore.Services.Services
 {
     public class UsersService : BaseCRUDService<Model.User, UsersSearchObject, Database.User, UserInsertRequest, UserUpdateRequest, UserDeleteRequest>, IUsersService
     {
-        public UsersService(_220245Context context, IMapper mapper)
+        private readonly IHttpContextAccessor? _httpContextAccessor;
+
+        public UsersService(_220245Context context, IMapper mapper, IHttpContextAccessor? httpContextAccessor = null)
             : base(context, mapper)
         {
+            _httpContextAccessor = httpContextAccessor;
         }
 
         /// <summary>
@@ -273,6 +277,13 @@ namespace Yamore.Services.Services
 
                 if (!string.IsNullOrWhiteSpace(request.RoleName))
                 {
+                    var http = _httpContextAccessor?.HttpContext;
+                    if (http?.User?.IsInRole(AppRoles.Admin) != true)
+                    {
+                        throw new ForbiddenException(
+                            "Only administrators may assign roles when creating a user.");
+                    }
+
                     var roleName = request.RoleName!.Trim();
                     var role = Context.Roles.FirstOrDefault(r => r.Name == roleName);
                     if (role != null)

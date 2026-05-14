@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Yamore.Model;
 using Yamore.Model.Requests.UserRole;
 using Yamore.Model.SearchObjects;
@@ -14,5 +15,17 @@ namespace Yamore.API.Controllers
             : base(service)
         {
         }
+
+        [HttpPost]
+        [Authorize(Roles = AppRoles.Admin)]
+        public override ActionResult<Model.UserRole> Insert(UserRoleInsertRequest request) => base.Insert(request);
+
+        [HttpPut("{id}")]
+        [Authorize(Roles = AppRoles.Admin)]
+        public override ActionResult<Model.UserRole> Update(int id, UserRoleUpdateRequest request) => base.Update(id, request);
+
+        [HttpDelete("{id}")]
+        [Authorize(Roles = AppRoles.Admin)]
+        public override ActionResult<Model.UserRole> Delete(int id) => base.Delete(id);
     }
 }

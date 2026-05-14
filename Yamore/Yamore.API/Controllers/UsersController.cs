@@ -43,6 +43,16 @@ namespace Yamore.API.Controllers
             _jtiRevocation = jtiRevocation;
         }
 
+        [HttpGet]
+        [Authorize(Roles = AppRoles.Admin)]
+        public override PagedResponse<Model.User> GetPaged([FromQuery] UsersSearchObject search) =>
+            base.GetPaged(search);
+
+        [HttpPost]
+        [Authorize(Roles = AppRoles.Admin)]
+        public override ActionResult<Model.User> Insert(UserInsertRequest request) =>
+            base.Insert(request);
+
         [HttpPut("{id}")]
         public override ActionResult<Model.User> Update(int id, UserUpdateRequest request)
         {
@@ -120,6 +130,7 @@ namespace Yamore.API.Controllers
         /// without throwing — avoids Visual Studio breaking on user-unhandled exceptions and matches Flutter expectations.
         /// </summary>
         [HttpDelete("{id}")]
+        [Authorize(Roles = AppRoles.Admin)]
         public override ActionResult<Model.User> Delete(int id)
         {
             try

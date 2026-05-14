@@ -22,5 +22,11 @@ namespace Yamore.Services.Interfaces
 
         /// <summary>Owner overview: returns yachts belonging to the given owner.</summary>
         PagedResponse<YachtOverviewDto> GetOverviewForOwner(int ownerId, YachtsSearchObject search);
+
+        /// <summary>True if the current HTTP user is an administrator or owns the yacht (by <c>OwnerId</c>).</summary>
+        bool CurrentUserMayManageYacht(int yachtId);
+
+        /// <summary>True if the current HTTP user is an administrator or owns the yacht linked to the route.</summary>
+        bool CurrentUserMayManageRoute(int routeId);
     }
 }

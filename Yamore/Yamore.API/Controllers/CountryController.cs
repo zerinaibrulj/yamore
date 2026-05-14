@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Yamore.Model;
 using Yamore.Model.Requests.Country;
 using Yamore.Model.SearchObjects;
@@ -19,7 +20,16 @@ namespace Yamore.API.Controllers
             _countryService = service;
         }
 
+        [HttpPost]
+        [Authorize(Roles = AppRoles.Admin)]
+        public override ActionResult<Model.Country> Insert(CountryInsertRequest request) => base.Insert(request);
+
+        [HttpPut("{id}")]
+        [Authorize(Roles = AppRoles.Admin)]
+        public override ActionResult<Model.Country> Update(int id, CountryUpdateRequest request) => base.Update(id, request);
+
         [HttpDelete("{id}")]
+        [Authorize(Roles = AppRoles.Admin)]
         public override ActionResult<Model.Country> Delete(int id)
         {
             var err = _countryService.GetDeleteBlockingErrorMessage(id);

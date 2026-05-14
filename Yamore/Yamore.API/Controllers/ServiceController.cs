@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Yamore.Model;
 using Yamore.Model.Requests.Service;
 using Yamore.Model.SearchObjects;
@@ -18,7 +19,16 @@ namespace Yamore.API.Controllers
             _serviceService = service;
         }
 
+        [HttpPost]
+        [Authorize(Roles = AppRoles.Admin)]
+        public override ActionResult<Model.Service> Insert(ServiceInsertRequest request) => base.Insert(request);
+
+        [HttpPut("{id}")]
+        [Authorize(Roles = AppRoles.Admin)]
+        public override ActionResult<Model.Service> Update(int id, ServiceUpdateRequest request) => base.Update(id, request);
+
         [HttpDelete("{id}")]
+        [Authorize(Roles = AppRoles.Admin)]
         public override ActionResult<Model.Service> Delete(int id)
         {
             var err = _serviceService.GetDeleteBlockingErrorMessage(id);
