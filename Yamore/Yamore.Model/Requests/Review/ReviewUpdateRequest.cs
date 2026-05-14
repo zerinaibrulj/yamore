@@ -8,15 +8,11 @@ namespace Yamore.Model.Requests.Review
     {
         public int ReservationId { get; set; }
 
-        public int UserId { get; set; }
-
         public int YachtId { get; set; }
 
         public int? Rating { get; set; }
 
         public string? Comment { get; set; }
-
-        public DateTime? DatePosted { get; set; }
 
         public string? OwnerResponse { get; set; }
 

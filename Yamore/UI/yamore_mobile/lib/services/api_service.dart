@@ -874,7 +874,6 @@ class ApiService {
 
   Future<Review> createReview({
     required int reservationId,
-    required int userId,
     required int yachtId,
     required int rating,
     String? comment,
@@ -885,11 +884,9 @@ class ApiService {
       headers: await _httpHeaders(),
       body: jsonEncode({
         'ReservationId': reservationId,
-        'UserId': userId,
         'YachtId': yachtId,
         'Rating': rating,
         'Comment': comment,
-        'DatePosted': DateTime.now().toUtc().toIso8601String(),
       }),
     );
     _ensureSuccess(response, allow201: true);
@@ -901,7 +898,6 @@ class ApiService {
   Future<Review> updateReview({
     required int reviewId,
     required int reservationId,
-    required int userId,
     required int yachtId,
     required int rating,
     String? comment,
@@ -912,11 +908,9 @@ class ApiService {
       headers: await _httpHeaders(),
       body: jsonEncode({
         'ReservationId': reservationId,
-        'UserId': userId,
         'YachtId': yachtId,
         'Rating': rating,
         'Comment': comment,
-        'DatePosted': DateTime.now().toUtc().toIso8601String(),
       }),
     );
     _ensureSuccess(response);

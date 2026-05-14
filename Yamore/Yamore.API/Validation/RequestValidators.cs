@@ -505,7 +505,6 @@ public sealed class ReviewInsertRequestValidator : AbstractValidator<ReviewInser
     public ReviewInsertRequestValidator()
     {
         RuleFor(x => x.ReservationId).GreaterThan(0).WithMessage("Please select a valid reservation.");
-        RuleFor(x => x.UserId).GreaterThan(0).WithMessage("Please select a valid user.");
         RuleFor(x => x.YachtId).GreaterThan(0).WithMessage("Please select a valid yacht.");
 
         RuleFor(x => x.Rating)
@@ -524,7 +523,6 @@ public sealed class ReviewUpdateRequestValidator : AbstractValidator<ReviewUpdat
     public ReviewUpdateRequestValidator()
     {
         RuleFor(x => x.ReservationId).GreaterThan(0).WithMessage("Please select a valid reservation.");
-        RuleFor(x => x.UserId).GreaterThan(0).WithMessage("Please select a valid user.");
         RuleFor(x => x.YachtId).GreaterThan(0).WithMessage("Please select a valid yacht.");
 
         RuleFor(x => x.Rating)

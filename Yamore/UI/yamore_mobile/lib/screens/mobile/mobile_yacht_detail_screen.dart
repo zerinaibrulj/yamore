@@ -341,7 +341,6 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
       if (_myReview == null) {
         updated = await widget.api.createReview(
           reservationId: reservationId,
-          userId: widget.user.userId,
           yachtId: widget.overview.yachtId,
           rating: rating,
           comment: comment?.isEmpty == true ? null : comment,
@@ -351,7 +350,6 @@ class _MobileYachtDetailScreenState extends State<MobileYachtDetailScreen> {
         updated = await widget.api.updateReview(
           reviewId: _myReview!.reviewId,
           reservationId: reservationId,
-          userId: widget.user.userId,
           yachtId: widget.overview.yachtId,
           rating: rating,
           comment: comment?.isEmpty == true ? null : comment,

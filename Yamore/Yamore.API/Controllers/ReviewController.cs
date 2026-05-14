@@ -26,6 +26,7 @@ namespace Yamore.API.Controllers
             return Ok(result);
         }
 
+        [Authorize(Roles = AppRoles.Admin)]
         [HttpPut("{id}/unreport")]
         public ActionResult<Model.Review> Unreport(int id)
         {
@@ -33,8 +34,8 @@ namespace Yamore.API.Controllers
             return Ok(result);
         }
 
+        /// <summary>Owner response: allowed for the actual yacht owner (<c>Yacht.OwnerId</c> equals current user) or an administrator.</summary>
         [HttpPut("{id}/respond")]
-        [Authorize(Roles = AppRoles.AdminYachtOwner)]
         public ActionResult<Model.Review> RespondAsOwner(int id, [FromBody] ReviewRespondRequest request)
         {
             var result = _reviewService.RespondAsOwner(id, request?.OwnerResponse ?? "");
