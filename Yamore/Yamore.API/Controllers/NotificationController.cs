@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Yamore.Model;
 using Yamore.Model.Api;
@@ -26,6 +27,7 @@ namespace Yamore.API.Controllers
         /// Sends an admin warning to the user and to the owners of yachts that the user has reserved
         /// (non-cancelled reservations). This ensures both parties can read the warning.
         /// </summary>
+        [Authorize(Roles = AppRoles.Admin)]
         [HttpPost("warning-to-user-and-owners")]
         public async Task<ActionResult<WarningNotificationResultDto>> SendWarningToUserAndOwners(
             [FromBody] WarningNotificationRequest request,
@@ -53,5 +55,20 @@ namespace Yamore.API.Controllers
             if (n == null) return NotFound();
             return Ok(n);
         }
+
+        [Authorize(Roles = AppRoles.Admin)]
+        [HttpPost]
+        public override ActionResult<Model.Notification> Insert(NotificationInsertRequest request) =>
+            base.Insert(request);
+
+        [Authorize(Roles = AppRoles.Admin)]
+        [HttpPut("{id}")]
+        public override ActionResult<Model.Notification> Update(int id, NotificationUpdateRequest request) =>
+            base.Update(id, request);
+
+        [Authorize(Roles = AppRoles.Admin)]
+        [HttpDelete("{id}")]
+        public override ActionResult<Model.Notification> Delete(int id) =>
+            base.Delete(id);
     }
 }

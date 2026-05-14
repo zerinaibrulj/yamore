@@ -38,31 +38,22 @@ namespace Yamore.Services.Services
             return Mapper.Map<Model.Notification>(entity);
         }
 
+        public override Model.Notification Insert(NotificationInsertRequest request)
+        {
+            RequireAdminForNotificationMutation("create notifications through this API");
+            return base.Insert(request);
+        }
+
         public override Model.Notification Update(int id, NotificationUpdateRequest request)
         {
-            var set = Context.Set<Database.Notification>();
-            var entity = set.Find(id);
-            if (entity == null)
-                throw new NotFoundException($"Entity with id {id} not found.");
-            if (!CurrentUserMayAccessNotification(entity.UserId))
-                throw new NotFoundException($"Entity with id {id} not found.");
-            Mapper.Map(request, entity);
-            BeforeUpdate(request, entity);
-            Context.SaveChanges();
-            return Mapper.Map<Model.Notification>(entity);
+            RequireAdminForNotificationMutation("update notifications (non-admins may only mark their own as read)");
+            return base.Update(id, request);
         }
 
         public override Model.Notification Delete(int id)
         {
-            var set = Context.Set<Database.Notification>();
-            var entity = set.Find(id);
-            if (entity == null)
-                throw new NotFoundException($"Entity with id {id} not found.");
-            if (!CurrentUserMayAccessNotification(entity.UserId))
-                throw new NotFoundException($"Entity with id {id} not found.");
-            set.Remove(entity);
-            Context.SaveChanges();
-            return Mapper.Map<Model.Notification>(entity);
+            RequireAdminForNotificationMutation("delete notifications");
+            return base.Delete(id);
         }
 
         /// <summary>Admins may access any notification; others only rows where <see cref="Database.Notification.UserId"/> matches the JWT subject.</summary>
@@ -73,6 +64,12 @@ namespace Yamore.Services.Services
                 return true;
             return int.TryParse(http?.User?.FindFirstValue(ClaimTypes.NameIdentifier), out var uid)
                 && uid == notificationRecipientUserId;
+        }
+
+        private void RequireAdminForNotificationMutation(string actionDescription)
+        {
+            if (_httpContextAccessor?.HttpContext?.User?.IsInRole(AppRoles.Admin) != true)
+                throw new ForbiddenException($"Only administrators may {actionDescription}.");
         }
 
         public override PagedResponse<Model.Notification> GetPaged(NotificationSearchObject search)
