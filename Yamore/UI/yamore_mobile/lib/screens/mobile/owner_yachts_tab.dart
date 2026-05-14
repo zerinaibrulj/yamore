@@ -158,7 +158,6 @@ class _OwnerYachtsTabState extends State<OwnerYachtsTab> {
       MaterialPageRoute(
         builder: (_) => _OwnerYachtFormScreen(
           api: _api,
-          ownerId: widget.user.userId,
           cities: _cities,
           categories: _categories,
           canEdit: true,
@@ -197,7 +196,6 @@ class _OwnerYachtsTabState extends State<OwnerYachtsTab> {
         MaterialPageRoute(
           builder: (_) => _OwnerYachtFormScreen(
             api: _api,
-            ownerId: widget.user.userId,
             cities: _cities,
             categories: _categories,
             existing: detail,
@@ -817,7 +815,6 @@ class _OwnerYachtsTabState extends State<OwnerYachtsTab> {
 
 class _OwnerYachtFormScreen extends StatefulWidget {
   final ApiService api;
-  final int ownerId;
   final List<CityModel> cities;
   final List<YachtCategoryModel> categories;
   final YachtDetail? existing;
@@ -825,7 +822,6 @@ class _OwnerYachtFormScreen extends StatefulWidget {
 
   const _OwnerYachtFormScreen({
     required this.api,
-    required this.ownerId,
     required this.cities,
     required this.categories,
     this.existing,
@@ -1299,7 +1295,7 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
 
     final detail = YachtDetail(
       yachtId: widget.existing?.yachtId,
-      ownerId: widget.ownerId,
+      ownerId: widget.existing?.ownerId,
       name: _name.text.trim(),
       description:
           _description.text.trim().isEmpty ? null : _description.text.trim(),

@@ -6,8 +6,7 @@ namespace Yamore.Model.Requests.Yachts
 {
     public class YachtsUpdateRequest
     {
-        public int? OwnerId { get; set; }
-
+        /// <summary>Owner cannot be changed through the standard update API; use admin update.</summary>
         public string Name { get; set; } = null!;
 
         public string? Description { get; set; }

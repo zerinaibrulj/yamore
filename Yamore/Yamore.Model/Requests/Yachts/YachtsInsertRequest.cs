@@ -6,8 +6,7 @@ namespace Yamore.Model.Requests.Yachts
 {
     public class YachtsInsertRequest
     {
-        public int? OwnerId { get; set; }
-
+        /// <summary>Owner is always taken from the JWT for this request; never from the client.</summary>
         public string Name { get; set; } = null!;
 
         public string? Description { get; set; }

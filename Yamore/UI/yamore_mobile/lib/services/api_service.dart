@@ -156,6 +156,21 @@ class ApiService {
     );
   }
 
+  /// Admin-only: creates a yacht for [ownerId] (server ignores any owner on [yacht]).
+  Future<YachtDetail> createYachtAdmin(YachtDetail yacht, {required int ownerId}) async {
+    final uri = Uri.parse('$baseUrl/Yachts/admin');
+    final body = Map<String, dynamic>.from(yacht.toJsonForSave())..['ownerId'] = ownerId;
+    final response = await http.post(
+      uri,
+      headers: await _httpHeaders(),
+      body: jsonEncode(body),
+    );
+    _ensureSuccess(response, allow201: true);
+    return YachtDetail.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
   Future<YachtDetail> updateYacht(YachtDetail yacht) async {
     if (yacht.yachtId == null) {
       throw ArgumentError('yachtId is required for update');
@@ -165,6 +180,24 @@ class ApiService {
       uri,
       headers: await _httpHeaders(),
       body: jsonEncode(yacht.toJsonForSave()),
+    );
+    _ensureSuccess(response);
+    return YachtDetail.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  /// Admin-only: updates a yacht and may reassign [ownerId].
+  Future<YachtDetail> updateYachtAdmin(YachtDetail yacht, {required int ownerId}) async {
+    if (yacht.yachtId == null) {
+      throw ArgumentError('yachtId is required for update');
+    }
+    final uri = Uri.parse('$baseUrl/Yachts/admin/${yacht.yachtId}');
+    final body = Map<String, dynamic>.from(yacht.toJsonForSave())..['ownerId'] = ownerId;
+    final response = await http.put(
+      uri,
+      headers: await _httpHeaders(),
+      body: jsonEncode(body),
     );
     _ensureSuccess(response);
     return YachtDetail.fromJson(

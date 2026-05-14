@@ -49,7 +49,6 @@ class YachtDetail {
 
   Map<String, dynamic> toJsonForSave() {
     return {
-      'ownerId': ownerId,
       'name': name,
       'description': description,
       'yearBuilt': yearBuilt,

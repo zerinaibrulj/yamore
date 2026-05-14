@@ -10,6 +10,13 @@ namespace Yamore.Services.Interfaces
         public Yacht Activate(int id);
         public Yacht Hide(int id);
         public Yacht Edit(int id);
+
+        /// <summary>Creates a yacht for <see cref="YachtsAdminInsertRequest.OwnerId"/> (admin API only).</summary>
+        Yacht InsertAsAdmin(YachtsAdminInsertRequest request);
+
+        /// <summary>Updates a yacht including owner reassignment (admin API only).</summary>
+        Yacht UpdateAsAdmin(int id, YachtsAdminUpdateRequest request);
+
         public List<string> AllowedActions(int id);
         /// <summary>Recommended yachts using reservation history, 4+ star review preferences, services, ratings, and popularity. Returns overview DTOs.</summary>
         PagedResponse<YachtOverviewDto> GetRecommendations(int? userId, int page = 0, int pageSize = 10);
@@ -28,5 +35,8 @@ namespace Yamore.Services.Interfaces
 
         /// <summary>True if the current HTTP user is an administrator or owns the yacht linked to the route.</summary>
         bool CurrentUserMayManageRoute(int routeId);
+
+        /// <summary>True if a yacht row exists for <paramref name="yachtId"/> (for authorization checks before mutating).</summary>
+        bool YachtExists(int yachtId);
     }
 }

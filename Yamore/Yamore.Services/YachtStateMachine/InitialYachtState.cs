@@ -17,11 +17,12 @@ namespace Yamore.Services.YachtStateMachine
         {
         }
 
-        public override Model.Yacht Insert(YachtsInsertRequest request)
+        public override Model.Yacht Insert(YachtsInsertRequest request, int ownerUserId)
         {
             var set = Context.Set<Database.Yacht>();
             var entity = Mapper.Map<Database.Yacht>(request);
 
+            entity.OwnerId = ownerUserId;
             entity.StateMachine = "draft";                   // zahvaljujuci Insert metodi iz initial stanja prelazimo u draft  
 
             set.Add(entity);

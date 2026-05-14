@@ -184,16 +184,55 @@ namespace Yamore.Services.Services
 
         public override Model.Yacht Insert(YachtsInsertRequest request)
         {
+            var http = _httpContextAccessor?.HttpContext;
+            if (http?.User?.IsInRole(AppRoles.Admin) == true)
+            {
+                throw new UserException(
+                    "Administrators must create yachts using POST /Yachts/admin with an explicit owner assignment.");
+            }
+
+            if (!int.TryParse(http?.User?.FindFirstValue(ClaimTypes.NameIdentifier), out var ownerId))
+                throw new ForbiddenException("You must be signed in to create a yacht.");
+
             var state = BaseYachtState.CreateState(YachtStateNames.Initial);
-            return state.Insert(request);
+            return state.Insert(request, ownerId);
         }
 
+        public Model.Yacht InsertAsAdmin(YachtsAdminInsertRequest request)
+        {
+            var http = _httpContextAccessor?.HttpContext;
+            if (http?.User?.IsInRole(AppRoles.Admin) != true)
+                throw new ForbiddenException("Only administrators may create yachts on behalf of another owner.");
+
+            if (!Context.Users.AsNoTracking().Any(u => u.UserId == request.OwnerId))
+                throw new UserException("The specified owner user was not found.");
+
+            var state = BaseYachtState.CreateState(YachtStateNames.Initial);
+            return state.Insert(request, request.OwnerId);
+        }
+
+        public Model.Yacht UpdateAsAdmin(int id, YachtsAdminUpdateRequest request)
+        {
+            var http = _httpContextAccessor?.HttpContext;
+            if (http?.User?.IsInRole(AppRoles.Admin) != true)
+                throw new ForbiddenException("Only administrators may reassign yacht ownership through this endpoint.");
+
+            if (!Context.Users.AsNoTracking().Any(u => u.UserId == request.OwnerId))
+                throw new UserException("The specified owner user was not found.");
+
+            var entity = LoadYachtUnrestricted(id)
+                ?? throw new NotFoundException($"Yacht with id {id} not found.");
+            var state = BaseYachtState.CreateState(entity.StateMachine ?? YachtStateNames.Draft);
+            return state.Update(id, request);
+        }
 
         public override Model.Yacht Update(int id, YachtsUpdateRequest request)
         {
             var entity = LoadYachtUnrestricted(id)
                 ?? throw new NotFoundException($"Yacht with id {id} not found.");
-            var state = BaseYachtState.CreateState(entity.StateMachine);
+            if (!CurrentUserMayManageYacht(id))
+                throw new ForbiddenException("You may only update yachts that you own.");
+            var state = BaseYachtState.CreateState(entity.StateMachine ?? YachtStateNames.Draft);
             return state.Update(id, request);
         }
 
@@ -201,7 +240,9 @@ namespace Yamore.Services.Services
         {
             var entity = LoadYachtUnrestricted(id)
                 ?? throw new NotFoundException($"Yacht with id {id} not found.");
-            var state = BaseYachtState.CreateState(entity.StateMachine);
+            if (!CurrentUserMayManageYacht(id))
+                throw new ForbiddenException("You may only change the listing state for yachts that you own.");
+            var state = BaseYachtState.CreateState(entity.StateMachine ?? YachtStateNames.Draft);
             return state.Activate(id);
         }
 
@@ -209,7 +250,9 @@ namespace Yamore.Services.Services
         {
             var entity = LoadYachtUnrestricted(id)
                 ?? throw new NotFoundException($"Yacht with id {id} not found.");
-            var state = BaseYachtState.CreateState(entity.StateMachine);
+            if (!CurrentUserMayManageYacht(id))
+                throw new ForbiddenException("You may only change the listing state for yachts that you own.");
+            var state = BaseYachtState.CreateState(entity.StateMachine ?? YachtStateNames.Draft);
             return state.Hide(id);
         }
 
@@ -217,7 +260,9 @@ namespace Yamore.Services.Services
         {
             var entity = LoadYachtUnrestricted(id)
                 ?? throw new NotFoundException($"Yacht with id {id} not found.");
-            var state = BaseYachtState.CreateState(entity.StateMachine);
+            if (!CurrentUserMayManageYacht(id))
+                throw new ForbiddenException("You may only change the listing state for yachts that you own.");
+            var state = BaseYachtState.CreateState(entity.StateMachine ?? YachtStateNames.Draft);
             return state.Edit(id);
         }
 
@@ -236,7 +281,11 @@ namespace Yamore.Services.Services
                     var s = BaseYachtState.CreateState(YachtStateNames.Initial);
                     return s.AllowedActions(null);
                 }
-                var state = BaseYachtState.CreateState(entity.StateMachine);
+
+                if (!CurrentUserMayManageYacht(id))
+                    return new List<string>();
+
+                var state = BaseYachtState.CreateState(entity.StateMachine ?? YachtStateNames.Draft);
                 return state.AllowedActions(entity);
             }
         }
@@ -563,8 +612,15 @@ namespace Yamore.Services.Services
             return CurrentUserMayManageYacht(yachtId.Value);
         }
 
+        public bool YachtExists(int yachtId) =>
+            Context.Set<Database.Yacht>().AsNoTracking().Any(y => y.YachtId == yachtId);
+
         public override Model.Yacht Delete(int id)
         {
+            if (!Context.Set<Database.Yacht>().AsNoTracking().Any(y => y.YachtId == id))
+                throw new NotFoundException($"Yacht with id {id} not found.");
+            if (!CurrentUserMayManageYacht(id))
+                throw new ForbiddenException("You may only delete yachts that you own.");
             try
             {
                 return base.Delete(id);

@@ -21,25 +21,57 @@ namespace Yamore.API.Controllers
             _yachtsService = service;
         }
 
+        [HttpPost("admin")]
+        [Authorize(Roles = AppRoles.Admin)]
+        public ActionResult<Model.Yacht> InsertAsAdmin([FromBody] YachtsAdminInsertRequest request)
+        {
+            var y = _yachtsService.InsertAsAdmin(request);
+            Response.Headers["X-Operation-Message"] = "Yacht created successfully.";
+            return Ok(y);
+        }
+
+        [HttpPut("admin/{id}")]
+        [Authorize(Roles = AppRoles.Admin)]
+        public ActionResult<Model.Yacht> UpdateAsAdmin(int id, [FromBody] YachtsAdminUpdateRequest request)
+        {
+            if (!_yachtsService.YachtExists(id))
+                return NotFound();
+            var y = _yachtsService.UpdateAsAdmin(id, request);
+            Response.Headers["X-Operation-Message"] = "Yacht updated successfully.";
+            return Ok(y);
+        }
+
         [HttpPut("{id}/activate")]
         [Authorize(Roles = AppRoles.AdminYachtOwner)]
-        public Yacht Activate(int id)
+        public ActionResult<Model.Yacht> Activate(int id)
         {
-            return _yachtsService.Activate(id);
+            if (!_yachtsService.YachtExists(id))
+                return NotFound();
+            if (!_yachtsService.CurrentUserMayManageYacht(id))
+                return Forbid();
+            return Ok(_yachtsService.Activate(id));
         }
 
         [HttpPut("{id}/hide")]
         [Authorize(Roles = AppRoles.AdminYachtOwner)]
-        public Yacht Hide(int id)
+        public ActionResult<Model.Yacht> Hide(int id)
         {
-            return _yachtsService.Hide(id);
+            if (!_yachtsService.YachtExists(id))
+                return NotFound();
+            if (!_yachtsService.CurrentUserMayManageYacht(id))
+                return Forbid();
+            return Ok(_yachtsService.Hide(id));
         }
 
         [HttpPut("{id}/edit")]
         [Authorize(Roles = AppRoles.AdminYachtOwner)]
-        public Yacht Edit(int id)
+        public ActionResult<Model.Yacht> Edit(int id)
         {
-            return _yachtsService.Edit(id);
+            if (!_yachtsService.YachtExists(id))
+                return NotFound();
+            if (!_yachtsService.CurrentUserMayManageYacht(id))
+                return Forbid();
+            return Ok(_yachtsService.Edit(id));
         }
 
         [HttpGet("{id}/allowedActions")]
@@ -84,6 +116,10 @@ namespace Yamore.API.Controllers
         [HttpDelete("{id}")]
         public override ActionResult<Model.Yacht> Delete(int id)
         {
+            if (!_yachtsService.YachtExists(id))
+                return NotFound();
+            if (!_yachtsService.CurrentUserMayManageYacht(id))
+                return Forbid();
             try
             {
                 var result = _service.Delete(id);

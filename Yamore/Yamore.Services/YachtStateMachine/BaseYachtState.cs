@@ -25,7 +25,7 @@ namespace Yamore.Services.YachtStateMachine
         }
 
 
-        public virtual Model.Yacht Insert(YachtsInsertRequest request)
+        public virtual Model.Yacht Insert(YachtsInsertRequest request, int ownerUserId)
         {
             throw new UserException("Method not allowed!");
         }

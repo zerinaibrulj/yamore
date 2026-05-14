@@ -1189,9 +1189,25 @@ class _YachtFormDialogState extends State<YachtFormDialog> {
 
     try {
       if (widget.initial == null) {
-        await widget.api.createYacht(detail);
+        final ownerId = int.tryParse(_ownerId.text.trim());
+        if (ownerId == null || ownerId <= 0) {
+          if (mounted) {
+            setState(() => _saving = false);
+            await _showInvalidDataDialog();
+          }
+          return;
+        }
+        await widget.api.createYachtAdmin(detail, ownerId: ownerId);
       } else {
-        await widget.api.updateYacht(detail);
+        final ownerId = int.tryParse(_ownerId.text.trim());
+        if (ownerId == null || ownerId <= 0) {
+          if (mounted) {
+            setState(() => _saving = false);
+            await _showInvalidDataDialog();
+          }
+          return;
+        }
+        await widget.api.updateYachtAdmin(detail, ownerId: ownerId);
       }
       if (mounted) {
         Navigator.of(context).pop(true);

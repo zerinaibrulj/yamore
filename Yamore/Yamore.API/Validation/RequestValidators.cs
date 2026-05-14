@@ -360,10 +360,6 @@ public sealed class YachtsInsertRequestValidator : AbstractValidator<YachtsInser
 {
     public YachtsInsertRequestValidator()
     {
-        RuleFor(x => x.OwnerId)
-            .GreaterThan(0).WithMessage("Please select a valid owner.")
-            .When(x => x.OwnerId.HasValue);
-
         RuleFor(x => x.Name)
             .NotEmpty().WithMessage(ValidationMessages.Required("Yacht name"))
             .MaximumLength(100).WithMessage(ValidationMessages.MaxLength("Yacht name", 100));
@@ -409,10 +405,6 @@ public sealed class YachtsUpdateRequestValidator : AbstractValidator<YachtsUpdat
 {
     public YachtsUpdateRequestValidator()
     {
-        RuleFor(x => x.OwnerId)
-            .GreaterThan(0).WithMessage("Please select a valid owner.")
-            .When(x => x.OwnerId.HasValue);
-
         RuleFor(x => x.Name)
             .NotEmpty().WithMessage(ValidationMessages.Required("Yacht name"))
             .MaximumLength(100).WithMessage(ValidationMessages.MaxLength("Yacht name", 100));
@@ -451,6 +443,26 @@ public sealed class YachtsUpdateRequestValidator : AbstractValidator<YachtsUpdat
 
         RuleFor(x => x.CategoryId)
             .GreaterThan(0).WithMessage("Please select a valid category.");
+    }
+}
+
+public sealed class YachtsAdminInsertRequestValidator : AbstractValidator<YachtsAdminInsertRequest>
+{
+    public YachtsAdminInsertRequestValidator()
+    {
+        Include(new YachtsInsertRequestValidator());
+        RuleFor(x => x.OwnerId)
+            .GreaterThan(0).WithMessage("Please select a valid owner.");
+    }
+}
+
+public sealed class YachtsAdminUpdateRequestValidator : AbstractValidator<YachtsAdminUpdateRequest>
+{
+    public YachtsAdminUpdateRequestValidator()
+    {
+        Include(new YachtsUpdateRequestValidator());
+        RuleFor(x => x.OwnerId)
+            .GreaterThan(0).WithMessage("Please select a valid owner.");
     }
 }
 
