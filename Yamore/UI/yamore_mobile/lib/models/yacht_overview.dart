@@ -16,6 +16,7 @@ class YachtOverview {
   final int categoryId;
   final double? averageRating;
   final int reviewCount;
+  final String? recommendationReason;
 
   YachtOverview({
     required this.yachtId,
@@ -33,6 +34,7 @@ class YachtOverview {
     required this.categoryId,
     this.averageRating,
     this.reviewCount = 0,
+    this.recommendationReason,
   });
 
   /// From full yacht detail when the overview list omits this yacht (pagination or filters).
@@ -73,6 +75,8 @@ class YachtOverview {
           : (json['averageRating'] ?? json['AverageRating'] as num).toDouble(),
       reviewCount:
           (json['reviewCount'] ?? json['ReviewCount']) as int? ?? 0,
+      recommendationReason: json['recommendationReason'] as String? ??
+          json['RecommendationReason'] as String?,
     );
   }
 }

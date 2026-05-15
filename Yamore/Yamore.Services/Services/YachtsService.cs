@@ -290,9 +290,21 @@ namespace Yamore.Services.Services
             }
         }
 
+        private const string RecommendationReasonCategory =
+            "Recommended because you previously booked yachts in this category.";
+
+        private const string RecommendationReasonLocation =
+            "Similar to locations and destinations you have chosen before.";
+
+        private const string RecommendationReasonServices =
+            "Popular among users with similar add-on service preferences.";
+
+        private const string RecommendationReasonPopularity =
+            "Highly rated and popular among other travelers.";
+
         /// <summary>
         /// Recommendation: content-based signals from past reservations and from yachts the user rated 4+ (category, location, country),
-        /// plus add-on service history, then average community rating and booking popularity. Returns overview DTOs.
+        /// plus add-on service history, then average community rating and booking popularity. Returns overview DTOs with explanations.
         /// </summary>
         public PagedResponse<YachtOverviewDto> GetRecommendations(int? userId, int page = 0, int pageSize = 10)
         {
@@ -309,6 +321,7 @@ namespace Yamore.Services.Services
                 .AsQueryable();
 
             IOrderedQueryable<Database.Yacht> ordered;
+            RecommendationSignals? signals = null;
 
             if (userId.HasValue)
             {
@@ -376,7 +389,21 @@ namespace Yamore.Services.Services
                 var candidates = activeYachts
                     .Where(y => !userReservationYachtIds.Contains(y.YachtId));
 
-                if (combinedCategoryIds.Count == 0 && combinedLocationIds.Count == 0 && combinedCountryIds.Count == 0 && preferredServiceIds.Count == 0)
+                var noPersonalSignals = combinedCategoryIds.Count == 0
+                    && combinedLocationIds.Count == 0
+                    && combinedCountryIds.Count == 0
+                    && preferredServiceIds.Count == 0;
+
+                signals = new RecommendationSignals
+                {
+                    CombinedCategoryIds = combinedCategoryIds,
+                    CombinedLocationIds = combinedLocationIds,
+                    CombinedCountryIds = combinedCountryIds,
+                    PreferredServiceIds = preferredServiceIds,
+                    PopularityFallbackOnly = noPersonalSignals,
+                };
+
+                if (noPersonalSignals)
                 {
                     ordered = candidates
                         .OrderByDescending(y => y.Reservations.Count(r => r.Status != "Cancelled"))
@@ -395,20 +422,51 @@ namespace Yamore.Services.Services
 
                 var totalCount = ordered.Count();
                 var list = ordered.Skip(page * pageSize).Take(pageSize).ToList();
-                return BuildRecommendationOverviewResult(list, totalCount);
+                return BuildRecommendationOverviewResult(list, totalCount, signals);
             }
-            else
-            {
-                ordered = activeYachts
-                    .OrderByDescending(y => y.Reservations.Count(r => r.Status != "Cancelled"))
-                    .ThenByDescending(y => y.Reviews.Any(r => r.Rating.HasValue) ? y.Reviews.Average(r => r.Rating ?? 0) : 0);
-                var totalCount = ordered.Count();
-                var list = ordered.Skip(page * pageSize).Take(pageSize).ToList();
-                return BuildRecommendationOverviewResult(list, totalCount);
-            }
+
+            ordered = activeYachts
+                .OrderByDescending(y => y.Reservations.Count(r => r.Status != "Cancelled"))
+                .ThenByDescending(y => y.Reviews.Any(r => r.Rating.HasValue) ? y.Reviews.Average(r => r.Rating ?? 0) : 0);
+            var anonymousTotal = ordered.Count();
+            var anonymousList = ordered.Skip(page * pageSize).Take(pageSize).ToList();
+            return BuildRecommendationOverviewResult(
+                anonymousList,
+                anonymousTotal,
+                new RecommendationSignals { PopularityFallbackOnly = true });
         }
 
-        private PagedResponse<YachtOverviewDto> BuildRecommendationOverviewResult(List<Database.Yacht> list, int totalCount)
+        private sealed class RecommendationSignals
+        {
+            public IReadOnlyList<int> CombinedCategoryIds { get; init; } = Array.Empty<int>();
+            public IReadOnlyList<int> CombinedLocationIds { get; init; } = Array.Empty<int>();
+            public IReadOnlyList<int> CombinedCountryIds { get; init; } = Array.Empty<int>();
+            public IReadOnlyList<int> PreferredServiceIds { get; init; } = Array.Empty<int>();
+            public bool PopularityFallbackOnly { get; init; }
+        }
+
+        private static string ResolveRecommendationReason(Database.Yacht yacht, RecommendationSignals signals)
+        {
+            if (signals.PopularityFallbackOnly)
+                return RecommendationReasonPopularity;
+
+            if (signals.CombinedCategoryIds.Contains(yacht.CategoryId))
+                return RecommendationReasonCategory;
+
+            if (signals.CombinedLocationIds.Contains(yacht.LocationId)
+                || (yacht.Location != null && signals.CombinedCountryIds.Contains(yacht.Location.CountryId)))
+                return RecommendationReasonLocation;
+
+            if (yacht.YachtServices.Any(ys => signals.PreferredServiceIds.Contains(ys.ServiceId)))
+                return RecommendationReasonServices;
+
+            return RecommendationReasonPopularity;
+        }
+
+        private PagedResponse<YachtOverviewDto> BuildRecommendationOverviewResult(
+            List<Database.Yacht> list,
+            int totalCount,
+            RecommendationSignals? signals = null)
         {
             var yachtIds = list.Select(y => y.YachtId).ToList();
             var thumbnails = Context.YachtImages
@@ -434,7 +492,10 @@ namespace Yamore.Services.Services
                 AverageRating = y.Reviews.Any(r => r.Rating.HasValue)
                     ? y.Reviews.Where(r => r.Rating.HasValue).Average(r => (double)r.Rating!)
                     : (double?)null,
-                ReviewCount = y.Reviews.Count(r => r.Rating.HasValue)
+                ReviewCount = y.Reviews.Count(r => r.Rating.HasValue),
+                RecommendationReason = signals == null
+                    ? RecommendationReasonPopularity
+                    : ResolveRecommendationReason(y, signals),
             }).ToList();
 
             return new PagedResponse<YachtOverviewDto> { Count = totalCount, ResultList = result };

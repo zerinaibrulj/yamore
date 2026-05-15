@@ -408,7 +408,7 @@ extension on _MobileHomeTabState {
           ),
           const SizedBox(height: 6),
           SizedBox(
-            height: 184,
+            height: 212,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: _recommended.length,
@@ -427,6 +427,7 @@ extension on _MobileHomeTabState {
                       onToggleFavorite: () {},
                       showFavoriteIcon: false,
                       compact: true,
+                      recommendationReason: y.recommendationReason,
                       onTap: () => _openYachtDetails(y),
                     ),
                   ),
@@ -858,6 +859,8 @@ class _YachtCard extends StatefulWidget {
   final bool showFavoriteIcon;
   /// Shorter card for horizontal "Recommended" strip (avoids vertical overflow).
   final bool compact;
+  /// When set, shown under the title on compact recommendation cards.
+  final String? recommendationReason;
   final VoidCallback? onTap;
 
   const _YachtCard({
@@ -867,6 +870,7 @@ class _YachtCard extends StatefulWidget {
     required this.onToggleFavorite,
     this.showFavoriteIcon = true,
     this.compact = false,
+    this.recommendationReason,
     this.onTap,
   });
 
@@ -881,7 +885,8 @@ class _YachtCardState extends State<_YachtCard> {
   Widget build(BuildContext context) {
     final yacht = widget.yacht;
     final compact = widget.compact;
-    final imageHeight = compact ? 112.0 : 180.0;
+    final reason = widget.recommendationReason;
+    final imageHeight = compact ? (reason != null ? 96.0 : 112.0) : 180.0;
     final contentPadding = compact ? 0.0 : 14.0;
 
     return MouseRegion(
@@ -926,7 +931,7 @@ class _YachtCardState extends State<_YachtCard> {
                             children: [
                               Text(
                                 yacht.name,
-                                maxLines: 2,
+                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   fontSize: 13,
@@ -934,6 +939,19 @@ class _YachtCardState extends State<_YachtCard> {
                                   height: 1.15,
                                 ),
                               ),
+                              if (reason != null) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  reason,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    height: 1.2,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
                               const SizedBox(height: 3),
                               Text(
                                 '€${yacht.pricePerDay.toStringAsFixed(2)}/day',

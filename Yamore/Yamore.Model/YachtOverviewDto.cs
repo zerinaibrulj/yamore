@@ -20,5 +20,8 @@ namespace Yamore.Model
         public int CategoryId { get; set; }
         public double? AverageRating { get; set; }
         public int ReviewCount { get; set; }
+
+        /// <summary>Short, user-facing explanation for explainable recommendations (content-based / popularity).</summary>
+        public string? RecommendationReason { get; set; }
     }
 }
