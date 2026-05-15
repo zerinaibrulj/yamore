@@ -1,12 +1,11 @@
-﻿using Azure.Core;
-using MapsterMapper;
+﻿using MapsterMapper;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+using Yamore.Model;
 using Yamore.Model.Requests.Yachts;
 using Yamore.Services.Database;
+using Yamore.Services.Interfaces;
 
 namespace Yamore.Services.YachtStateMachine
 {
@@ -32,8 +31,17 @@ namespace Yamore.Services.YachtStateMachine
         {
             var set = Context.Set<Database.Yacht>();
             var entity = set.Find(id);
+            if (entity == null)
+                throw new NotFoundException($"Yacht with id {id} not found.");
 
-            entity.StateMachine = "active";
+            var docService = ServiceProvider.GetRequiredService<IYachtDocumentService>();
+            if (!docService.AreMandatoryDocumentsApproved(id))
+            {
+                throw new UserException(
+                    "This yacht cannot be published until Registration, Insurance, and Safety Certificate documents are uploaded and approved by an administrator.");
+            }
+
+            entity.StateMachine = YachtStateNames.Active;
             Context.SaveChanges();
 
             return Mapper.Map<Model.Yacht>(entity);
@@ -51,7 +59,7 @@ namespace Yamore.Services.YachtStateMachine
         }
 
 
-        public override List<string> AllowedActions(Yacht entity)
+        public override List<string> AllowedActions(Database.Yacht entity)
         {
             return new List<string> { nameof(Update), nameof(Activate), nameof(Hide) };
         }

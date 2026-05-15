@@ -10,6 +10,7 @@ import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/operation_success_dialog.dart';
+import '../../widgets/custom_date_range_picker_dialog.dart';
 
 class MobileBookingsTab extends StatefulWidget {
   final AuthService authService;
@@ -498,6 +499,9 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
     final isActive = _activeReservations.contains(r);
     final status = (r.status ?? 'Pending');
     final isConfirmed = status.toLowerCase() == 'confirmed';
+    final statusLower = status.toLowerCase();
+    final canReschedule =
+        statusLower == 'pending' || statusLower == 'confirmed';
     final paid = r.isPaid;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -613,6 +617,22 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
                     spacing: 8,
                     runSpacing: 6,
                     children: [
+                      if (canReschedule)
+                        TextButton(
+                          onPressed: () => _rescheduleReservation(r),
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 8),
+                          ),
+                          child: Text(
+                            'Reschedule',
+                            style: TextStyle(
+                              color: AppTheme.primaryBlue,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                       if (isConfirmed && _canGuestMarkTripCompleted(r))
                         TextButton(
                           onPressed: () => _markTripCompletedAsGuest(r),
@@ -892,6 +912,40 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to load weather: $e')),
+      );
+    }
+  }
+
+  Future<void> _rescheduleReservation(Reservation r) async {
+    final now = DateTime.now();
+    final range = await showDialog<DateTimeRange>(
+      context: context,
+      builder: (ctx) => CustomDateRangePickerDialog(
+        initialRange: DateTimeRange(start: r.startDate, end: r.endDate),
+        firstDate: now,
+        lastDate: now.add(const Duration(days: 365 * 2)),
+      ),
+    );
+    if (range == null) return;
+    try {
+      await _api.rescheduleReservation(
+        reservationId: r.reservationId,
+        startDate: range.start,
+        endDate: range.end,
+      );
+      if (!mounted) return;
+      await _loadReservations();
+      if (!mounted) return;
+      await showOperationSuccessDialog(
+        context,
+        title: 'Dates updated',
+        message:
+            'Your reservation was rescheduled. The total price was recalculated by the server.',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not reschedule: $e')),
       );
     }
   }

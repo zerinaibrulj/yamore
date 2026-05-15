@@ -9,6 +9,7 @@ import '../utils/payment_platform.dart';
 import '../models/yacht_overview.dart';
 import '../models/yacht_detail.dart';
 import '../models/yacht_image.dart';
+import '../models/yacht_document.dart';
 import '../models/yacht_availability.dart';
 import '../models/city.dart';
 import '../models/country.dart';
@@ -717,6 +718,101 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/YachtImages/$imageId/thumbnail');
     final response = await http.put(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
+  }
+
+  Future<List<YachtDocument>> getYachtDocuments(int yachtId) async {
+    final uri = Uri.parse('$baseUrl/Yacht/$yachtId/documents');
+    final response = await http.get(uri, headers: await _httpHeaders());
+    _ensureSuccess(response);
+    final list = jsonDecode(response.body);
+    if (list is! List) return [];
+    return list
+        .map((e) => YachtDocument.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<YachtDocument>> getPendingYachtDocuments() async {
+    final uri = Uri.parse('$baseUrl/Yacht/documents/pending');
+    final response = await http.get(uri, headers: await _httpHeaders());
+    _ensureSuccess(response);
+    final list = jsonDecode(response.body);
+    if (list is! List) return [];
+    return list
+        .map((e) => YachtDocument.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<YachtDocument> uploadYachtDocument({
+    required int yachtId,
+    required String documentType,
+    required String filePath,
+  }) async {
+    final file = File(filePath);
+    final bytes = await file.readAsBytes();
+    final base64Data = base64Encode(bytes);
+    final name = filePath.split(Platform.pathSeparator).last;
+    final ext = name.split('.').last.toLowerCase();
+    final contentType = ext == 'pdf'
+        ? 'application/pdf'
+        : ext == 'png'
+            ? 'image/png'
+            : 'image/jpeg';
+
+    final uri = Uri.parse('$baseUrl/Yacht/$yachtId/documents');
+    final response = await http.post(
+      uri,
+      headers: await _httpHeaders(),
+      body: jsonEncode({
+        'documentType': documentType,
+        'fileDataBase64': base64Data,
+        'contentType': contentType,
+        'fileName': name,
+      }),
+    );
+    _ensureSuccess(response, allow201: true);
+    return YachtDocument.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<YachtDocument> verifyYachtDocument({
+    required int documentId,
+    required String verificationStatus,
+    String? rejectionReason,
+  }) async {
+    final uri = Uri.parse('$baseUrl/Yacht/documents/$documentId/verify');
+    final response = await http.put(
+      uri,
+      headers: await _httpHeaders(),
+      body: jsonEncode({
+        'verificationStatus': verificationStatus,
+        'rejectionReason': rejectionReason,
+      }),
+    );
+    _ensureSuccess(response);
+    return YachtDocument.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<Reservation> rescheduleReservation({
+    required int reservationId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    final uri = Uri.parse('$baseUrl/Reservation/$reservationId/reschedule');
+    final response = await http.put(
+      uri,
+      headers: await _httpHeaders(),
+      body: jsonEncode({
+        'startDate': startDate.toUtc().toIso8601String(),
+        'endDate': endDate.toUtc().toIso8601String(),
+      }),
+    );
+    _ensureSuccess(response);
+    return Reservation.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
   Future<void> sendNotification({

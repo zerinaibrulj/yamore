@@ -42,7 +42,8 @@ namespace Yamore.Services.Interfaces
             CardPaymentPendingInfo? recordPendingCardPayment = null);
 
         /// <summary>Pending reservation only: validates availability and recomputes <see cref="Model.Reservation.TotalPrice"/>.</summary>
-        Model.Reservation ChangeDates(int id, int actorUserId, bool actorIsAdmin, DateTime newStart, DateTime newEnd);
+        /// <summary>Guest-only: reschedule own booking; server recalculates price from yacht + services.</summary>
+        Model.Reservation Reschedule(int id, DateTime newStart, DateTime newEnd);
 
         /// <summary>Loads user and yacht fields for messaging (no visibility filtering).</summary>
         ReservationMessageContext GetReservationMessageContext(int userId, int yachtId);

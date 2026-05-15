@@ -101,6 +101,7 @@ builder.Services.AddScoped<IYachtAvailabilityService, YachtAvailabilityService>(
 builder.Services.AddScoped<IServiceCategoryService, ServiceCategoryService>();
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
 builder.Services.AddScoped<IYachtImageService, YachtImageService>();
+builder.Services.AddScoped<IYachtDocumentService, YachtDocumentService>();
 builder.Services.AddScoped<IYachtServiceService, YachtServiceService>();
 builder.Services.AddScoped<ISampleYachtSeedService, SampleYachtSeedService>();
 builder.Services.AddSingleton<StripePaymentService>();
@@ -294,7 +295,8 @@ await using (var scope = app.Services.CreateAsyncScope())
     if (skipMigrate)
     {
         startupLogger.LogWarning(
-            "SKIP_EF_DATABASE_MIGRATE=true: skipping Database.Migrate(). Apply migrations manually if the database is empty.");
+            "SKIP_EF_DATABASE_MIGRATE=true: skipping Database.Migrate(). After pulling new migrations, run: " +
+            "dotnet ef database update --project Yamore.Services\\Yamore.Services.csproj --startup-project Yamore.API\\Yamore.API.csproj");
     }
     else
     {

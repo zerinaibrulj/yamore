@@ -14,6 +14,7 @@ import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../utils/yamore_service_icon.dart';
 import '../../widgets/custom_date_range_picker_dialog.dart';
+import 'yacht_documents_screen.dart';
 
 class OwnerYachtsTab extends StatefulWidget {
   final AuthService authService;
@@ -701,7 +702,27 @@ class _OwnerYachtsTabState extends State<OwnerYachtsTab> {
           ),
           const Divider(height: 1, indent: 16, endIndent: 16),
           Padding(
-            padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
+            padding: const EdgeInsets.fromLTRB(10, 6, 10, 4),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => YachtDocumentsScreen(
+                        authService: widget.authService,
+                        yacht: yacht,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.description_outlined, size: 18),
+                label: const Text('Documents & verification'),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
             child: Row(
               children: [
                 Expanded(

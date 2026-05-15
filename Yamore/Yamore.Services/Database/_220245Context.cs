@@ -48,6 +48,7 @@ public partial class _220245Context : DbContext
     public virtual DbSet<ServiceCategory> ServiceCategories { get; set; }
     public virtual DbSet<YachtImage> YachtImages { get; set; }
     public virtual DbSet<YachtService> YachtServices { get; set; }
+    public virtual DbSet<YachtDocument> YachtDocuments { get; set; }
     public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -263,6 +264,21 @@ public partial class _220245Context : DbContext
 
             entity.HasOne(d => d.Service).WithMany(p => p.YachtServices)
                 .HasForeignKey(d => d.ServiceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<YachtDocument>(entity =>
+        {
+            entity.HasKey(e => e.YachtDocumentId);
+            entity.Property(e => e.DocumentType).HasMaxLength(50);
+            entity.Property(e => e.VerificationStatus).HasMaxLength(20);
+            entity.Property(e => e.ContentType).HasMaxLength(100);
+            entity.Property(e => e.FileName).HasMaxLength(255);
+            entity.Property(e => e.RejectionReason).HasMaxLength(500);
+            entity.Property(e => e.DateUploaded).HasDefaultValueSql("(getutcdate())");
+            entity.HasIndex(e => new { e.YachtId, e.DocumentType });
+            entity.HasOne(d => d.Yacht).WithMany(p => p.YachtDocuments)
+                .HasForeignKey(d => d.YachtId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

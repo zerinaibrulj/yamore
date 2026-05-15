@@ -500,6 +500,19 @@ public sealed class ReservationChangeDatesRequestValidator : AbstractValidator<R
     }
 }
 
+public sealed class ReservationRescheduleRequestValidator : AbstractValidator<ReservationRescheduleRequest>
+{
+    public ReservationRescheduleRequestValidator()
+    {
+        RuleFor(x => x.StartDate)
+            .NotEmpty().WithMessage(ValidationMessages.Required("Start date"));
+
+        RuleFor(x => x.EndDate)
+            .NotEmpty().WithMessage(ValidationMessages.Required("End date"))
+            .GreaterThan(x => x.StartDate).WithMessage("End date must be after the start date.");
+    }
+}
+
 public sealed class ReviewInsertRequestValidator : AbstractValidator<ReviewInsertRequest>
 {
     public ReviewInsertRequestValidator()

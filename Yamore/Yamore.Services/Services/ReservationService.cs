@@ -221,15 +221,29 @@ namespace Yamore.Services.Services
             }
         }
 
-        public Model.Reservation ChangeDates(int id, int actorUserId, bool actorIsAdmin, DateTime newStart, DateTime newEnd)
+        public Model.Reservation Reschedule(int id, DateTime newStart, DateTime newEnd)
         {
+            var http = _httpContextAccessor?.HttpContext;
+            if (!int.TryParse(http?.User?.FindFirstValue(ClaimTypes.NameIdentifier), out var bookerId))
+                throw new ForbiddenException("You must be signed in to reschedule a reservation.");
+
+            if (newEnd <= newStart)
+                throw new UserException("End date must be after the start date.");
+
             var entity = LoadReservationWithYacht(id);
 
-            if (!actorIsAdmin && entity.UserId != actorUserId && entity.Yacht.OwnerId != actorUserId)
-                throw new UnauthorizedAccessException("You are not allowed to change dates for this reservation.");
+            if (entity.UserId != bookerId)
+                throw new ForbiddenException("You may only reschedule your own reservations.");
 
-            if (!string.Equals(entity.Status, ReservationStatuses.Pending, StringComparison.OrdinalIgnoreCase))
-                throw new UserException("Only pending reservations can have their dates changed.");
+            if (ReservationStatuses.IsTerminal(entity.Status))
+                throw new UserException("Completed or cancelled reservations cannot be rescheduled.");
+
+            var status = entity.Status ?? string.Empty;
+            if (!string.Equals(status, ReservationStatuses.Pending, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(status, ReservationStatuses.Confirmed, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new UserException("Only pending or confirmed reservations can be rescheduled.");
+            }
 
             if (HasOverlapExcluding(entity.YachtId, newStart, newEnd, entity.ReservationId))
                 throw new UserException("This yacht is already reserved for the selected dates. Please choose different dates or times.");
@@ -241,17 +255,22 @@ namespace Yamore.Services.Services
 
             var total = ComputeQuotedTotalForCardBooking(entity.YachtId, newStart, newEnd, serviceIds);
             var now = DateTime.UtcNow;
+            var period =
+                $"{entity.StartDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)} – {entity.EndDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
+            var newPeriod =
+                $"{newStart.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)} – {newEnd.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
+
             entity.StartDate = newStart;
             entity.EndDate = newEnd;
             entity.TotalPrice = total;
-            ApplyStatusAudit(entity, actorUserId, now, "Dates changed");
+            ApplyStatusAudit(entity, bookerId, now, $"Rescheduled ({period} → {newPeriod})");
             Context.SaveChanges();
             return Mapper.Map<Model.Reservation>(entity);
         }
 
         public override Model.Reservation Update(int id, ReservationUpdateRequest request) =>
             throw new UserException(
-                "Reservations cannot be updated with PUT. Use cancel, confirm, reject, complete, or change-dates.");
+                "Reservations cannot be updated with PUT. Use cancel, confirm, reject, complete, or PUT .../reschedule.");
 
         public override Model.Reservation Delete(int id) =>
             throw new UserException("Reservations cannot be deleted. Cancel the booking instead.");

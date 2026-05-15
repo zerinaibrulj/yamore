@@ -49,7 +49,7 @@ namespace Yamore.API.Controllers
             return Ok(result);
         }
 
-        /// <summary>Generic PUT is disabled; use cancel, confirm, reject, complete, or change-dates.</summary>
+        /// <summary>Generic PUT is disabled; use cancel, confirm, reject, complete, or reschedule.</summary>
         [HttpPut("{id}")]
         public override ActionResult<Model.Reservation> Update(int id, ReservationUpdateRequest request) =>
             StatusCode(
@@ -60,21 +60,18 @@ namespace Yamore.API.Controllers
                     {
                         ["error"] = new[]
                         {
-                            "Reservations cannot be updated with PUT. Use PUT .../cancel, /confirm, /reject, /complete, or PUT .../dates."
+                            "Reservations cannot be updated with PUT. Use PUT .../cancel, /confirm, /reject, /complete, or PUT .../reschedule."
                         }
                     }
                 });
 
-        [HttpPut("{id}/dates")]
+        /// <summary>Guest reschedules own booking; only StartDate and EndDate are accepted (price recalculated server-side).</summary>
+        [HttpPut("{id}/reschedule")]
         [Authorize]
-        public ActionResult<Model.Reservation> ChangeDates(int id, [FromBody] ReservationChangeDatesRequest body)
+        public ActionResult<Model.Reservation> Reschedule(int id, [FromBody] ReservationRescheduleRequest body)
         {
-            if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId))
-                return Unauthorized();
-
-            var isAdmin = User.IsInRole(AppRoles.Admin);
-            var result = _reservationService.ChangeDates(id, actorId, isAdmin, body.StartDate, body.EndDate);
-            Response.Headers["X-Operation-Message"] = "Reservation dates updated.";
+            var result = _reservationService.Reschedule(id, body.StartDate, body.EndDate);
+            Response.Headers["X-Operation-Message"] = "Reservation rescheduled.";
             return Ok(result);
         }
 

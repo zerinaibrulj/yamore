@@ -12,6 +12,7 @@ import '../../services/auth_service.dart';
 import '../../models/statistics.dart';
 import '../../utils/euro_format.dart';
 import '../../models/reservation.dart';
+import 'admin_yacht_documents_screen.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   final AuthService authService;
@@ -114,6 +115,20 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                     onPressed: () => _exportAdminOverviewReport(stats),
                     icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
                     label: const Text('Admin report'),
+                  ),
+                  const SizedBox(width: 12),
+                  FilledButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => AdminYachtDocumentsScreen(
+                            authService: widget.authService,
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.description_outlined, size: 18),
+                    label: const Text('Yacht documents'),
                   ),
                 ],
               ),
