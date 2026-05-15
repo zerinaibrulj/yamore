@@ -219,7 +219,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
                 : request.PaymentMethod.Trim();
             if (paymentMethod.Length > 20)
                 paymentMethod = paymentMethod.Substring(0, 20);
-            const string status = "pending";
+            const string status = PaymentStatuses.Pending;
 
             var pay = new DbPayment
             {
@@ -431,7 +431,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
         if (intent.Amount != expectedCents)
             throw new InvalidOperationException("Payment amount does not match the booking. Please start checkout again.");
 
-        var succeededStatus = StripePaymentService.CardChargeSucceededStatus;
+        var succeededStatus = PaymentStatuses.DbStatusForSuccessfulCharge();
         var pendingPay = new CardPaymentPendingInfo
         {
             Amount = total,
@@ -573,6 +573,14 @@ public class PaymentWorkflowService : IPaymentWorkflowService
 
         if (HasCardPaymentForReservation(request.ReservationId))
         {
+            await FinalizePendingCardPaymentsForReservationAsync(request.ReservationId, cancellationToken);
+            if (!string.Equals(reservation.Status, ReservationStatuses.Confirmed, StringComparison.OrdinalIgnoreCase)
+                && !ReservationStatuses.IsTerminal(reservation.Status))
+            {
+                _reservationService.ApplyCardPaymentConfirmation(reservation, fromWebhook ? reservation.UserId : currentUserId);
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+
             await _context.Entry(reservation).ReloadAsync(cancellationToken);
             return new PaymentIntentDto
             {
@@ -587,7 +595,7 @@ public class PaymentWorkflowService : IPaymentWorkflowService
 
         int? paidBy = fromWebhook ? reservation.UserId : currentUserId;
         const string paymentMethod = "Card";
-        var succeededStatus = StripePaymentService.CardChargeSucceededStatus;
+        var succeededStatus = PaymentStatuses.DbStatusForSuccessfulCharge();
 
         await using var transaction =
             await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
@@ -700,6 +708,30 @@ public class PaymentWorkflowService : IPaymentWorkflowService
     private bool HasCardPaymentForReservation(int reservationId) =>
         _context.Payments.AsNoTracking()
             .Any(p => p.ReservationId == reservationId && p.Amount > 0 && IsCardMethod(p.PaymentMethod));
+
+    private async Task FinalizePendingCardPaymentsForReservationAsync(
+        int reservationId,
+        CancellationToken cancellationToken)
+    {
+        var succeeded = PaymentStatuses.DbStatusForSuccessfulCharge();
+        var pendingRows = await _context.Payments
+            .Where(p => p.ReservationId == reservationId
+                && p.Amount > 0
+                && p.PaymentMethod != null
+                && p.PaymentMethod.ToLower().Contains("card")
+                && p.Status != null
+                && (p.Status.ToLower() == PaymentStatuses.Pending.ToLower()
+                    || p.Status.ToLower() == "pending"))
+            .ToListAsync(cancellationToken);
+
+        if (pendingRows.Count == 0)
+            return;
+
+        foreach (var row in pendingRows)
+            row.Status = succeeded;
+
+        await _context.SaveChangesAsync(cancellationToken);
+    }
 
     private void PublishPaymentCompleted(
         DbPayment payment,

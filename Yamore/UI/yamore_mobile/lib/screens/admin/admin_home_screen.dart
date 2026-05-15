@@ -32,10 +32,13 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   StatisticsDtoModel? _stats;
   bool _loading = true;
   String? _error;
+  /// `null` = all-time revenue/booking charts; fleet KPIs are always current snapshot.
+  int? _selectedYear;
 
   @override
   void initState() {
     super.initState();
+    _selectedYear = DateTime.now().year.clamp(_minReportYear, _maxReportYear);
     _loadStats();
   }
 
@@ -45,8 +48,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       _error = null;
     });
     try {
-      final currentYear = DateTime.now().year;
-      final data = await _api.getAdminStatistics(year: currentYear);
+      final data = await _api.getAdminStatistics(year: _selectedYear);
       setState(() {
         _stats = data;
         _loading = false;
@@ -95,12 +97,18 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Dashboard',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: AppTheme.primaryBlue,
-                      fontWeight: FontWeight.w600,
-                    ),
+              Row(
+                children: [
+                  Text(
+                    'Dashboard',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          color: AppTheme.primaryBlue,
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                  const SizedBox(width: 16),
+                  _buildYearFilter(context),
+                ],
               ),
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -152,6 +160,43 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             child: _buildPopularYachtsCard(context, stats),
           ),
         ],
+      ),
+    );
+  }
+
+  static const int _minReportYear = 2025;
+  static const int _maxReportYear = 2026;
+
+  Widget _buildYearFilter(BuildContext context) {
+    const years = [_maxReportYear, _minReportYear];
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<int?>(
+          value: _selectedYear,
+          hint: const Text('All time'),
+          items: [
+            const DropdownMenuItem<int?>(
+              value: null,
+              child: Text('All time'),
+            ),
+            ...years.map(
+              (y) => DropdownMenuItem<int?>(
+                value: y,
+                child: Text(y.toString()),
+              ),
+            ),
+          ],
+          onChanged: (value) {
+            setState(() => _selectedYear = value);
+            _loadStats();
+          },
+        ),
       ),
     );
   }
@@ -259,16 +304,22 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       return _buildEmptyCard('Revenue by month', 'No data yet.');
     }
 
+    final totalRevenue = data.fold<double>(0, (s, m) => s + m.revenue);
+    final totalBookings = data.fold<int>(0, (s, m) => s + m.bookingCount);
+    final chartBookings =
+        totalRevenue <= 0 && totalBookings > 0;
+
     final spots = <FlSpot>[];
     final labels = <int, String>{};
-    double maxRevenue = 0;
+    double maxValue = 0;
     for (var i = 0; i < data.length; i++) {
       final m = data[i];
-      if (m.revenue > maxRevenue) maxRevenue = m.revenue;
-      spots.add(FlSpot(i.toDouble(), m.revenue));
+      final y = chartBookings ? m.bookingCount.toDouble() : m.revenue;
+      if (y > maxValue) maxValue = y;
+      spots.add(FlSpot(i.toDouble(), y));
       labels[i] = '${m.month}/${m.year % 100}';
     }
-    final maxY = (maxRevenue * 1.15).clamp(1.0, double.infinity);
+    final maxY = (maxValue * 1.15).clamp(1.0, double.infinity);
 
     return Card(
       elevation: 2,
@@ -278,7 +329,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Revenue by month',
+              chartBookings ? 'Bookings by month' : 'Revenue by month',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
@@ -344,7 +395,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                           return Padding(
                             padding: const EdgeInsets.only(right: 4),
                             child: Text(
-                              formatEuroCompactAxis(value),
+                              chartBookings
+                                  ? value.toInt().toString()
+                                  : formatEuroCompactAxis(value),
                               style: TextStyle(
                                 fontSize: 10,
                                 color: Colors.grey.shade700,

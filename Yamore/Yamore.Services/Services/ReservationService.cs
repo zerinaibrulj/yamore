@@ -340,7 +340,7 @@ namespace Yamore.Services.Services
                         Amount = recordPendingCardPayment.Amount,
                         PaymentDate = payAt,
                         PaymentMethod = recordPendingCardPayment.PaymentMethod,
-                        Status = recordPendingCardPayment.Status,
+                        Status = PaymentStatuses.DbStatusForSuccessfulCharge(),
                     });
                     Context.SaveChanges();
                 }

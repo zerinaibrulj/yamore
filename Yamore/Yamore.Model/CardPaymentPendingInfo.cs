@@ -7,7 +7,7 @@ namespace Yamore.Model
     {
         public decimal Amount { get; set; }
         public string PaymentMethod { get; set; } = "Card";
-        public string Status { get; set; } = "succeeded";
+        public string Status { get; set; } = PaymentStatuses.Success;
         public DateTime? PaymentDateUtc { get; set; }
     }
 }
