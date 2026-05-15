@@ -165,10 +165,17 @@ namespace Yamore.API.Controllers
                 return ValidationProblem(ms);
             }
 
-            var result = _usersService.Login(body.Username!.Trim(), body.Password!);
-            if (result == null)
-                return Unauthorized();
-            return Ok(IssueTokens(result));
+            try
+            {
+                var result = _usersService.Login(body.Username!.Trim(), body.Password!);
+                if (result == null)
+                    return Unauthorized();
+                return Ok(IssueTokens(result));
+            }
+            catch (UserException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
         }
 
         /// <summary>Exchanges a refresh token for a new access token and refresh token (rotation).</summary>
@@ -259,6 +266,7 @@ namespace Yamore.API.Controllers
                 Status = false
             };
             var result = _usersService.Update(id, update);
+            _refreshTokens.RevokeAllForUser(id, DateTime.UtcNow);
             return Ok(result);
         }
 

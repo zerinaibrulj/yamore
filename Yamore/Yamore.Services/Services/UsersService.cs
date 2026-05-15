@@ -406,6 +406,9 @@ namespace Yamore.Services.Services
                 Context.SaveChanges();
             }
 
+            if (entity.Status is false)
+                throw new UserException("Your account has been suspended. Please contact support.");
+
             var roles = entity.UserRoles?.Select(ur => ur.Role?.Name).Where(n => !string.IsNullOrEmpty(n)).Cast<string>().ToList() ?? new List<string>();
             return new Model.LoginResponseDto
             {
