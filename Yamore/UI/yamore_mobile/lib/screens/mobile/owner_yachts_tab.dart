@@ -1265,12 +1265,12 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
     setState(() => _servicesLoading = true);
     try {
       final results = await Future.wait([
-        widget.api.getServices(pageSize: 200),
+        widget.api.getAllServices(),
         widget.api.getYachtServiceIds(widget.existing!.yachtId!),
       ]);
       if (mounted) {
         setState(() {
-          _allServices = (results[0] as PagedServices).resultList;
+          _allServices = results[0] as List<ServiceModel>;
           _assignedServiceIds = (results[1] as List<int>).toSet();
         });
       }

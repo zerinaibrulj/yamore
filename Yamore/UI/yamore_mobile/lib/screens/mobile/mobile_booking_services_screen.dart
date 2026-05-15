@@ -62,8 +62,7 @@ class _MobileBookingServicesScreenState
         });
         return;
       }
-      final result = await widget.api.getServices(pageSize: 200);
-      final all = result.resultList;
+      final all = await widget.api.getAllServices();
       final list = all.where((s) => ids.contains(s.serviceId)).toList();
       if (!mounted) return;
       setState(() {

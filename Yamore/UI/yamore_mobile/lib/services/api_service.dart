@@ -29,6 +29,9 @@ import '../models/news_item.dart';
 export 'api_exception.dart';
 
 class ApiService {
+  /// Matches backend `PagingConstraints.MaxPageSize` (requests above this are capped).
+  static const int maxPageSize = 100;
+
   final String baseUrl;
   final AuthService? auth;
 
@@ -36,6 +39,20 @@ class ApiService {
     required this.baseUrl,
     this.auth,
   });
+
+  /// Stops when the page is empty or [collectedCount] reaches API [totalCount].
+  /// Does not stop merely because the page is smaller than [maxPageSize] (server cap).
+  static bool _shouldStopLookupPaging({
+    required int pageItemCount,
+    required int collectedCount,
+    required int? totalCount,
+  }) {
+    if (pageItemCount == 0) return true;
+    if (totalCount != null && totalCount > 0 && collectedCount >= totalCount) {
+      return true;
+    }
+    return false;
+  }
 
   /// Synchronous; current access token. Call [AuthService.ensureValidAccess] before
   /// loading images that require auth, if the session was idle a long time.
@@ -257,17 +274,23 @@ class ApiService {
 
   /// All cities (paged loop). Use for dropdowns and validation, not the admin table.
   Future<List<CityModel>> getAllCities() async {
-    const size = 200;
     var page = 0;
     final all = <CityModel>[];
-    int? total;
     while (true) {
-      final p = await getCitiesPaged(page: page, pageSize: size, nameGte: null);
-      all.addAll(p.resultList);
-      total = p.count ?? total;
+      final p = await getCitiesPaged(
+        page: page,
+        pageSize: maxPageSize,
+        nameGte: null,
+      );
       if (p.resultList.isEmpty) break;
-      if (total != null && all.length >= total) break;
-      if (p.resultList.length < size) break;
+      all.addAll(p.resultList);
+      if (_shouldStopLookupPaging(
+        pageItemCount: p.resultList.length,
+        collectedCount: all.length,
+        totalCount: p.count,
+      )) {
+        break;
+      }
       page++;
     }
     return all;
@@ -326,17 +349,23 @@ class ApiService {
 
   /// All countries (paged loop). Use for dropdowns and country name lookup, not the admin table.
   Future<List<CountryModel>> getAllCountries() async {
-    const size = 200;
     var page = 0;
     final all = <CountryModel>[];
-    int? total;
     while (true) {
-      final p = await getCountriesPaged(page: page, pageSize: size, nameGte: null);
-      all.addAll(p.resultList);
-      total = p.count ?? total;
+      final p = await getCountriesPaged(
+        page: page,
+        pageSize: maxPageSize,
+        nameGte: null,
+      );
       if (p.resultList.isEmpty) break;
-      if (total != null && all.length >= total) break;
-      if (p.resultList.length < size) break;
+      all.addAll(p.resultList);
+      if (_shouldStopLookupPaging(
+        pageItemCount: p.resultList.length,
+        collectedCount: all.length,
+        totalCount: p.count,
+      )) {
+        break;
+      }
       page++;
     }
     return all;
@@ -371,21 +400,48 @@ class ApiService {
     _ensureSuccess(response);
   }
 
-  Future<List<YachtCategoryModel>> getYachtCategories() async {
-    final uri = Uri.parse('$baseUrl/YachtCategory').replace(
-      queryParameters: {
-        'Page': '0',
-        'PageSize': '100',
-      },
-    );
-    final response = await http.get(uri, headers: await _httpHeaders());
-    _ensureSuccess(response);
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    final list = json['resultList'] as List<dynamic>? ?? [];
-    return list
-        .map((e) => YachtCategoryModel.fromJson(e as Map<String, dynamic>))
-        .toList();
+  /// All yacht categories (paged loop) for dropdowns and filters.
+  Future<List<YachtCategoryModel>> getAllYachtCategories() async {
+    var page = 0;
+    final all = <YachtCategoryModel>[];
+    while (true) {
+      final uri = Uri.parse('$baseUrl/YachtCategory').replace(
+        queryParameters: {
+          'Page': page.toString(),
+          'PageSize': maxPageSize.toString(),
+        },
+      );
+      final response = await http.get(uri, headers: await _httpHeaders());
+      _ensureSuccess(response);
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
+      final list = (json['resultList'] ?? json['ResultList'] ?? [])
+          as List<dynamic>? ??
+          [];
+      final totalRaw = json['count'] ?? json['Count'];
+      final total = totalRaw is int
+          ? totalRaw
+          : totalRaw is num
+              ? totalRaw.toInt()
+              : null;
+      final pageItems = list
+          .map((e) => YachtCategoryModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+      if (pageItems.isEmpty) break;
+      all.addAll(pageItems);
+      if (_shouldStopLookupPaging(
+        pageItemCount: pageItems.length,
+        collectedCount: all.length,
+        totalCount: total,
+      )) {
+        break;
+      }
+      page++;
+    }
+    return all;
   }
+
+  /// Backward-compatible alias for [getAllYachtCategories].
+  Future<List<YachtCategoryModel>> getYachtCategories() => getAllYachtCategories();
 
   Future<void> insertYachtCategory({required String name}) async {
     final uri = Uri.parse('$baseUrl/YachtCategory');
@@ -415,25 +471,39 @@ class ApiService {
 
   /// All users who have the YachtOwner/Owner role, sorted by display name (fetches all pages).
   Future<List<AppUser>> getOwners() async {
-    const pageSize = 100;
     final all = <AppUser>[];
     var page = 0;
     while (true) {
       final uri = Uri.parse('$baseUrl/Users/owners').replace(
         queryParameters: {
           'Page': page.toString(),
-          'PageSize': pageSize.toString(),
+          'PageSize': maxPageSize.toString(),
         },
       );
       final response = await http.get(uri, headers: await _httpHeaders());
       _ensureSuccess(response);
       final json = jsonDecode(response.body) as Map<String, dynamic>;
-      final list = json['resultList'] as List<dynamic>? ?? [];
-      final total = (json['count'] as num?)?.toInt() ?? 0;
-      all.addAll(
-        list.map((e) => AppUser.fromJson(e as Map<String, dynamic>)),
-      );
-      if (list.length < pageSize || all.length >= total) break;
+      final list = (json['resultList'] ?? json['ResultList'] ?? [])
+          as List<dynamic>? ??
+          [];
+      final totalRaw = json['count'] ?? json['Count'];
+      final total = totalRaw is int
+          ? totalRaw
+          : totalRaw is num
+              ? totalRaw.toInt()
+              : null;
+      final pageItems = list
+          .map((e) => AppUser.fromJson(e as Map<String, dynamic>))
+          .toList();
+      if (pageItems.isEmpty) break;
+      all.addAll(pageItems);
+      if (_shouldStopLookupPaging(
+        pageItemCount: pageItems.length,
+        collectedCount: all.length,
+        totalCount: total,
+      )) {
+        break;
+      }
       page++;
     }
     all.sort((a, b) => a.displayName.compareTo(b.displayName));
@@ -653,31 +723,39 @@ class ApiService {
   String yachtImageUrl(int imageId) => '$baseUrl/YachtImages/$imageId';
 
   Future<List<YachtImageModel>> getYachtImages(int yachtId) async {
-    const pageSize = 100;
     final all = <YachtImageModel>[];
     var page = 0;
     while (true) {
       final uri = Uri.parse('$baseUrl/YachtImages/byYacht/$yachtId').replace(
         queryParameters: {
           'Page': page.toString(),
-          'PageSize': pageSize.toString(),
+          'PageSize': maxPageSize.toString(),
         },
       );
       final response = await http.get(uri, headers: await _httpHeaders());
       _ensureSuccess(response);
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
       final list = (decoded['resultList'] ?? decoded['ResultList'] ?? [])
-          as List<dynamic>? ?? [];
+          as List<dynamic>? ??
+          [];
       final totalRaw = decoded['count'] ?? decoded['Count'];
       final total = totalRaw is int
           ? totalRaw
           : totalRaw is num
               ? totalRaw.toInt()
-              : 0;
-      all.addAll(
-        list.map((e) => YachtImageModel.fromJson(e as Map<String, dynamic>)),
-      );
-      if (list.length < pageSize || all.length >= total) break;
+              : null;
+      final pageItems = list
+          .map((e) => YachtImageModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+      if (pageItems.isEmpty) break;
+      all.addAll(pageItems);
+      if (_shouldStopLookupPaging(
+        pageItemCount: pageItems.length,
+        collectedCount: all.length,
+        totalCount: total,
+      )) {
+        break;
+      }
       page++;
     }
     return all;
@@ -1091,13 +1169,40 @@ class ApiService {
   }
 
   Future<List<int>> getYachtServiceIds(int yachtId) async {
-    final uri = Uri.parse('$baseUrl/YachtService')
-        .replace(queryParameters: {'YachtId': yachtId.toString(), 'PageSize': '200'});
-    final response = await http.get(uri, headers: await _httpHeaders());
-    _ensureSuccess(response);
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    final list = (json['resultList'] ?? json['ResultList'] ?? []) as List;
-    return list.map((e) => e['serviceId'] as int).toList();
+    final ids = <int>[];
+    var page = 0;
+    while (true) {
+      final uri = Uri.parse('$baseUrl/YachtService').replace(
+        queryParameters: {
+          'YachtId': yachtId.toString(),
+          'Page': page.toString(),
+          'PageSize': maxPageSize.toString(),
+        },
+      );
+      final response = await http.get(uri, headers: await _httpHeaders());
+      _ensureSuccess(response);
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
+      final list = (json['resultList'] ?? json['ResultList'] ?? []) as List;
+      final totalRaw = json['count'] ?? json['Count'];
+      final total = totalRaw is int
+          ? totalRaw
+          : totalRaw is num
+              ? totalRaw.toInt()
+              : null;
+      if (list.isEmpty) break;
+      for (final e in list) {
+        ids.add((e as Map<String, dynamic>)['serviceId'] as int);
+      }
+      if (_shouldStopLookupPaging(
+        pageItemCount: list.length,
+        collectedCount: ids.length,
+        totalCount: total,
+      )) {
+        break;
+      }
+      page++;
+    }
+    return ids;
   }
 
   Future<void> assignYachtService({required int yachtId, required int serviceId}) async {
@@ -1122,6 +1227,30 @@ class ApiService {
     final delUri = Uri.parse('$baseUrl/YachtService/$ysId');
     final delResp = await http.delete(delUri, headers: await _httpHeaders());
     _ensureSuccess(delResp);
+  }
+
+  /// All service categories (paged loop) for dropdowns.
+  Future<List<ServiceCategory>> getAllServiceCategories({String? name}) async {
+    var page = 0;
+    final all = <ServiceCategory>[];
+    while (true) {
+      final p = await getServiceCategories(
+        page: page,
+        pageSize: maxPageSize,
+        name: name,
+      );
+      if (p.resultList.isEmpty) break;
+      all.addAll(p.resultList);
+      if (_shouldStopLookupPaging(
+        pageItemCount: p.resultList.length,
+        collectedCount: all.length,
+        totalCount: p.count,
+      )) {
+        break;
+      }
+      page++;
+    }
+    return all;
   }
 
   Future<PagedServiceCategories> getServiceCategories({
@@ -1175,6 +1304,30 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/ServiceCategory/$id');
     final response = await http.delete(uri, headers: await _httpHeaders());
     _ensureSuccess(response);
+  }
+
+  /// All services (paged loop) for dropdowns and selection lists.
+  Future<List<ServiceModel>> getAllServices({String? nameGTE}) async {
+    var page = 0;
+    final all = <ServiceModel>[];
+    while (true) {
+      final p = await getServices(
+        page: page,
+        pageSize: maxPageSize,
+        nameGTE: nameGTE,
+      );
+      if (p.resultList.isEmpty) break;
+      all.addAll(p.resultList);
+      if (_shouldStopLookupPaging(
+        pageItemCount: p.resultList.length,
+        collectedCount: all.length,
+        totalCount: p.count,
+      )) {
+        break;
+      }
+      page++;
+    }
+    return all;
   }
 
   Future<PagedServices> getServices({
