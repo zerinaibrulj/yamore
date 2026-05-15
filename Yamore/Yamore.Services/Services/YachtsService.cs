@@ -162,19 +162,8 @@ namespace Yamore.Services.Services
 
             if (!string.IsNullOrWhiteSpace(search?.OrderBy))
             {
-                var item = search.OrderBy.Split(' ');
-                if (item.Length > 2 || item.Length == 0)
-                {
-                    throw new UserException("You can only sort by one field!");
-                }
-                if (item.Length == 1)
-                {
-                    filteredQurey = filteredQurey.OrderBy(search.OrderBy);
-                }
-                else
-                {
-                    filteredQurey = filteredQurey.OrderBy($"{item[0]} {item[1]}");
-                }
+                var orderExpression = DynamicOrderByGuard.BuildYachtOrderExpression(search.OrderBy);
+                filteredQurey = filteredQurey.OrderBy(orderExpression);
             }
 
             return filteredQurey;
