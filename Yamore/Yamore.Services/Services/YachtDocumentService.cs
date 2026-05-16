@@ -29,8 +29,20 @@ namespace Yamore.Services.Services
         public IReadOnlyList<Model.YachtDocument> GetPendingForAdmin() =>
             _context.YachtDocuments.AsNoTracking()
                 .Where(d => d.VerificationStatus == YachtDocumentVerificationStatus.Pending)
-                .OrderBy(d => d.DateUploaded)
-                .Select(MapToModel)
+                .OrderBy(d => d.YachtId)
+                .ThenBy(d => d.DocumentType)
+                .Select(d => new Model.YachtDocument
+                {
+                    YachtDocumentId = d.YachtDocumentId,
+                    YachtId = d.YachtId,
+                    YachtName = d.Yacht.Name,
+                    DocumentType = d.DocumentType,
+                    VerificationStatus = d.VerificationStatus,
+                    ContentType = d.ContentType,
+                    FileName = d.FileName,
+                    DateUploaded = d.DateUploaded,
+                    RejectionReason = d.RejectionReason,
+                })
                 .ToList();
 
         public Model.YachtDocument Upload(int yachtId, int ownerUserId, YachtDocumentInsertRequest request)

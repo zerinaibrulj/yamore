@@ -1,6 +1,7 @@
 class YachtDocument {
   final int yachtDocumentId;
   final int yachtId;
+  final String? yachtName;
   final String documentType;
   final String verificationStatus;
   final String? contentType;
@@ -11,6 +12,7 @@ class YachtDocument {
   YachtDocument({
     required this.yachtDocumentId,
     required this.yachtId,
+    this.yachtName,
     required this.documentType,
     required this.verificationStatus,
     this.contentType,
@@ -43,6 +45,8 @@ class YachtDocument {
       yachtDocumentId:
           (_v(json, 'yachtDocumentId') as num?)?.toInt() ?? 0,
       yachtId: (_v(json, 'yachtId') as num?)?.toInt() ?? 0,
+      yachtName: _v(json, 'yachtName')?.toString() ??
+          _v(json, 'YachtName')?.toString(),
       documentType: _v(json, 'documentType')?.toString() ?? '',
       verificationStatus:
           _v(json, 'verificationStatus')?.toString() ?? 'Pending',
