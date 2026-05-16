@@ -302,18 +302,6 @@ namespace Yamore.Services.Services
             }
         }
 
-        private const string RecommendationReasonCategory =
-            "Recommended because you previously booked yachts in this category.";
-
-        private const string RecommendationReasonLocation =
-            "Similar to locations and destinations you have chosen before.";
-
-        private const string RecommendationReasonServices =
-            "Popular among users with similar add-on service preferences.";
-
-        private const string RecommendationReasonPopularity =
-            "Highly rated and popular among other travelers.";
-
         /// <summary>
         /// Recommendation: content-based signals from past reservations and from yachts the user rated 4+ (category, location, country),
         /// plus add-on service history, then average community rating and booking popularity. Returns overview DTOs with explanations.
@@ -325,9 +313,10 @@ namespace Yamore.Services.Services
 
             var activeYachts = Context.Yachts
                 .Include(y => y.Owner)
+                .Include(y => y.Category)
                 .Include(y => y.Location).ThenInclude(c => c.Country)
                 .Include(y => y.Reviews)
-                .Include(y => y.YachtServices)
+                .Include(y => y.YachtServices).ThenInclude(ys => ys.Service)
                 .Include(y => y.Reservations)
                 .Where(y => y.StateMachine == "active")
                 .AsQueryable();
@@ -457,22 +446,90 @@ namespace Yamore.Services.Services
             public bool PopularityFallbackOnly { get; init; }
         }
 
+        /// <summary>
+        /// Builds a yacht-specific explanation using the strongest personal match (city, country, category, services),
+        /// then falls back to rating and booking popularity.
+        /// </summary>
         private static string ResolveRecommendationReason(Database.Yacht yacht, RecommendationSignals signals)
         {
             if (signals.PopularityFallbackOnly)
-                return RecommendationReasonPopularity;
-
-            if (signals.CombinedCategoryIds.Contains(yacht.CategoryId))
-                return RecommendationReasonCategory;
+                return BuildPopularityReason(yacht);
 
             if (signals.CombinedLocationIds.Contains(yacht.LocationId)
-                || (yacht.Location != null && signals.CombinedCountryIds.Contains(yacht.Location.CountryId)))
-                return RecommendationReasonLocation;
+                && yacht.Location != null
+                && !string.IsNullOrWhiteSpace(yacht.Location.Name))
+            {
+                return $"Similar to your past trips in {yacht.Location.Name.Trim()}.";
+            }
 
-            if (yacht.YachtServices.Any(ys => signals.PreferredServiceIds.Contains(ys.ServiceId)))
-                return RecommendationReasonServices;
+            if (yacht.Location?.Country != null
+                && signals.CombinedCountryIds.Contains(yacht.Location.CountryId)
+                && !string.IsNullOrWhiteSpace(yacht.Location.Country.Name))
+            {
+                return $"Based in {yacht.Location.Country.Name.Trim()}, a destination you have booked before.";
+            }
 
-            return RecommendationReasonPopularity;
+            if (signals.CombinedCategoryIds.Contains(yacht.CategoryId))
+            {
+                var categoryName = yacht.Category?.Name?.Trim();
+                var cityName = yacht.Location?.Name?.Trim();
+                if (!string.IsNullOrEmpty(categoryName) && !string.IsNullOrEmpty(cityName))
+                {
+                    return $"A {categoryName} in {cityName}, matching yachts from your booking history.";
+                }
+
+                if (!string.IsNullOrEmpty(categoryName))
+                {
+                    return $"Matches your interest in {categoryName} from your past bookings.";
+                }
+            }
+
+            var matchedServiceNames = yacht.YachtServices
+                .Where(ys => signals.PreferredServiceIds.Contains(ys.ServiceId) && ys.Service != null)
+                .Select(ys => ys.Service!.Name.Trim())
+                .Where(n => n.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(3)
+                .ToList();
+
+            if (matchedServiceNames.Count > 0)
+            {
+                var serviceList = FormatNameList(matchedServiceNames);
+                return $"Offers {serviceList}, which you often add to your charters.";
+            }
+
+            return BuildPopularityReason(yacht);
+        }
+
+        private static string BuildPopularityReason(Database.Yacht yacht)
+        {
+            var rated = yacht.Reviews.Where(r => r.Rating.HasValue).ToList();
+            if (rated.Count > 0)
+            {
+                var avg = rated.Average(r => r.Rating!.Value);
+                if (avg >= 4.0)
+                {
+                    return $"Highly rated ({avg:F1}/5 from {rated.Count} reviews) and popular with other travelers.";
+                }
+            }
+
+            var bookingCount = yacht.Reservations.Count(r =>
+                !string.Equals(r.Status, "Cancelled", StringComparison.OrdinalIgnoreCase));
+
+            if (bookingCount > 0)
+            {
+                return $"A popular choice with {bookingCount} booking{(bookingCount == 1 ? "" : "s")} on Yamore.";
+            }
+
+            return "Featured among our active fleet.";
+        }
+
+        private static string FormatNameList(IReadOnlyList<string> names)
+        {
+            if (names.Count == 0) return string.Empty;
+            if (names.Count == 1) return names[0];
+            if (names.Count == 2) return $"{names[0]} and {names[1]}";
+            return $"{names[0]}, {names[1]}, and {names[2]}";
         }
 
         private PagedResponse<YachtOverviewDto> BuildRecommendationOverviewResult(
@@ -506,7 +563,7 @@ namespace Yamore.Services.Services
                     : (double?)null,
                 ReviewCount = y.Reviews.Count(r => r.Rating.HasValue),
                 RecommendationReason = signals == null
-                    ? RecommendationReasonPopularity
+                    ? BuildPopularityReason(y)
                     : ResolveRecommendationReason(y, signals),
             }).ToList();
 
