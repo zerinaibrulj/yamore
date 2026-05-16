@@ -17,6 +17,7 @@ class YachtOverview {
   final double? averageRating;
   final int reviewCount;
   final String? recommendationReason;
+  final bool canActivate;
 
   YachtOverview({
     required this.yachtId,
@@ -35,6 +36,7 @@ class YachtOverview {
     this.averageRating,
     this.reviewCount = 0,
     this.recommendationReason,
+    this.canActivate = false,
   });
 
   /// From full yacht detail when the overview list omits this yacht (pagination or filters).
@@ -77,6 +79,9 @@ class YachtOverview {
           (json['reviewCount'] ?? json['ReviewCount']) as int? ?? 0,
       recommendationReason: json['recommendationReason'] as String? ??
           json['RecommendationReason'] as String?,
+      canActivate: json['canActivate'] as bool? ??
+          json['CanActivate'] as bool? ??
+          false,
     );
   }
 }

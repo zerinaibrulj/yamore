@@ -287,7 +287,12 @@ class _YachtReviewScreenState extends State<YachtReviewScreen> {
                                     final state = (y.stateMachine ?? '').toLowerCase();
                                     final items = <PopupMenuEntry<String>>[];
                                     if (state == 'draft' || state == '') {
-                                      items.add(const PopupMenuItem(value: 'activate', child: Text('Activate')));
+                                      if (y.canActivate) {
+                                        items.add(const PopupMenuItem(
+                                          value: 'activate',
+                                          child: Text('Activate'),
+                                        ));
+                                      }
                                       items.add(const PopupMenuItem(value: 'hide', child: Text('Hide')));
                                     } else if (state == 'active') {
                                       items.add(const PopupMenuItem(value: 'hide', child: Text('Hide')));

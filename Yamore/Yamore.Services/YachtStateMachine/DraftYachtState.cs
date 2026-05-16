@@ -61,7 +61,15 @@ namespace Yamore.Services.YachtStateMachine
 
         public override List<string> AllowedActions(Database.Yacht entity)
         {
-            return new List<string> { nameof(Update), nameof(Activate), nameof(Hide) };
+            var actions = new List<string> { nameof(Update), nameof(Hide) };
+            if (entity != null)
+            {
+                var docService = ServiceProvider.GetRequiredService<IYachtDocumentService>();
+                if (docService.AreMandatoryDocumentsApproved(entity.YachtId))
+                    actions.Insert(0, nameof(Activate));
+            }
+
+            return actions;
         }
     }
 }

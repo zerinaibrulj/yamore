@@ -41,10 +41,8 @@ namespace Yamore.Services.Services
             if (yacht.OwnerId != ownerUserId)
                 throw new ForbiddenException("You may only upload documents for yachts that you own.");
 
-            var docType = (request.DocumentType ?? string.Empty).Trim();
-            if (string.IsNullOrEmpty(docType))
-                throw new UserException("Document type is required.");
-            if (!YachtDocumentTypes.MandatoryForActivation.Contains(docType, StringComparer.OrdinalIgnoreCase))
+            var docType = YachtDocumentTypes.TryResolveMandatoryType(request.DocumentType);
+            if (docType == null)
             {
                 throw new UserException(
                     $"Document type must be one of: {string.Join(", ", YachtDocumentTypes.MandatoryForActivation)}.");
@@ -129,14 +127,25 @@ namespace Yamore.Services.Services
 
         public bool AreMandatoryDocumentsApproved(int yachtId)
         {
-            var approved = _context.YachtDocuments.AsNoTracking()
-                .Where(d => d.YachtId == yachtId
-                            && d.VerificationStatus == YachtDocumentVerificationStatus.Approved)
-                .Select(d => d.DocumentType)
+            var documents = _context.YachtDocuments.AsNoTracking()
+                .Where(d => d.YachtId == yachtId)
+                .Select(d => new { d.DocumentType, d.VerificationStatus })
                 .ToList();
 
-            return YachtDocumentTypes.MandatoryForActivation.All(mandatory =>
-                approved.Any(a => string.Equals(a, mandatory, StringComparison.OrdinalIgnoreCase)));
+            foreach (var mandatory in YachtDocumentTypes.MandatoryForActivation)
+            {
+                var hasApproved = documents.Any(d =>
+                    string.Equals(d.DocumentType, mandatory, StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(
+                        d.VerificationStatus,
+                        YachtDocumentVerificationStatus.Approved,
+                        StringComparison.OrdinalIgnoreCase));
+
+                if (!hasApproved)
+                    return false;
+            }
+
+            return true;
         }
 
         public Database.YachtDocument? GetEntity(int documentId) =>

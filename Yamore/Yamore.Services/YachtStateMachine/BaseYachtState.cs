@@ -61,21 +61,20 @@ namespace Yamore.Services.YachtStateMachine
 
 
 
-        public BaseYachtState CreateState(string stateName)
+        public BaseYachtState CreateState(string? stateName)
         {
-            switch (stateName)
+            var normalized = string.IsNullOrWhiteSpace(stateName)
+                ? YachtStateNames.Draft
+                : stateName.Trim().ToLowerInvariant();
+
+            return normalized switch
             {
-                case YachtStateNames.Initial:
-                    return ServiceProvider.GetService<InitialYachtState>();
-                case YachtStateNames.Draft:
-                    return ServiceProvider.GetService<DraftYachtState>();
-                case YachtStateNames.Active:
-                    return ServiceProvider.GetService<ActiveYachtState>();
-                case YachtStateNames.Hidden:
-                    return ServiceProvider.GetService<HiddenYachtState>();
-                default:
-                    throw new InvalidOperationException($"Yacht state is not recognized: {stateName}.");
-            }
+                YachtStateNames.Initial => ServiceProvider.GetRequiredService<InitialYachtState>(),
+                YachtStateNames.Draft => ServiceProvider.GetRequiredService<DraftYachtState>(),
+                YachtStateNames.Active => ServiceProvider.GetRequiredService<ActiveYachtState>(),
+                YachtStateNames.Hidden => ServiceProvider.GetRequiredService<HiddenYachtState>(),
+                _ => throw new InvalidOperationException($"Yacht state is not recognized: {stateName}."),
+            };
         }
     }
 }

@@ -23,5 +23,8 @@ namespace Yamore.Model
 
         /// <summary>Short, user-facing explanation for explainable recommendations (content-based / popularity).</summary>
         public string? RecommendationReason { get; set; }
+
+        /// <summary>True when the yacht is in draft and all mandatory documents are admin-approved (may call Activate).</summary>
+        public bool CanActivate { get; set; }
     }
 }

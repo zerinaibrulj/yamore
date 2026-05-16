@@ -24,17 +24,28 @@ namespace Yamore.Services.Services
         public BaseYachtState BaseYachtState { get; set; }
 
         private readonly IHttpContextAccessor? _httpContextAccessor;
+        private readonly IYachtDocumentService _yachtDocumentService;
 
         public YachtsService(
             _220245Context context,
             IMapper mapper,
             BaseYachtState baseYachtState,
+            IYachtDocumentService yachtDocumentService,
             IHttpContextAccessor? httpContextAccessor = null)
             : base(context, mapper)
         {
             BaseYachtState = baseYachtState;
+            _yachtDocumentService = yachtDocumentService;
             _httpContextAccessor = httpContextAccessor;
         }
+
+        private static bool IsDraftState(string? stateMachine) =>
+            string.IsNullOrWhiteSpace(stateMachine)
+            || string.Equals(stateMachine.Trim(), YachtStateNames.Draft, StringComparison.OrdinalIgnoreCase);
+
+        private bool CanPublishYacht(Database.Yacht yacht) =>
+            IsDraftState(yacht.StateMachine)
+            && _yachtDocumentService.AreMandatoryDocumentsApproved(yacht.YachtId);
 
         /// <summary>Load yacht for state transitions and owner/admin updates (no public visibility filter).</summary>
         private Model.Yacht? LoadYachtUnrestricted(int id)
@@ -227,11 +238,23 @@ namespace Yamore.Services.Services
 
         public Model.Yacht Activate(int id)
         {
-            var entity = LoadYachtUnrestricted(id)
+            var entity = Context.Set<Database.Yacht>().Find(id)
                 ?? throw new NotFoundException($"Yacht with id {id} not found.");
             if (!CurrentUserMayManageYacht(id))
                 throw new ForbiddenException("You may only change the listing state for yachts that you own.");
-            var state = BaseYachtState.CreateState(entity.StateMachine ?? YachtStateNames.Draft);
+            if (!IsDraftState(entity.StateMachine))
+            {
+                throw new UserException(
+                    "Only yachts in Draft state can be published. Use Hide or Edit for other states.");
+            }
+
+            if (!_yachtDocumentService.AreMandatoryDocumentsApproved(id))
+            {
+                throw new UserException(
+                    "This yacht cannot be published until Registration, Insurance, and Safety Certificate documents are uploaded and approved by an administrator.");
+            }
+
+            var state = BaseYachtState.CreateState(entity.StateMachine);
             return state.Activate(id);
         }
 
@@ -533,7 +556,8 @@ namespace Yamore.Services.Services
                 AverageRating = y.Reviews.Any(r => r.Rating.HasValue)
                     ? y.Reviews.Where(r => r.Rating.HasValue).Average(r => (double)r.Rating!)
                     : (double?)null,
-                ReviewCount = y.Reviews.Count(r => r.Rating.HasValue)
+                ReviewCount = y.Reviews.Count(r => r.Rating.HasValue),
+                CanActivate = CanPublishYacht(y),
             }).ToList();
 
             return new PagedResponse<YachtOverviewDto> { Count = count, ResultList = result };
@@ -633,7 +657,8 @@ namespace Yamore.Services.Services
                 AverageRating = y.Reviews.Any(r => r.Rating.HasValue)
                     ? y.Reviews.Where(r => r.Rating.HasValue).Average(r => (double)r.Rating!)
                     : (double?)null,
-                ReviewCount = y.Reviews.Count(r => r.Rating.HasValue)
+                ReviewCount = y.Reviews.Count(r => r.Rating.HasValue),
+                CanActivate = CanPublishYacht(y),
             }).ToList();
 
             return new PagedResponse<YachtOverviewDto> { Count = count, ResultList = result };
