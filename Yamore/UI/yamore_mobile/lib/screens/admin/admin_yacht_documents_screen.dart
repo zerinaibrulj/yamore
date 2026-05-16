@@ -99,17 +99,6 @@ class _AdminYachtDocumentsScreenState extends State<AdminYachtDocumentsScreen> {
     return 'Yacht #${doc.yachtId}';
   }
 
-  String _formatUploaded(DateTime? date) {
-    if (date == null) return '—';
-    final local = date.toLocal();
-    final dd = local.day.toString().padLeft(2, '0');
-    final mm = local.month.toString().padLeft(2, '0');
-    final yyyy = local.year;
-    final hh = local.hour.toString().padLeft(2, '0');
-    final min = local.minute.toString().padLeft(2, '0');
-    return '$dd.$mm.$yyyy. $hh:$min';
-  }
-
   void _showSuccessSnackBar(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -195,13 +184,41 @@ class _AdminYachtDocumentsScreenState extends State<AdminYachtDocumentsScreen> {
       if (previousYachtId != d.yachtId) {
         widgets.add(
           Padding(
-            padding: const EdgeInsets.only(top: 4, bottom: 8),
-            child: Text(
-              _yachtDisplayName(d),
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.primaryBlue,
+            padding: EdgeInsets.only(
+              top: previousYachtId == null ? 4 : 16,
+              bottom: 10,
+            ),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: AppTheme.primaryBlue.withValues(alpha: 0.22),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.sailing_outlined,
+                    size: 22,
+                    color: AppTheme.primaryBlue.withValues(alpha: 0.9),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _yachtDisplayName(d),
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.2,
+                        color: AppTheme.primaryBlue,
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -232,7 +249,7 @@ class _AdminYachtDocumentsScreenState extends State<AdminYachtDocumentsScreen> {
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
-                    'Uploaded: ${_formatUploaded(d.dateUploaded)}',
+                    'Uploaded: ${YachtDocument.formatUploadedLocal(d.dateUploaded)}',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
                   ),
                 ),
