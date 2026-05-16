@@ -78,7 +78,7 @@ class _YachtDocumentsScreenState extends State<YachtDocumentsScreen> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$documentType uploaded (pending review).')),
+        const SnackBar(content: Text('Document uploaded successfully!')),
       );
       await _load();
     } catch (e) {
@@ -144,7 +144,7 @@ class _YachtDocumentsScreenState extends State<YachtDocumentsScreen> {
                         return Card(
                           margin: const EdgeInsets.only(bottom: 12),
                           child: ListTile(
-                            title: Text(type),
+                            title: Text(YachtDocument.displayLabelForType(type)),
                             subtitle: doc == null
                                 ? const Text('Not uploaded')
                                 : Text(

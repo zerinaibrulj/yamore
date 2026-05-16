@@ -27,6 +27,16 @@ class YachtDocument {
     return null;
   }
 
+  /// Human-readable label for API document type values (e.g. SafetyCertificate).
+  static String displayLabelForType(String documentType) {
+    switch (documentType) {
+      case 'SafetyCertificate':
+        return 'Safety Certificate';
+      default:
+        return documentType;
+    }
+  }
+
   factory YachtDocument.fromJson(Map<String, dynamic> json) {
     final uploaded = _v(json, 'dateUploaded');
     return YachtDocument(
