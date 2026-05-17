@@ -503,9 +503,9 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
     final status = (r.status ?? 'Pending');
     final isConfirmed = status.toLowerCase() == 'confirmed';
     final statusLower = status.toLowerCase();
-    final canReschedule =
-        statusLower == 'pending' || statusLower == 'confirmed';
     final paid = r.isPaid;
+    final canReschedule = (statusLower == 'pending' || statusLower == 'confirmed') &&
+        !paid;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -920,6 +920,19 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
   }
 
   Future<void> _rescheduleReservation(Reservation r) async {
+    if (r.isPaid) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Paid reservations cannot be rescheduled. Please contact support if you need to change your travel dates.',
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     final now = DateTime.now();
     List<YachtCalendarBlock> calendarBlocks = [];
     try {
@@ -998,6 +1011,9 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
     if (lower.contains('already reserved') || lower.contains('selected dates')) {
       return 'This yacht is already reserved for the selected dates. '
           'Choose a range that does not overlap another guest\'s booking or an owner-blocked period on this yacht.';
+    }
+    if (lower.contains('paid') && lower.contains('reschedul')) {
+      return msg;
     }
     if (msg.isNotEmpty) return msg;
     return 'Could not reschedule your booking. Please try again.';

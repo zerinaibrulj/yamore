@@ -248,6 +248,12 @@ namespace Yamore.Services.Services
                 throw new UserException("Only pending or confirmed reservations can be rescheduled.");
             }
 
+            if (HasFinalizedPayment(entity.ReservationId, entity.Status))
+            {
+                throw new UserException(
+                    "Paid reservations cannot be rescheduled. Please contact support if you need to change your travel dates.");
+            }
+
             if (HasOverlapExcluding(entity.YachtId, newStart, newEnd, entity.ReservationId))
                 throw new UserException("This yacht is already reserved for the selected dates. Please choose different dates or times.");
 
@@ -645,6 +651,17 @@ namespace Yamore.Services.Services
                           && p.Amount > 0
                           && p.PaymentMethod != null
                           && p.PaymentMethod.ToLower().Contains("card"));
+
+        /// <summary>
+        /// True when the booking has a completed card charge (or equivalent settled payment).
+        /// Used to lock reschedule after Stripe checkout, per paid-booking rules.
+        /// </summary>
+        private bool HasFinalizedPayment(int reservationId, string? reservationStatus) =>
+            Context.Set<Database.Payment>().AsNoTracking()
+                .Any(p => p.ReservationId == reservationId
+                    && p.Amount > 0
+                    && PaymentStatuses.CountsTowardRevenue(
+                        p.Status, p.PaymentMethod, reservationStatus));
 
         public ReservationMessageContext GetReservationMessageContext(int userId, int yachtId)
         {
