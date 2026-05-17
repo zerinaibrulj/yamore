@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../utils/charter_date_utils.dart';
 /// Reusable date range picker dialog with a clean header and formatted month/year.
 /// Use via: showDialog<DateTimeRange>(..., builder: (ctx) => CustomDateRangePickerDialog(...))
 ///
@@ -46,16 +47,8 @@ class _CustomDateRangePickerDialogState extends State<CustomDateRangePickerDialo
   @override
   void initState() {
     super.initState();
-    _rangeStart = DateTime(
-      widget.initialRange.start.year,
-      widget.initialRange.start.month,
-      widget.initialRange.start.day,
-    );
-    _rangeEnd = DateTime(
-      widget.initialRange.end.year,
-      widget.initialRange.end.month,
-      widget.initialRange.end.day,
-    );
+    _rangeStart = CharterDateUtils.localDateOnly(widget.initialRange.start);
+    _rangeEnd = CharterDateUtils.localDateOnly(widget.initialRange.end);
     _viewMonth = DateTime(_rangeStart!.year, _rangeStart!.month);
   }
 
@@ -169,7 +162,12 @@ class _CustomDateRangePickerDialogState extends State<CustomDateRangePickerDialo
         cursor = cursor.add(const Duration(days: 1));
       }
     }
-    Navigator.of(context).pop(range);
+    Navigator.of(context).pop(
+      DateTimeRange(
+        start: CharterDateUtils.localDateOnly(range.start),
+        end: CharterDateUtils.localDateOnly(range.end),
+      ),
+    );
   }
 
   @override

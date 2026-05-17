@@ -1,3 +1,5 @@
+import '../utils/charter_date_utils.dart';
+
 class Reservation {
   final int reservationId;
   final int userId;
@@ -44,8 +46,8 @@ class Reservation {
       reservationId: _v(json, 'reservationId') as int,
       userId: _v(json, 'userId') as int,
       yachtId: _v(json, 'yachtId') as int,
-      startDate: DateTime.parse(_v(json, 'startDate') as String),
-      endDate: DateTime.parse(_v(json, 'endDate') as String),
+      startDate: CharterDateUtils.fromApi(_v(json, 'startDate').toString()),
+      endDate: CharterDateUtils.fromApi(_v(json, 'endDate').toString()),
       totalPrice: (_v(json, 'totalPrice') as num?)?.toDouble(),
       status: statusRaw is String ? statusRaw : statusRaw?.toString(),
       createdAt: _v(json, 'createdAt') != null

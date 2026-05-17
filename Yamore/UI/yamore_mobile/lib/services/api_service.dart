@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'api_exception.dart';
 import 'api_response_handler.dart';
 import 'auth_service.dart';
+import '../utils/charter_date_utils.dart';
 import '../utils/payment_platform.dart';
 import '../models/yacht_overview.dart';
 import '../models/yacht_detail.dart';
@@ -884,8 +885,8 @@ class ApiService {
       uri,
       headers: await _httpHeaders(),
       body: jsonEncode({
-        'startDate': startDate.toUtc().toIso8601String(),
-        'endDate': endDate.toUtc().toIso8601String(),
+        'startDate': CharterDateUtils.toApiJson(startDate),
+        'endDate': CharterDateUtils.toApiJson(endDate),
       }),
     );
     _ensureSuccess(response);
@@ -1673,8 +1674,8 @@ class ApiService {
       headers: await _httpHeaders(),
       body: jsonEncode({
         'YachtId': yachtId,
-        'StartDate': startDate.toUtc().toIso8601String(),
-        'EndDate': endDate.toUtc().toIso8601String(),
+        'StartDate': CharterDateUtils.toApiJson(startDate),
+        'EndDate': CharterDateUtils.toApiJson(endDate),
         'ServiceIds': serviceIds,
       }),
     );
@@ -1765,10 +1766,10 @@ class ApiService {
       body: jsonEncode({
         'yachtId': yachtId,
         'YachtId': yachtId,
-        'startDate': startDate.toUtc().toIso8601String(),
-        'StartDate': startDate.toUtc().toIso8601String(),
-        'endDate': endDate.toUtc().toIso8601String(),
-        'EndDate': endDate.toUtc().toIso8601String(),
+        'startDate': CharterDateUtils.toApiJson(startDate),
+        'StartDate': CharterDateUtils.toApiJson(startDate),
+        'endDate': CharterDateUtils.toApiJson(endDate),
+        'EndDate': CharterDateUtils.toApiJson(endDate),
         'serviceIds': serviceIds,
         'ServiceIds': serviceIds,
       }),

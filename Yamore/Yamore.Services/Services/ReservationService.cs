@@ -162,8 +162,8 @@ namespace Yamore.Services.Services
                 throw new ForbiddenException("You must be signed in to create a reservation.");
 
             var yachtId = request.YachtId;
-            var start = request.StartDate;
-            var end = request.EndDate;
+            var start = CharterDateNormalizer.ToCharterInstant(request.StartDate);
+            var end = CharterDateNormalizer.ToCharterInstant(request.EndDate);
             var serviceIds = request.ServiceIds ?? new List<int>();
 
             var yacht = Context.Set<Database.Yacht>().AsNoTracking().FirstOrDefault(y => y.YachtId == yachtId);
@@ -223,6 +223,9 @@ namespace Yamore.Services.Services
 
         public Model.Reservation Reschedule(int id, DateTime newStart, DateTime newEnd)
         {
+            newStart = CharterDateNormalizer.ToCharterInstant(newStart);
+            newEnd = CharterDateNormalizer.ToCharterInstant(newEnd);
+
             var http = _httpContextAccessor?.HttpContext;
             if (!int.TryParse(http?.User?.FindFirstValue(ClaimTypes.NameIdentifier), out var bookerId))
                 throw new ForbiddenException("You must be signed in to reschedule a reservation.");
@@ -290,6 +293,8 @@ namespace Yamore.Services.Services
             IReadOnlyList<int> serviceIds,
             CardPaymentPendingInfo? recordPendingCardPayment = null)
         {
+            startDate = CharterDateNormalizer.ToCharterInstant(startDate);
+            endDate = CharterDateNormalizer.ToCharterInstant(endDate);
             serviceIds ??= Array.Empty<int>();
             var quoted = ComputeQuotedTotalForCardBooking(yachtId, startDate, endDate, serviceIds);
             if (recordPendingCardPayment != null && Math.Abs(recordPendingCardPayment.Amount - quoted) > 0.02m)

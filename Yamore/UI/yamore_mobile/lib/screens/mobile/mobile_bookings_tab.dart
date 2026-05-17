@@ -8,6 +8,7 @@ import '../../models/weather_forecast.dart';
 import '../../models/yacht_calendar_block.dart';
 import '../../models/yacht_detail.dart';
 import '../../services/api_service.dart';
+import '../../utils/charter_date_utils.dart';
 import '../../utils/yacht_availability_calendar.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
@@ -939,7 +940,10 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
       context: context,
       builder: (ctx) => CustomDateRangePickerDialog(
         title: 'Reschedule travel dates',
-        initialRange: DateTimeRange(start: r.startDate, end: r.endDate),
+        initialRange: DateTimeRange(
+          start: CharterDateUtils.localDateOnly(r.startDate),
+          end: CharterDateUtils.localDateOnly(r.endDate),
+        ),
         firstDate: now,
         lastDate: now.add(const Duration(days: 365 * 2)),
         showAvailabilityLegend: true,
@@ -953,8 +957,8 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
     try {
       await _api.rescheduleReservation(
         reservationId: r.reservationId,
-        startDate: range.start,
-        endDate: range.end,
+        startDate: CharterDateUtils.localDateOnly(range.start),
+        endDate: CharterDateUtils.localDateOnly(range.end),
       );
       if (!mounted) return;
       await _loadReservations();
