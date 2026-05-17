@@ -1888,22 +1888,45 @@ class _OwnerYachtFormScreenState extends State<_OwnerYachtFormScreen> {
     );
   }
 
+  static const _fieldRadius = BorderRadius.all(Radius.circular(10));
+  static const _enabledBorderSide = BorderSide(color: Color(0xFF9E9E9E), width: 1);
+  static const _focusedBorderSide =
+      BorderSide(color: AppTheme.primaryBlue, width: 1.5);
+  static const _errorBorderSide = BorderSide(color: Color(0xFFE53935), width: 1);
+
+  OutlineInputBorder _outlineBorder(BorderSide side) => OutlineInputBorder(
+        borderRadius: _fieldRadius,
+        borderSide: side,
+      );
+
   InputDecoration _inputDeco(
     String label, {
     IconData? icon,
     bool? isValid,
     String value = '',
   }) {
+    final enabled = _outlineBorder(_enabledBorderSide);
+    final focused = _outlineBorder(_focusedBorderSide);
+    final error = _outlineBorder(_errorBorderSide);
+    final focusedError = _outlineBorder(
+      const BorderSide(color: Color(0xFFC62828), width: 1.5),
+    );
+
     return InputDecoration(
       labelText: label,
       prefixIcon: icon != null ? Icon(icon, size: 20) : null,
       suffixIcon: isValid == null ? null : _buildValidationIcon(isValid, value),
       suffixIconConstraints:
           const BoxConstraints(minWidth: 30, minHeight: 20),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       filled: true,
       fillColor: const Color(0xFFFAFBFD),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      border: enabled,
+      enabledBorder: enabled,
+      focusedBorder: focused,
+      disabledBorder: enabled,
+      errorBorder: error,
+      focusedErrorBorder: focusedError,
     );
   }
 
