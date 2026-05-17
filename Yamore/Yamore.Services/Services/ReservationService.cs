@@ -253,7 +253,8 @@ namespace Yamore.Services.Services
                 .Select(rs => rs.ServiceId)
                 .ToList();
 
-            var total = ComputeQuotedTotalForCardBooking(entity.YachtId, newStart, newEnd, serviceIds);
+            var total = ComputeQuotedTotalForCardBooking(
+                entity.YachtId, newStart, newEnd, serviceIds, entity.ReservationId);
             var now = DateTime.UtcNow;
             var period =
                 $"{entity.StartDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)} – {entity.EndDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
@@ -373,7 +374,12 @@ namespace Yamore.Services.Services
                         && r.Status != ReservationStatuses.Completed))
                 .Any(r => start < r.EndDate && end > r.StartDate);
 
-        private decimal ComputeQuotedTotalForCardBooking(int yachtId, DateTime start, DateTime end, IReadOnlyList<int> serviceIds)
+        private decimal ComputeQuotedTotalForCardBooking(
+            int yachtId,
+            DateTime start,
+            DateTime end,
+            IReadOnlyList<int> serviceIds,
+            int? excludeReservationId = null)
         {
             if (end <= start)
                 throw new UserException("End date must be after the start date.");
@@ -387,7 +393,10 @@ namespace Yamore.Services.Services
                     "This yacht is not available for booking. Only published (active) yachts can be reserved.");
             }
 
-            if (HasOverlap(yachtId, start, end))
+            var overlaps = excludeReservationId.HasValue
+                ? HasOverlapExcluding(yachtId, start, end, excludeReservationId.Value)
+                : HasOverlap(yachtId, start, end);
+            if (overlaps)
             {
                 throw new UserException(
                     "This yacht is already reserved for the selected dates. Please choose different dates or times.");

@@ -965,12 +965,38 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
         message:
             'Your reservation was rescheduled. The total price was recalculated by the server.',
       );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_rescheduleErrorMessage(e)),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 6),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not reschedule: $e')),
+        SnackBar(
+          content: Text('Could not reschedule: $e'),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
+  }
+
+  /// Maps API errors from reschedule to clear user-facing text.
+  String _rescheduleErrorMessage(ApiException e) {
+    final msg = e.displayMessage.trim();
+    final lower = msg.toLowerCase();
+    if (lower.contains('already reserved') || lower.contains('selected dates')) {
+      return 'This yacht is already reserved for the selected dates. '
+          'Choose a range that does not overlap another guest\'s booking or an owner-blocked period on this yacht.';
+    }
+    if (msg.isNotEmpty) return msg;
+    return 'Could not reschedule your booking. Please try again.';
   }
 
   Future<void> _confirmCancel(Reservation r) async {
