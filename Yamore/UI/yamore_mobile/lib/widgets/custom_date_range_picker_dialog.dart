@@ -1,18 +1,25 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
-
 /// Reusable date range picker dialog with a clean header and formatted month/year.
 /// Use via: showDialog<DateTimeRange>(..., builder: (ctx) => CustomDateRangePickerDialog(...))
+///
+/// Pass [isDayUnavailable] (and optionally [showAvailabilityLegend]) to color-code booked days.
 class CustomDateRangePickerDialog extends StatefulWidget {
   final DateTimeRange initialRange;
   final DateTime firstDate;
   final DateTime lastDate;
+  final String title;
+  final bool Function(DateTime day)? isDayUnavailable;
+  final bool showAvailabilityLegend;
 
   const CustomDateRangePickerDialog({
     super.key,
     required this.initialRange,
     required this.firstDate,
     required this.lastDate,
+    this.title = 'Select travel dates',
+    this.isDayUnavailable,
+    this.showAvailabilityLegend = false,
   });
 
   @override
@@ -33,6 +40,9 @@ class _CustomDateRangePickerDialogState extends State<CustomDateRangePickerDialo
   late DateTime? _rangeEnd;
   late DateTime _viewMonth;
 
+  bool get _availabilityEnabled =>
+      widget.isDayUnavailable != null || widget.showAvailabilityLegend;
+
   @override
   void initState() {
     super.initState();
@@ -49,6 +59,10 @@ class _CustomDateRangePickerDialogState extends State<CustomDateRangePickerDialo
     _viewMonth = DateTime(_rangeStart!.year, _rangeStart!.month);
   }
 
+  bool _dayUnavailable(DateTime day) =>
+      widget.isDayUnavailable?.call(DateTime(day.year, day.month, day.day)) ??
+      false;
+
   void _onDayTap(DateTime day) {
     final d = DateTime(day.year, day.month, day.day);
     final first = DateTime(
@@ -56,6 +70,17 @@ class _CustomDateRangePickerDialogState extends State<CustomDateRangePickerDialo
     final last = DateTime(
         widget.lastDate.year, widget.lastDate.month, widget.lastDate.day);
     if (d.isBefore(first) || d.isAfter(last)) return;
+    if (_dayUnavailable(d)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'This date is not available. Please choose dates that are not booked or blocked.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     setState(() {
       if (_rangeStart == null || (_rangeStart != null && _rangeEnd != null)) {
         _rangeStart = d;
@@ -64,6 +89,22 @@ class _CustomDateRangePickerDialogState extends State<CustomDateRangePickerDialo
         _rangeStart = d;
         _rangeEnd = null;
       } else {
+        var cursor = _rangeStart!;
+        final endDay = DateTime(d.year, d.month, d.day);
+        while (!cursor.isAfter(endDay)) {
+          if (_dayUnavailable(cursor)) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Your selection includes booked or blocked dates. Pick a free range.',
+                ),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            return;
+          }
+          cursor = cursor.add(const Duration(days: 1));
+        }
         _rangeEnd = d;
       }
     });
@@ -106,6 +147,31 @@ class _CustomDateRangePickerDialogState extends State<CustomDateRangePickerDialo
     return '${s.day} ${_monthNames[s.month - 1]} – ${e.day} ${_monthNames[e.month - 1]} ${s.year}';
   }
 
+  void _onSave() {
+    if (_rangeStart == null) return;
+    final end = _rangeEnd ?? _rangeStart!;
+    final range = DateTimeRange(start: _rangeStart!, end: end);
+    if (widget.isDayUnavailable != null) {
+      var cursor = DateTime(range.start.year, range.start.month, range.start.day);
+      final last = DateTime(range.end.year, range.end.month, range.end.day);
+      while (!cursor.isAfter(last)) {
+        if (_dayUnavailable(cursor)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Selected dates include unavailable days. Please adjust your range.',
+              ),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
+        }
+        cursor = cursor.add(const Duration(days: 1));
+      }
+    }
+    Navigator.of(context).pop(range);
+  }
+
   @override
   Widget build(BuildContext context) {
     final year = _viewMonth.year;
@@ -120,7 +186,10 @@ class _CustomDateRangePickerDialogState extends State<CustomDateRangePickerDialo
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 380, maxHeight: 520),
+        constraints: BoxConstraints(
+          maxWidth: 380,
+          maxHeight: _availabilityEnabled ? 560 : 520,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -135,10 +204,10 @@ class _CustomDateRangePickerDialogState extends State<CustomDateRangePickerDialo
                 children: [
                   const Icon(Icons.calendar_month, color: Colors.white, size: 22),
                   const SizedBox(width: 8),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Select travel dates',
-                      style: TextStyle(
+                      widget.title,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
@@ -156,19 +225,7 @@ class _CustomDateRangePickerDialogState extends State<CustomDateRangePickerDialo
                   ),
                   const SizedBox(width: 6),
                   FilledButton(
-                    onPressed: () {
-                      if (_rangeStart != null && _rangeEnd != null) {
-                        Navigator.of(context).pop(DateTimeRange(
-                          start: _rangeStart!,
-                          end: _rangeEnd!,
-                        ));
-                      } else if (_rangeStart != null) {
-                        Navigator.of(context).pop(DateTimeRange(
-                          start: _rangeStart!,
-                          end: _rangeStart!,
-                        ));
-                      }
-                    },
+                    onPressed: _rangeStart != null ? _onSave : null,
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: AppTheme.primaryBlue,
@@ -190,7 +247,7 @@ class _CustomDateRangePickerDialogState extends State<CustomDateRangePickerDialo
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
@@ -288,10 +345,34 @@ class _CustomDateRangePickerDialogState extends State<CustomDateRangePickerDialo
                               }
                               final date = DateTime(year, month, day);
                               final isPast = date.isBefore(today);
+                              final unavailable =
+                                  !isPast && _dayUnavailable(date);
                               final inRange = _isInRange(date);
                               final isStart = _isRangeStart(date);
                               final isEnd = _isRangeEnd(date);
-                              final canTap = !isPast;
+                              final canTap = !isPast && !unavailable;
+
+                              Color bg;
+                              Color fg;
+                              if (isPast) {
+                                bg = Colors.grey.shade200;
+                                fg = Colors.grey.shade500;
+                              } else if (unavailable) {
+                                bg = Colors.red.shade100;
+                                fg = Colors.red.shade800;
+                              } else if (isStart || isEnd) {
+                                bg = AppTheme.primaryBlue;
+                                fg = Colors.white;
+                              } else if (inRange) {
+                                bg = AppTheme.primaryBlue.withOpacity(0.14);
+                                fg = AppTheme.primaryBlue;
+                              } else if (_availabilityEnabled) {
+                                bg = Colors.green.shade50;
+                                fg = Colors.green.shade800;
+                              } else {
+                                bg = Colors.transparent;
+                                fg = Colors.black87;
+                              }
 
                               return SizedBox(
                                 width: cellW,
@@ -299,19 +380,10 @@ class _CustomDateRangePickerDialogState extends State<CustomDateRangePickerDialo
                                 child: Padding(
                                   padding: const EdgeInsets.all(2),
                                   child: Material(
-                                    color: isPast
-                                        ? Colors.grey.shade100
-                                        : inRange
-                                            ? (isStart || isEnd
-                                                ? AppTheme.primaryBlue
-                                                : AppTheme.primaryBlue
-                                                    .withOpacity(0.14))
-                                            : Colors.transparent,
+                                    color: bg,
                                     borderRadius: BorderRadius.circular(10),
                                     child: InkWell(
-                                      onTap: canTap
-                                          ? () => _onDayTap(date)
-                                          : null,
+                                      onTap: canTap ? () => _onDayTap(date) : null,
                                       borderRadius: BorderRadius.circular(10),
                                       child: Center(
                                         child: Text(
@@ -319,13 +391,7 @@ class _CustomDateRangePickerDialogState extends State<CustomDateRangePickerDialo
                                           style: TextStyle(
                                             fontSize: 14,
                                             fontWeight: FontWeight.w600,
-                                            color: isPast
-                                                ? Colors.grey
-                                                : (isStart || isEnd)
-                                                    ? Colors.white
-                                                    : inRange
-                                                        ? AppTheme.primaryBlue
-                                                        : Colors.black87,
+                                            color: fg,
                                           ),
                                         ),
                                       ),
@@ -342,10 +408,65 @@ class _CustomDateRangePickerDialogState extends State<CustomDateRangePickerDialo
                 },
               ),
             ),
-            const SizedBox(height: 20),
+            if (_availabilityEnabled) ...[
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 12,
+                  runSpacing: 6,
+                  children: [
+                    _legendChip(
+                      Colors.green.shade50,
+                      Colors.green.shade800,
+                      'Available',
+                    ),
+                    _legendChip(
+                      Colors.red.shade100,
+                      Colors.red.shade800,
+                      'Booked / blocked',
+                    ),
+                    _legendChip(
+                      Colors.grey.shade200,
+                      Colors.grey.shade500,
+                      'Past',
+                    ),
+                    _legendChip(
+                      AppTheme.primaryBlue.withOpacity(0.2),
+                      AppTheme.primaryBlue,
+                      'Your selection',
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _legendChip(Color bg, Color fg, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(3),
+            border: Border.all(color: fg.withOpacity(0.35)),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(fontSize: 10, color: Colors.grey.shade700),
+        ),
+      ],
     );
   }
 }

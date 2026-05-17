@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../models/user.dart';
 import '../../models/yacht_overview.dart';
-import '../../models/reservation.dart';
 import '../../models/yacht_availability.dart';
+import '../../models/yacht_calendar_block.dart';
+import '../../utils/yacht_availability_calendar.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
@@ -37,16 +38,10 @@ class _MobileBookingCalendarScreenState
   bool _loading = true;
   String? _error;
 
-  List<Reservation> _reservations = [];
   List<YachtAvailability> _blocks = [];
+  List<YachtCalendarBlock> _calendarBlocks = [];
 
   DateTime _calendarMonth = DateTime.now();
-
-  /// Matches server rules: past / cancelled / completed do not block new bookings.
-  static bool _reservationBlocksAvailability(Reservation r) {
-    final s = (r.status ?? '').toLowerCase();
-    return s != 'cancelled' && s != 'completed';
-  }
 
   @override
   void initState() {
@@ -61,11 +56,7 @@ class _MobileBookingCalendarScreenState
     });
     try {
       final results = await Future.wait([
-        widget.api.getReservations(
-          page: 0,
-          pageSize: 200,
-          yachtId: widget.overview.yachtId,
-        ),
+        widget.api.getYachtCalendarBlocks(widget.overview.yachtId),
         widget.api.getYachtAvailabilities(
           yachtId: widget.overview.yachtId,
           pageSize: 200,
@@ -73,7 +64,7 @@ class _MobileBookingCalendarScreenState
       ]);
       if (!mounted) return;
       setState(() {
-        _reservations = (results[0] as PagedReservations).resultList;
+        _calendarBlocks = results[0] as List<YachtCalendarBlock>;
         _blocks = (results[1] as PagedYachtAvailabilities).resultList;
         _loading = false;
       });
@@ -97,13 +88,13 @@ class _MobileBookingCalendarScreenState
       ];
 
   bool _slotAvailable(DateTime start, DateTime end) {
-    for (final a in _blocks.where((b) => b.isBlocked)) {
-      if (start.isBefore(a.endDate) && end.isAfter(a.startDate)) {
+    for (final b in _calendarBlocks) {
+      if (start.isBefore(b.endDate) && end.isAfter(b.startDate)) {
         return false;
       }
     }
-    for (final r in _reservations.where(_reservationBlocksAvailability)) {
-      if (start.isBefore(r.endDate) && end.isAfter(r.startDate)) {
+    for (final a in _blocks.where((b) => b.isBlocked)) {
+      if (start.isBefore(a.endDate) && end.isAfter(a.startDate)) {
         return false;
       }
     }
@@ -111,17 +102,12 @@ class _MobileBookingCalendarScreenState
   }
 
   /// True if the given day (date only) is fully or partially booked (reservation or block overlaps it).
-  bool _isDayBooked(DateTime day) {
-    final dayStart = DateTime(day.year, day.month, day.day);
-    final dayEnd = dayStart.add(const Duration(days: 1));
-    for (final a in _blocks.where((b) => b.isBlocked)) {
-      if (dayStart.isBefore(a.endDate) && dayEnd.isAfter(a.startDate)) return true;
-    }
-    for (final r in _reservations.where(_reservationBlocksAvailability)) {
-      if (dayStart.isBefore(r.endDate) && dayEnd.isAfter(r.startDate)) return true;
-    }
-    return false;
-  }
+  bool _isDayBooked(DateTime day) =>
+      YachtAvailabilityCalendar.isDayUnavailable(
+        day,
+        calendarBlocks: _calendarBlocks,
+        ownerBlocks: _blocks,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -502,6 +488,12 @@ class _MobileBookingCalendarScreenState
               initialRange: initialRange,
               firstDate: now,
               lastDate: now.add(const Duration(days: 365)),
+              showAvailabilityLegend: true,
+              isDayUnavailable: (day) => YachtAvailabilityCalendar.isDayUnavailable(
+                day,
+                calendarBlocks: _calendarBlocks,
+                ownerBlocks: _blocks,
+              ),
             ),
           );
           if (picked != null) {

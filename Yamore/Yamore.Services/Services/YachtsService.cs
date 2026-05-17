@@ -747,6 +747,45 @@ namespace Yamore.Services.Services
         public bool YachtExists(int yachtId) =>
             Context.Set<Database.Yacht>().AsNoTracking().Any(y => y.YachtId == yachtId);
 
+        public IReadOnlyList<YachtCalendarBlockDto> GetCalendarBlocks(int yachtId, int? excludeReservationId = null)
+        {
+            if (!YachtExists(yachtId))
+                throw new NotFoundException($"Yacht with id {yachtId} not found.");
+
+            var reservations = Context.Set<Database.Reservation>().AsNoTracking()
+                .Where(r => r.YachtId == yachtId)
+                .Where(r => r.Status == null
+                    || (r.Status != ReservationStatuses.Cancelled
+                        && r.Status != ReservationStatuses.Completed));
+
+            if (excludeReservationId.HasValue)
+                reservations = reservations.Where(r => r.ReservationId != excludeReservationId.Value);
+
+            var fromReservations = reservations
+                .Select(r => new YachtCalendarBlockDto
+                {
+                    StartDate = r.StartDate,
+                    EndDate = r.EndDate,
+                    Kind = "reservation",
+                })
+                .ToList();
+
+            var fromOwnerBlocks = Context.Set<Database.YachtAvailability>().AsNoTracking()
+                .Where(a => a.YachtId == yachtId && a.IsBlocked)
+                .Select(a => new YachtCalendarBlockDto
+                {
+                    StartDate = a.StartDate,
+                    EndDate = a.EndDate,
+                    Kind = "owner_block",
+                })
+                .ToList();
+
+            return fromReservations
+                .Concat(fromOwnerBlocks)
+                .OrderBy(b => b.StartDate)
+                .ToList();
+        }
+
         public override Model.Yacht Delete(int id)
         {
             if (!Context.Set<Database.Yacht>().AsNoTracking().Any(y => y.YachtId == id))

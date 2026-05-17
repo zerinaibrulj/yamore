@@ -80,6 +80,18 @@ namespace Yamore.API.Controllers
             return _yachtsService.AllowedActions(id);
         }
 
+        /// <summary>Booked/blocked date ranges for booking and reschedule calendars (no guest PII).</summary>
+        [Authorize]
+        [HttpGet("{id}/calendar-blocks")]
+        public ActionResult<IReadOnlyList<YachtCalendarBlockDto>> GetCalendarBlocks(
+            int id,
+            [FromQuery] int? excludeReservationId = null)
+        {
+            if (!_yachtsService.YachtExists(id))
+                return NotFound();
+            return Ok(_yachtsService.GetCalendarBlocks(id, excludeReservationId));
+        }
+
         [HttpGet("recommendations")]
         public PagedResponse<YachtOverviewDto> GetRecommendations([FromQuery] int? userId, [FromQuery] int page = 0, [FromQuery] int pageSize = 10)
         {

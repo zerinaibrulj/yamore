@@ -38,5 +38,8 @@ namespace Yamore.Services.Interfaces
 
         /// <summary>True if a yacht row exists for <paramref name="yachtId"/> (for authorization checks before mutating).</summary>
         bool YachtExists(int yachtId);
+
+        /// <summary>Occupied periods for calendar UI (all non-cancelled reservations + owner blocked availability).</summary>
+        IReadOnlyList<YachtCalendarBlockDto> GetCalendarBlocks(int yachtId, int? excludeReservationId = null);
     }
 }

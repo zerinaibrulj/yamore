@@ -11,6 +11,7 @@ import '../models/yacht_detail.dart';
 import '../models/yacht_image.dart';
 import '../models/yacht_document.dart';
 import '../models/yacht_availability.dart';
+import '../models/yacht_calendar_block.dart';
 import '../models/city.dart';
 import '../models/country.dart';
 import '../models/yacht_category.dart';
@@ -1119,6 +1120,26 @@ class ApiService {
       body: jsonEncode({'OwnerResponse': ownerResponse}),
     );
     _ensureSuccess(response);
+  }
+
+  /// Occupied periods for booking/reschedule calendars (all reservations + owner blocks).
+  Future<List<YachtCalendarBlock>> getYachtCalendarBlocks(
+    int yachtId, {
+    int? excludeReservationId,
+  }) async {
+    final query = <String, String>{};
+    if (excludeReservationId != null) {
+      query['excludeReservationId'] = excludeReservationId.toString();
+    }
+    final uri = Uri.parse('$baseUrl/Yachts/$yachtId/calendar-blocks')
+        .replace(queryParameters: query.isEmpty ? null : query);
+    final response = await http.get(uri, headers: await _httpHeaders());
+    _ensureSuccess(response);
+    final decoded = jsonDecode(response.body);
+    if (decoded is! List) return [];
+    return decoded
+        .map((e) => YachtCalendarBlock.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<PagedYachtAvailabilities> getYachtAvailabilities({

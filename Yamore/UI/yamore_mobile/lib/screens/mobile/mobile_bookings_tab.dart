@@ -5,8 +5,10 @@ import '../../models/reservation.dart';
 import '../../models/route.dart';
 import '../../models/user.dart';
 import '../../models/weather_forecast.dart';
+import '../../models/yacht_calendar_block.dart';
 import '../../models/yacht_detail.dart';
 import '../../services/api_service.dart';
+import '../../utils/yacht_availability_calendar.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/operation_success_dialog.dart';
@@ -918,12 +920,33 @@ class _MobileBookingsTabState extends State<MobileBookingsTab> {
 
   Future<void> _rescheduleReservation(Reservation r) async {
     final now = DateTime.now();
+    List<YachtCalendarBlock> calendarBlocks = [];
+    try {
+      calendarBlocks = await _api.getYachtCalendarBlocks(
+        r.yachtId,
+        excludeReservationId: r.reservationId,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not load yacht availability: $e')),
+      );
+      return;
+    }
+
+    if (!mounted) return;
     final range = await showDialog<DateTimeRange>(
       context: context,
       builder: (ctx) => CustomDateRangePickerDialog(
+        title: 'Reschedule travel dates',
         initialRange: DateTimeRange(start: r.startDate, end: r.endDate),
         firstDate: now,
         lastDate: now.add(const Duration(days: 365 * 2)),
+        showAvailabilityLegend: true,
+        isDayUnavailable: (day) => YachtAvailabilityCalendar.isDayUnavailable(
+          day,
+          calendarBlocks: calendarBlocks,
+        ),
       ),
     );
     if (range == null) return;
